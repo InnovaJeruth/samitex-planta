@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Editar Piezas — {{ of.numero_of }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.piezas-edit-table { width:100%; border-collapse:collapse; font-size:13px; }
+.piezas-edit-table th { background:#0e0e0e; color:#555; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.4px; padding:8px 10px; border-bottom:1px solid #1e1e1e; }
+.piezas-edit-table td { padding:6px 8px; border-bottom:1px solid #161616; vertical-align:middle; }
+.piezas-edit-table tr:hover td { background:#111; }
+.edit-input { background:#0f0f0f; border:1px solid #2a2a2a; border-radius:4px;
+  padding:5px 8px; color:#e0e0e0; font-size:12px; outline:none; width:100%; }
+.edit-input:focus { border-color:#4a9fff; }
+.edit-input.sap-ok  { border-color:#1d5f40; }
+.edit-input.sap-err { border-color:#6a1a1a; }
+.fus-btn { padding:3px 10px; border-radius:4px; font-size:11px; font-weight:600;
+  border:1px solid #333; background:#1e1e1e; color:#888; cursor:pointer; white-space:nowrap; }
+.fus-btn.on { background:#0a2018; border-color:#1d5f40; color:#4caf7d; }
+.sap-warning { background:#2d1500; border:1px solid #5a3000; border-radius:6px;
+  padding:8px 12px; font-size:12px; color:#e6a817; margin-bottom:12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+  <div>
+    <div class="page-title">Editar Piezas</div>
+    <div style="font-size:12px;color:#555;margin-top:2px">{{ of.numero_of }} — {{ of.cliente }}</div>
+  </div>
+  <a href="/of/{{ of.id }}/detalle" class="btn btn-secondary">← Volver al detalle</a>
+</div>
+
+<div class="sap-warning" id="sap-alert" style="display:none">
+  ⚠ Piezas sin código SAP: <span id="sap-lista"></span>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Piezas de la OF</span>
+    <span style="font-size:11px;color:#555">{{ of.piezas | length }} pieza(s)</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="piezas-edit-table" id="piezas-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th style="min-width:140px">Nombre</th>
+          <th style="min-width:130px">Código SAP *</th>
+          <th style="min-width:120px">Material</th>
+          <th>x Prenda</th>
+          <th>Fusionado</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for pieza in of.piezas %}
+      <tr data-pieza-id="{{ pieza.id }}">
+        <td style="color:#444;font-size:11px">{{ loop.index }}</td>
+        <td><input class="edit-input" data-field="nombre" value="{{ pieza.nombre }}"></td>
+        <td>
+          <input class="edit-input {{ 'sap-ok' if pieza.codigo_sap else 'sap-err' }}"
+                 data-field="codigo_sap"
+                 value="{{ pieza.codigo_sap or '' }}"
+                 placeholder="SAP-0000"
+                 oninput="checkSap(this)">
+        </td>
+        <td>
+          <input class="edit-input" list="mat-list" data-field="material" value="{{ pieza.material }}">
+        </td>
+        <td>
+          <input class="edit-input" type="number" min="1" max="4" data-field="cantidad_x_prenda"
+                 value="{{ pieza.cantidad_x_prenda }}" style="width:60px">
+        </td>
+        <td>
+          <button type="button" class="fus-btn {{ 'on' if pieza.fusionado else '' }}"
+                  data-field="fusionado" data-val="{{ '1' if pieza.fusionado else '0' }}"
+                  onclick="toggleFus(this)">
+            {{ '✓ Sí' if pieza.fusionado else '✗ No' }}
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <datalist id="mat-list">
+    <option value="TELA"><option value="FORRO"><option value="ENTRETELA">
+    <option value="BIES"><option value="RIBETE">
+  </datalist>
+</div>
+
+<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+  <a href="/of/{{ of.id }}/detalle" class="btn btn-secondary">Cancelar</a>
+  <button class="btn btn-primary" id="btn-guardar" onclick="guardar()" style="padding:10px 28px">
+    💾 Guardar cambios
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const OF_ID = {{ of.id }};
+
+function checkSap(input) {
+  const ok = input.value.trim().length > 0;
+  input.className = 'edit-input ' + (ok ? 'sap-ok' : 'sap-err');
+  validarSaps();
+}
+
+function validarSaps() {
+  const rows = document.querySelectorAll('#piezas-table tbody tr');
+  const sinSap = [];
+  rows.forEach(row => {
+    const sapInput = row.querySelector('[data-field="codigo_sap"]');
+    const nombre   = row.querySelector('[data-field="nombre"]').value || `Pieza ${row.rowIndex}`;
+    if (!sapInput.value.trim()) sinSap.push(nombre);
+  });
+  const alert = document.getElementById('sap-alert');
+  if (sinSap.length) {
+    alert.style.display = '';
+    document.getElementById('sap-lista').textContent = sinSap.join(', ');
+  } else {
+    alert.style.display = 'none';
+  }
+}
+
+function toggleFus(btn) {
+  const isOn = btn.dataset.val === '1';
+  btn.dataset.val = isOn ? '0' : '1';
+  btn.className = 'fus-btn ' + (isOn ? '' : 'on');
+  btn.textContent = isOn ? '✗ No' : '✓ Sí';
+}
+
+async function guardar() {
+  const rows = document.querySelectorAll('#piezas-table tbody tr');
+  const piezas = [];
+  rows.forEach(row => {
+    piezas.push({
+      id:               parseInt(row.dataset.piezaId),
+      nombre:           row.querySelector('[data-field="nombre"]').value.trim(),
+      codigo_sap:       row.querySelector('[data-field="codigo_sap"]').value.trim() || null,
+      material:         row.querySelector('[data-field="material"]').value.trim() || 'TELA',
+      cantidad_x_prenda: parseInt(row.querySelector('[data-field="cantidad_x_prenda"]').value) || 1,
+      fusionado:        row.querySelector('[data-field="fusionado"]').dataset.val === '1',
+    });
+  });
+
+  document.getElementById('btn-guardar').disabled = true;
+  const res = await fetch(`/of/api/${OF_ID}/editar-piezas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ piezas }),
+  });
+  const d = await res.json();
+  if (res.ok) {
+    toast('✓ Piezas guardadas', 'success');
+    setTimeout(() => window.location.href = `/of/${OF_ID}/detalle`, 1300);
+  } else {
+    toast(d.detail || 'Error al guardar', 'error');
+    document.getElementById('btn-guardar').disabled = false;
+  }
+}
+
+function toast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast toast-${tipo} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+validarSaps();
+</script>
+{% endblock %}

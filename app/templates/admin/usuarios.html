@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Admin — Samitex{% endblock %}
+{% block content %}
+<div class="page-header">
+    <span class="page-title">Administración de Usuarios</span>
+    <button class="btn btn-primary" onclick="document.getElementById('form-nuevo').style.display='block'">+ Nuevo Usuario</button>
+</div>
+
+<div id="form-nuevo" class="card" style="max-width:600px;margin-bottom:20px;display:none">
+    <div class="card-header"><span class="card-title">Crear Usuario</span></div>
+    <form id="fNuevo">
+        <div class="form-row form-row-2">
+            <div class="form-group"><label>Nombre</label><input name="nombre" required></div>
+            <div class="form-group"><label>Username</label><input name="username" required></div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group"><label>Email</label><input name="email" type="email" required></div>
+            <div class="form-group"><label>Contraseña</label><input name="password" type="password" required></div>
+        </div>
+        <div class="form-group">
+            <label>Rol</label>
+            <select name="rol">
+                {% for rol in roles %}<option value="{{ rol.value }}">{{ rol.value }}</option>{% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('form-nuevo').style.display='none'">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Crear</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <table>
+        <thead><tr><th>Nombre</th><th>Username</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+        {% for u in usuarios %}
+        <tr>
+            <td>{{ u.nombre }}</td>
+            <td style="color:#888">{{ u.username }}</td>
+            <td><span class="badge badge-activa">{{ u.rol.value }}</span></td>
+            <td>{% if u.activo %}<span style="color:#4caf7d">Activo</span>{% else %}<span style="color:#e06060">Inactivo</span>{% endif %}</td>
+            <td>
+                <button class="btn btn-secondary btn-sm" onclick="toggleUser({{ u.id }})">
+                    {% if u.activo %}Desactivar{% else %}Activar{% endif %}
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.getElementById('fNuevo').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const fd = new FormData(this);
+    const data = Object.fromEntries(fd);
+    const res = await fetch('/admin/api/usuarios', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    if (res.ok) location.reload();
+    else { const d = await res.json(); showToast(d.detail || 'Error'); }
+});
+
+async function toggleUser(id) {
+    await fetch(`/admin/api/usuarios/${id}/toggle`, { method: 'PATCH' });
+    location.reload();
+}
+</script>
+{% endblock %}

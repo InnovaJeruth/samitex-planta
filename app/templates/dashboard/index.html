@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Samitex Planta{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* KPI Cards */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:16px; }
+.kpi-card { background:#111; border:1px solid #1e1e1e; border-radius:8px; padding:14px 16px; text-align:center; }
+.kpi-num  { font-size:26px; font-weight:700; color:#fff; line-height:1.1; }
+.kpi-sub  { font-size:10px; color:#555; text-transform:uppercase; letter-spacing:.5px; margin-top:5px; }
+.kpi-card.kpi-vencido { border-color:#5a1010; background:#1a0808; }
+.kpi-card.kpi-alerta  { border-color:#5a3e00; background:#181000; }
+.kpi-card.kpi-ok      { border-color:#1a4a28; background:#090f0c; }
+
+/* Charts grid */
+.charts-grid { display:grid; grid-template-columns:220px 1fr 220px; gap:12px; margin-bottom:16px; }
+.chart-card  { background:#111; border:1px solid #1e1e1e; border-radius:8px; padding:14px; }
+.chart-title { font-size:11px; color:#555; text-transform:uppercase; letter-spacing:.4px; margin-bottom:10px; }
+@media(max-width:860px) { .charts-grid { grid-template-columns:1fr; } }
+
+/* Search / toolbar */
+.dash-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+.search-input { background:#111; border:1px solid #2a2a2a; border-radius:6px; padding:7px 12px; color:#e0e0e0; font-size:13px; outline:none; width:220px; }
+.search-input:focus { border-color:#1a6fbe; }
+.count-badge { font-size:12px; color:#555; }
+
+/* Accordion */
+.cli-row { background:#111; border:1px solid #1e1e1e; border-radius:8px; margin-bottom:8px; overflow:hidden; }
+.cli-header { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; user-select:none; }
+.cli-header:hover { background:#161616; }
+.cli-name { font-size:13px; font-weight:600; color:#fff; flex:1; }
+.cli-meta { font-size:11px; color:#666; }
+.cli-body { display:none; padding:0 14px 14px; }
+.cli-row.open .cli-body { display:block; }
+.cli-row.open .chevron { transform:rotate(90deg); }
+.chevron { color:#555; font-size:12px; transition:transform .15s; }
+
+/* Semaforo dot */
+.sem-dot { width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
+
+/* Progress bar */
+.pbar-wrap { background:#1e1e1e; border-radius:4px; height:5px; width:80px; display:inline-block; vertical-align:middle; }
+.pbar-fill  { height:5px; border-radius:4px; background:#1a6fbe; }
+
+/* Chip fases */
+.chips { display:flex; gap:3px; flex-wrap:wrap; }
+.chip { font-size:9px; padding:2px 5px; border-radius:3px; font-weight:600; letter-spacing:.3px; }
+.chip-ok   { background:#0d3320; color:#4caf7d; }
+.chip-par  { background:#3a2a00; color:#e6a817; }
+.chip-pend { background:#1a1a2a; color:#555; }
+.chip-na   { background:#1a1a1a; color:#333; }
+
+/* OF sub-row */
+.of-list { border-top:1px solid #1a1a1a; margin-top:10px; padding-top:10px; }
+.of-item { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:6px; margin-bottom:4px; }
+.of-item:hover { background:#161616; }
+.of-num { font-size:11px; color:#888; width:80px; flex-shrink:0; }
+.of-cliente-info { flex:1; min-width:0; }
+.of-prenda { font-size:12px; color:#ccc; }
+.of-link { color:#4a9fff; text-decoration:none; font-size:11px; }
+.of-link:hover { text-decoration:underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <span class="page-title">Dashboard</span>
+    <a href="/of/crear" class="btn btn-primary">+ Nueva OF</a>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-num">{{ kpis.total }}</div><div class="kpi-sub">Total OFs</div></div>
+    <div class="kpi-card"><div class="kpi-num" style="color:#4a9fff">{{ kpis.activa }}</div><div class="kpi-sub">Activas</div></div>
+    <div class="kpi-card"><div class="kpi-num" style="color:#e6a817">{{ kpis.en_proceso }}</div><div class="kpi-sub">En Proceso</div></div>
+    <div class="kpi-card kpi-ok"><div class="kpi-num" style="color:#4caf7d">{{ kpis.completada }}</div><div class="kpi-sub">Completadas</div></div>
+    <div class="kpi-card kpi-vencido"><div class="kpi-num" style="color:#f06060">{{ kpis.vencidas }}</div><div class="kpi-sub">Vencidas</div></div>
+    <div class="kpi-card kpi-alerta"><div class="kpi-num" style="color:#e6a817">{{ kpis.alertas }}</div><div class="kpi-sub">En Alerta</div></div>
+    <div class="kpi-card"><div class="kpi-num" style="color:#aaa">{{ kpis.total_juegos }}</div><div class="kpi-sub">Total Juegos</div></div>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid">
+    <div class="chart-card">
+        <div class="chart-title">Estados</div>
+        <canvas id="chart-estados" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+        <div class="chart-title">Juegos por Cliente (Mayor → Menor)</div>
+        <canvas id="chart-clientes" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+        <div class="chart-title">Avance por Prenda (%)</div>
+        <canvas id="chart-prendas" height="180"></canvas>
+    </div>
+</div>
+
+<!-- Piezas drill-down -->
+<div id="piezas-chart-panel" style="display:none;background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:14px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span class="chart-title" id="piezas-chart-title" style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.4px;"></span>
+        <button onclick="document.getElementById('piezas-chart-panel').style.display='none';if(window._chartPiezas)window._chartPiezas.destroy();" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <canvas id="chart-piezas" height="120"></canvas>
+</div>
+
+<!-- Toolbar -->
+<div class="dash-toolbar">
+    <input class="search-input" type="text" id="buscar-cliente" placeholder="🔍 Buscar cliente..." oninput="filtrarClientes(this.value)">
+    <span class="count-badge" id="count-label">{{ clientes_data|length }} cliente(s) · {{ kpis.total }} OF(s)</span>
+</div>
+
+<!-- Accordion clientes -->
+<div id="clientes-container">
+{% for cli in clientes_data %}
+<div class="cli-row" data-cliente="{{ cli.nombre|lower }}" id="cli-{{ loop.index }}">
+    <div class="cli-header" onclick="toggleCli('cli-{{ loop.index }}')">
+        <span class="chevron">▶</span>
+        <span class="sem-dot" style="background:{{ cli.sem_color }}"></span>
+        <span class="cli-name">{{ cli.nombre }}</span>
+        <span class="cli-meta">{{ cli.total_ofs }} OF(s) &nbsp;·&nbsp; {{ cli.total_juegos }} juegos &nbsp;·&nbsp; {{ cli.avg_pct }}% avance</span>
+    </div>
+    <div class="cli-body">
+        <div class="of-list">
+        {% for item in cli.ofs %}
+        {% set of = item.of %}
+        <div class="of-item">
+            <span class="sem-dot" style="background:{{ item.sem.color }}"></span>
+            <span class="of-num"><a href="/of/{{ of.id }}/detalle" class="of-link">{{ of.numero_of }}</a></span>
+            <div class="of-cliente-info">
+                <div class="of-prenda">{{ of.tipo_prenda.value }} &nbsp;<span style="color:#555;font-size:11px;">{{ of.total_juegos }} jgs · APT {{ of.fecha_apt }}</span></div>
+
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+                <div style="font-size:11px;color:#888;margin-bottom:3px;">{{ item.pct }}%</div>
+                <div class="pbar-wrap"><div class="pbar-fill" style="width:{{ item.pct }}%"></div></div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<script>
+var CHART_DATA = {{ chart_json|safe }};
+
+// ── Accordion ─────────────────────────────────────────────────
+function toggleCli(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle('open');
+}
+
+// ── Search ────────────────────────────────────────────────────
+function filtrarClientes(q) {
+    q = q.toLowerCase().trim();
+    var rows = document.querySelectorAll('#clientes-container .cli-row');
+    var vis = 0;
+    rows.forEach(function(r) {
+        var match = !q || r.dataset.cliente.indexOf(q) >= 0;
+        r.style.display = match ? '' : 'none';
+        if (match) vis++;
+    });
+    document.getElementById('count-label').textContent = vis + ' cliente(s) visible(s)';
+}
+
+// ── Charts ────────────────────────────────────────────────────
+Chart.defaults.color = '#666';
+Chart.defaults.borderColor = '#1e1e1e';
+
+// Donut estados
+new Chart(document.getElementById('chart-estados'), {
+    type: 'doughnut',
+    data: {
+        labels: CHART_DATA.estados.labels,
+        datasets: [{ data: CHART_DATA.estados.data, backgroundColor: CHART_DATA.estados.colors, borderWidth: 0 }]
+    },
+    options: { plugins: { legend: { position:'bottom', labels:{ font:{size:10}, boxWidth:10, padding:8 } } }, cutout:'60%' }
+});
+
+// Bar clientes — clickable filter
+var chartClientes = new Chart(document.getElementById('chart-clientes'), {
+    type: 'bar',
+    data: {
+        labels: CHART_DATA.clientes.labels,
+        datasets: [{ label:'Juegos', data: CHART_DATA.clientes.juegos, backgroundColor: CHART_DATA.clientes.colors, borderRadius:3 }]
+    },
+    options: {
+        indexAxis: 'y',
+        plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ctx.raw + ' juegos' } } },
+        scales: { x:{ grid:{ color:'#1a1a1a' }, ticks:{ font:{size:10} } }, y:{ ticks:{ font:{size:10} } } },
+        onClick: function(evt, els) {
+            if (!els.length) {
+                filtrarClientes('');
+                document.getElementById('buscar-cliente').value='';
+                actualizarPrendasChart(null);
+                return;
+            }
+            var label = CHART_DATA.clientes.labels[els[0].index];
+            document.getElementById('buscar-cliente').value = label;
+            filtrarClientes(label);
+            actualizarPrendasChart(label);
+        },
+        onHover: function(evt) { evt.native.target.style.cursor = 'pointer'; }
+    }
+});
+
+// Prendas chart — with drill-down to piezas
+var _prendaSeleccionada = null;
+var _clienteSeleccionado = null;
+var chartPrendas = new Chart(document.getElementById('chart-prendas'), {
+    type: 'bar',
+    data: {
+        labels: CHART_DATA.prendas.labels,
+        datasets: [{ label:'% Avance', data: CHART_DATA.prendas.pct, backgroundColor: CHART_DATA.prendas.colors, borderRadius:3 }]
+    },
+    options: {
+        plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ctx.raw + '%' } } },
+        scales: {
+            y:{ min:0, max:100, grid:{ color:'#1a1a1a' }, ticks:{ font:{size:10}, callback: v => v+'%' } },
+            x:{ ticks:{ font:{size:10} } }
+        },
+        onClick: function(evt, els) {
+            if (!els.length) return;
+            var prenda = CHART_DATA.prendas.labels[els[0].index];
+            mostrarPiezasChart(prenda);
+        },
+        onHover: function(evt) { evt.native.target.style.cursor = 'pointer'; }
+    }
+});
+
+function actualizarPrendasChart(clienteLabel) {
+    _clienteSeleccionado = clienteLabel;
+    var det = CHART_DATA.clientes_detalle;
+    var labels, pcts, colors;
+    if (!clienteLabel || !det[clienteLabel]) {
+        // Reset to global
+        labels = CHART_DATA.prendas.labels;
+        pcts   = CHART_DATA.prendas.pct;
+        colors = CHART_DATA.prendas.colors;
+    } else {
+        var cli = det[clienteLabel];
+        labels = cli.prendas.labels;
+        pcts   = cli.prendas.pct;
+        colors = cli.prendas.colors;
+    }
+    chartPrendas.data.labels = labels;
+    chartPrendas.data.datasets[0].data = pcts;
+    chartPrendas.data.datasets[0].backgroundColor = colors;
+    chartPrendas.update();
+    // Hide piezas panel on client switch
+    document.getElementById('piezas-chart-panel').style.display = 'none';
+    if (window._chartPiezas) { window._chartPiezas.destroy(); window._chartPiezas = null; }
+}
+
+function mostrarPiezasChart(prenda) {
+    var det = CHART_DATA.clientes_detalle;
+    var labels, pcts;
+    if (_clienteSeleccionado && det[_clienteSeleccionado]) {
+        // Use selected client's data
+        var pd = det[_clienteSeleccionado].piezas[prenda];
+        labels = pd ? pd.labels : [];
+        pcts   = pd ? pd.pct   : [];
+    } else {
+        // Aggregate across all clients
+        var piezasAgg = {};
+        Object.values(det).forEach(function(cli) {
+            var pd = cli.piezas[prenda];
+            if (!pd) return;
+            pd.labels.forEach(function(lbl, i) {
+                if (!piezasAgg[lbl]) piezasAgg[lbl] = 0;
+                piezasAgg[lbl] = Math.max(piezasAgg[lbl], pd.pct[i]);
+            });
+        });
+        labels = Object.keys(piezasAgg);
+        pcts   = labels.map(function(l) { return piezasAgg[l]; });
+    }
+
+    var panel = document.getElementById('piezas-chart-panel');
+    var title = document.getElementById('piezas-chart-title');
+    title.textContent = 'Avance por Pieza — ' + prenda + (_clienteSeleccionado ? ' · ' + _clienteSeleccionado : '');
+    panel.style.display = 'block';
+
+    if (window._chartPiezas) window._chartPiezas.destroy();
+    window._chartPiezas = new Chart(document.getElementById('chart-piezas'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{ label:'%', data: pcts, backgroundColor: '#1a5ba3cc', borderRadius:3 }]
+        },
+        options: {
+            plugins: { legend:{ display:false } },
+            scales: {
+                y:{ min:0, max:100, grid:{ color:'#1a1a1a' }, ticks:{ font:{size:10}, callback: v => v+'%' } },
+                x:{ ticks:{ font:{size:10} } }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

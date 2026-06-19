@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Programación de Corte — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Layout ── */
+.prog-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.prog-title  { font-size:20px; font-weight:700; }
+
+/* ── Leyenda de colores ── */
+.leyenda { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+.leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:#888; }
+.leg-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* ── Tarjetas de OF ── */
+.of-card  { border:1px solid #222; border-radius:8px; margin-bottom:10px; overflow:hidden; }
+.of-head  { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer;
+            border-left:4px solid transparent; transition:background .15s; }
+.of-head:hover { background:#151515; }
+.of-head.expandida { background:#111; }
+.of-strip { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* Color strips por estado */
+.of-sin_fecha       { border-left-color:#444; }
+.of-strip-sin_fecha { background:#444; }
+.of-proxima         { border-left-color:#1a4f9f; }
+.of-strip-proxima   { background:#1a4f9f; }
+.of-pasado_manana   { border-left-color:#e6c417; }
+.of-strip-pasado_manana { background:#e6c417; }
+.of-manana          { border-left-color:#e6a817; }
+.of-strip-manana    { background:#e6a817; }
+.of-hoy             { border-left-color:#e05030; }
+.of-strip-hoy       { background:#e05030; }
+.of-vencida         { border-left-color:#8b1a1a; }
+.of-strip-vencida   { background:#8b1a1a; }
+.of-en_proceso      { border-left-color:#4caf7d; }
+.of-strip-en_proceso{ background:#4caf7d; }
+.of-completada      { border-left-color:#1d5f40; opacity:.6; }
+.of-strip-completada{ background:#1d5f40; }
+
+.of-num  { font-size:14px; font-weight:700; }
+.of-meta { font-size:12px; color:#888; }
+.of-fecha-plan { font-size:11px; color:#555; margin-left:auto; white-space:nowrap; }
+.of-chevron { font-size:14px; color:#444; transition:transform .2s; margin-left:8px; }
+.of-head.expandida .of-chevron { transform:rotate(180deg); }
+
+/* ── Tabla de fases ── */
+.fases-body { display:none; border-top:1px solid #1a1a1a; }
+.fases-body.abierta { display:block; }
+.fases-table { width:100%; border-collapse:collapse; font-size:12px; }
+.fases-table th { background:#0e0e0e; color:#555; font-size:10px; text-transform:uppercase;
+                  letter-spacing:.4px; padding:7px 12px; border-bottom:1px solid #1a1a1a; }
+.fases-table td { padding:8px 12px; border-bottom:1px solid #111; vertical-align:middle; }
+.fases-table tr:last-child td { border-bottom:none; }
+.fases-table tr:hover td { background:#0f0f0f; }
+
+.dt-input { background:#111; border:1px solid #2a2a2a; border-radius:4px; padding:4px 8px;
+            color:#e0e0e0; font-size:12px; outline:none; width:150px; }
+.dt-input:focus { border-color:#1a6fbe; }
+.real-time { font-size:11px; color:#4caf7d; }
+.no-real   { font-size:11px; color:#333; }
+.btn-guardar-fase { padding:3px 10px; font-size:11px; background:#1a3a2a; color:#4caf7d;
+                    border:1px solid #1d5f40; border-radius:4px; cursor:pointer; }
+.btn-guardar-fase:hover { background:#1a4f2a; }
+.save-ok { font-size:11px; color:#4caf7d; margin-left:6px; display:none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="prog-header">
+    <div>
+        <div class="prog-title">Programación de Corte</div>
+        <div style="font-size:12px;color:#555">Asigna tiempos por fase a cada OF activa</div>
+    </div>
+    <a href="/" class="btn btn-secondary btn-sm" style="margin-left:auto">← Dashboard</a>
+</div>
+
+<!-- Leyenda -->
+<div class="leyenda">
+    <span style="font-size:11px;color:#555;font-weight:600">Colores:</span>
+    <div class="leg-item"><div class="leg-dot" style="background:#444"></div> Sin fecha</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#1a4f9f"></div> Próxima (+2 días)</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#e6c417"></div> Pasado mañana</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#e6a817"></div> Mañana</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#e05030"></div> Hoy</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#8b1a1a"></div> Vencida</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#4caf7d"></div> En proceso</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#1d5f40"></div> Completada</div>
+</div>
+
+<!-- Lista de OFs -->
+{% if not ofs_data %}
+<div style="text-align:center;padding:60px;color:#555">No hay OFs activas en el sistema.</div>
+{% endif %}
+
+{% for item in ofs_data %}
+<div class="of-card">
+    <div class="of-head of-{{ item.color }}" onclick="toggleOf(this)" data-fecha-plan="{{ item.of.fecha_inicio_plan.strftime('%Y-%m-%d') if item.of.fecha_inicio_plan else '' }}">
+        <div class="of-strip of-strip-{{ item.color }}"></div>
+        <div>
+            <div class="of-num">{{ item.of.numero_of }}</div>
+            <div class="of-meta">{{ item.of.cliente }} · {{ item.of.tipo_prenda.value }} · {{ item.of.total_juegos }} juegos</div>
+        </div>
+        <span class="badge badge-{{ item.of.estado.value.lower() }}" style="font-size:10px">{{ item.of.estado.value }}</span>
+        <div class="of-fecha-plan">
+            {% if item.of.fecha_inicio_plan %}
+                📅 {{ item.of.fecha_inicio_plan.strftime('%d/%m/%Y') }}
+            {% else %}
+                <span style="color:#555">Sin fecha de inicio</span>
+            {% endif %}
+        </div>
+        <span class="of-chevron">▾</span>
+    </div>
+
+    <div class="fases-body">
+        <table class="fases-table">
+            <thead>
+                <tr>
+                    <th>Fase</th>
+                    <th>Inicio programado</th>
+                    <th>Fin programado</th>
+                    <th>Inicio real</th>
+                    <th>Fin real</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for fase in item.fases %}
+            <tr data-of-id="{{ item.of.id }}" data-fase-id="{{ fase.fase_id }}">
+                <td><strong style="color:#e0e0e0">{{ fase.fase_id }}</strong> <span style="color:#888">{{ fase.nombre }}</span></td>
+                <td>
+                    <input type="datetime-local" class="dt-input inp-inicio"
+                           value="{{ fase.inicio_programado }}"
+                           title="Fecha y hora de inicio programado">
+                </td>
+                <td>
+                    <input type="datetime-local" class="dt-input inp-fin"
+                           value="{{ fase.fin_programado }}"
+                           title="Fecha y hora de fin programado"
+                           onchange="cascadeInicio(this)">
+                </td>
+                <td>
+                    {% if fase.inicio_real %}
+                        <span class="real-time">⏱ {{ fase.inicio_real }}</span>
+                    {% else %}
+                        <span class="no-real">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if fase.fin_real %}
+                        <span class="real-time">✓ {{ fase.fin_real }}</span>
+                    {% else %}
+                        <span class="no-real">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn-guardar-fase" onclick="guardarFase(this)">Guardar</button>
+                    <span class="save-ok">✓</span>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleOf(head) {
+    head.classList.toggle('expandida');
+    const body = head.nextElementSibling;
+    body.classList.toggle('abierta');
+
+    // Al abrir: auto-rellenar F1 inicio y re-cascadear fines existentes
+    if (body.classList.contains('abierta')) {
+        // F1: rellenar inicio con fecha_inicio_plan a las 08:00 si está vacío
+        const fechaPlan = head.dataset.fechaPlan;
+        if (fechaPlan) {
+            const primeraFila = body.querySelector('tbody tr:first-child');
+            if (primeraFila) {
+                const inpInicio = primeraFila.querySelector('.inp-inicio');
+                if (inpInicio && !inpInicio.value) {
+                    inpInicio.value = fechaPlan + 'T08:00';
+                }
+            }
+        }
+        // Cascade: recorrer todas las filas y propagar fin → siguiente inicio
+        const filas = body.querySelectorAll('tbody tr');
+        filas.forEach(function(fila) {
+            const inpFin = fila.querySelector('.inp-fin');
+            if (inpFin && inpFin.value) cascadeInicio(inpFin);
+        });
+    }
+}
+
+function cascadeInicio(inpFin) {
+    if (!inpFin.value) return;
+    const row = inpFin.closest('tr');
+    const nextRow = row.nextElementSibling;
+    if (!nextRow) return;
+    const nextInicio = nextRow.querySelector('.inp-inicio');
+    if (!nextInicio) return;
+    // Sumar 5 minutos al fin — siempre sobreescribe inicio
+    const dt = new Date(inpFin.value);
+    dt.setMinutes(dt.getMinutes() + 5);
+    const pad = n => String(n).padStart(2, '0');
+    const iso = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    nextInicio.value = iso;
+    // Pre-rellenar fecha de fin de la siguiente fase (solo si está vacío)
+    const nextFin = nextRow.querySelector('.inp-fin');
+    if (nextFin && !nextFin.value) {
+        // Si inicio >= 23:00 → fin es día siguiente, si no → mismo día
+        const dtFin = new Date(dt);
+        if (dt.getHours() >= 23) dtFin.setDate(dtFin.getDate() + 1);
+        const isoFin = `${dtFin.getFullYear()}-${pad(dtFin.getMonth()+1)}-${pad(dtFin.getDate())}T00:00`;
+        nextFin.value = isoFin;
+    }
+}
+
+async function guardarFase(btn) {
+    const row = btn.closest('tr');
+    const ofId   = row.dataset.ofId;
+    const faseId = row.dataset.faseId;
+    const inicio = row.querySelector('.inp-inicio').value;
+    const fin    = row.querySelector('.inp-fin').value;
+
+    const res = await fetch(`/supervisor/api/${ofId}/programar-fase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            fase_id: faseId,
+            inicio_programado: inicio || null,
+            fin_programado:    fin    || null,
+        }),
+    });
+
+    const okSpan = btn.nextElementSibling;
+    if (res.ok) {
+        okSpan.style.display = 'inline';
+        setTimeout(() => { okSpan.style.display = 'none'; }, 2500);
+    } else {
+        const d = await res.json();
+        alert(d.detail || 'Error al guardar');
+    }
+}
+</script>
+{% endblock %}

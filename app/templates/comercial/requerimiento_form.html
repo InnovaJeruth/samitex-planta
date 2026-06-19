@@ -1,0 +1,724 @@
+{% extends "base.html" %}
+{% block title %}Nuevo Requerimiento — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Layout ── */
+.req-form { max-width: 960px; margin: 0 auto; }
+
+/* ── Sección colapsable ── */
+.seccion {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    overflow: hidden;
+}
+.seccion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background .15s;
+}
+.seccion-header:hover { background: #222; }
+.seccion-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #1a6fbe; color: #fff;
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.seccion-titulo { font-size: 14px; font-weight: 600; color: #fff; margin-left: 10px; flex: 1; }
+.seccion-chevron { color: #555; font-size: 12px; transition: transform .2s; }
+.seccion-chevron.open { transform: rotate(180deg); }
+.seccion-body { padding: 20px; border-top: 1px solid #222; display: none; }
+.seccion-body.open { display: block; }
+
+/* ── Radio cards ── */
+.radio-cards { display: flex; gap: 12px; margin-bottom: 20px; }
+.radio-card {
+    flex: 1; border: 2px solid #2a2a2a; border-radius: 8px;
+    padding: 16px; cursor: pointer; transition: all .15s;
+    display: flex; align-items: flex-start; gap: 12px;
+}
+.radio-card:hover { border-color: #444; }
+.radio-card.selected { border-color: #1a6fbe; background: #0d1e35; }
+.radio-card input[type=radio] { display: none; }
+.radio-card-icon { font-size: 22px; flex-shrink: 0; }
+.radio-card-label { font-size: 13px; font-weight: 600; color: #e0e0e0; }
+.radio-card-desc { font-size: 11px; color: #666; margin-top: 3px; }
+
+/* ── Pills de producción ── */
+.tipo-prod-pills { display: flex; gap: 8px; margin-bottom: 4px; }
+.tipo-pill {
+    padding: 7px 18px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 1px solid #333; color: #888; cursor: pointer; transition: all .15s;
+    background: #111;
+}
+.tipo-pill:hover { border-color: #555; color: #ccc; }
+.tipo-pill.active { background: #1a6fbe; border-color: #1a6fbe; color: #fff; }
+
+/* ── Items de prenda ── */
+.item-prenda {
+    background: #111;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 12px;
+    position: relative;
+}
+.item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+.item-num { font-size: 11px; font-weight: 700; color: #1a6fbe; letter-spacing: .5px; }
+.item-remove {
+    background: none; border: 1px solid #3a1a1a; color: #e06060;
+    border-radius: 6px; padding: 3px 10px; font-size: 11px; cursor: pointer;
+    transition: all .15s;
+}
+.item-remove:hover { background: #3a1a1a; }
+
+/* ── Grid de tallas ── */
+.talla-grid {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    background: #0a0a0a; border: 1px solid #222;
+    border-radius: 6px; padding: 14px;
+    margin-top: 10px;
+}
+.talla-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.talla-label { font-size: 10px; color: #666; font-weight: 600; text-transform: uppercase; }
+.talla-input {
+    width: 60px; background: #111; border: 1px solid #333;
+    border-radius: 5px; padding: 5px 6px; color: #e0e0e0;
+    font-size: 13px; text-align: center; outline: none;
+    transition: border-color .15s;
+}
+.talla-input:focus { border-color: #1a6fbe; }
+.talla-total-row {
+    display: flex; justify-content: flex-end; align-items: center;
+    gap: 10px; margin-top: 8px; font-size: 13px; color: #888;
+}
+.talla-total-val { font-weight: 700; color: #4caf7d; font-size: 15px; }
+
+/* ── Campos condicionales ── */
+.campo-condicional { display: none; }
+.campo-condicional.visible { display: block; }
+
+/* ── Separador de secciones internas ── */
+.sub-titulo { font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase;
+    letter-spacing: .6px; margin: 18px 0 10px; }
+
+/* ── Botón agregar ítem ── */
+.btn-agregar-item {
+    width: 100%; border: 1px dashed #333; background: none; color: #555;
+    border-radius: 8px; padding: 12px; font-size: 13px; cursor: pointer;
+    transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-agregar-item:hover { border-color: #1a6fbe; color: #4a9fff; }
+
+/* ── Barra de acciones fija ── */
+.form-footer {
+    position: sticky; bottom: 0; background: #0f0f0f;
+    border-top: 1px solid #2a2a2a; padding: 14px 0;
+    display: flex; justify-content: flex-end; gap: 10px;
+    margin-top: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="req-form">
+    <div class="page-header" style="margin-bottom:20px;">
+        <span class="page-title">Nuevo Requerimiento de Producción</span>
+        <a href="/comercial/" class="btn btn-secondary btn-sm">← Volver</a>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         SECCIÓN 1 — Origen del Pedido
+    ══════════════════════════════════════════════════════ -->
+    <div class="seccion" id="sec1">
+        <div class="seccion-header" onclick="toggleSec('sec1')">
+            <div style="display:flex;align-items:center;gap:10px">
+                <div class="seccion-num">1</div>
+                <span class="seccion-titulo">Origen del Pedido</span>
+            </div>
+            <span class="seccion-chevron open" id="chev-sec1">▼</span>
+        </div>
+        <div class="seccion-body open" id="body-sec1">
+            <div class="radio-cards">
+                <label class="radio-card selected" id="card-contrato" onclick="seleccionarOrigen('contrato')">
+                    <input type="radio" name="origen" value="contrato" checked>
+                    <div>
+                        <div class="radio-card-icon">📄</div>
+                    </div>
+                    <div>
+                        <div class="radio-card-label">Contrato firmado</div>
+                        <div class="radio-card-desc">El pedido ingresa con un contrato firmado por el cliente</div>
+                    </div>
+                </label>
+                <label class="radio-card" id="card-oc" onclick="seleccionarOrigen('oc')">
+                    <input type="radio" name="origen" value="oc">
+                    <div>
+                        <div class="radio-card-icon">🛒</div>
+                    </div>
+                    <div>
+                        <div class="radio-card-label">Orden de Compra (OC)</div>
+                        <div class="radio-card-desc">El cliente envía directamente una OC</div>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Campos Contrato -->
+            <div id="campos-contrato" class="campo-condicional visible">
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>N° Contrato <span style="color:#e06060">*</span></label>
+                        <input type="text" id="nro_contrato" placeholder="GR-065-2026-ELCTO">
+                    </div>
+                    <div class="form-group">
+                        <label>Proceso</label>
+                        <select id="proceso_contrato">
+                            <option value="">— Selecciona —</option>
+                            <option>Licitación Pública</option>
+                            <option>Adjudicación Simplificada</option>
+                            <option>Contratación Directa</option>
+                            <option>Privado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>N° Licitación / Referencia</label>
+                        <input type="text" id="nro_licitacion" placeholder="LP-SM-001-2026-ELCTO">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campos OC -->
+            <div id="campos-oc" class="campo-condicional">
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>N° Orden de Compra <span style="color:#e06060">*</span></label>
+                        <input type="text" id="nro_oc" placeholder="0000369">
+                    </div>
+                    <div class="form-group">
+                        <label>Unidad Ejecutora</label>
+                        <input type="text" id="unidad_ejecutora" placeholder="001 Universidad Nacional...">
+                    </div>
+                    <div class="form-group">
+                        <label>N° Cuadro Adquisición</label>
+                        <input type="text" id="nro_cuadro" placeholder="000374">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         SECCIÓN 2 — Datos Generales
+    ══════════════════════════════════════════════════════ -->
+    <div class="seccion" id="sec2">
+        <div class="seccion-header" onclick="toggleSec('sec2')">
+            <div style="display:flex;align-items:center;gap:10px">
+                <div class="seccion-num">2</div>
+                <span class="seccion-titulo">Datos Generales</span>
+            </div>
+            <span class="seccion-chevron open" id="chev-sec2">▼</span>
+        </div>
+        <div class="seccion-body open" id="body-sec2">
+
+            <div class="form-group">
+                <label>Tipo de Producción <span style="color:#e06060">*</span></label>
+                <div class="tipo-prod-pills">
+                    <div class="tipo-pill active" onclick="seleccionarTipoProd(this,'produccion')">Producción</div>
+                    <div class="tipo-pill" onclick="seleccionarTipoProd(this,'muestra')">Muestra</div>
+                    <div class="tipo-pill" onclick="seleccionarTipoProd(this,'stock')">Stock</div>
+                </div>
+                <input type="hidden" id="tipo_produccion" value="produccion">
+            </div>
+
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label>Cliente <span style="color:#e06060">*</span></label>
+                    <select id="cliente_id">
+                        <option value="">— Selecciona cliente —</option>
+                        <option value="1">ELECTROCENTRO</option>
+                        <option value="2">RIPLEY</option>
+                        <option value="3">SAGA FALABELLA</option>
+                        <option value="4">ESSALUD</option>
+                        <option value="5">PNP</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ejecutivo de Cuentas <span style="color:#e06060">*</span></label>
+                    <select id="ejecutivo_id">
+                        <option value="">— Selecciona ejecutivo —</option>
+                        <option value="1">Carlos Mendoza</option>
+                        <option value="2">Ana Torres</option>
+                        <option value="3">Luis Paredes</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label>Fecha de Solicitud <span style="color:#e06060">*</span></label>
+                    <input type="date" id="fecha_solicitud">
+                </div>
+                <div class="form-group">
+                    <label>Fecha de Entrega APT</label>
+                    <input type="date" id="fecha_apt">
+                </div>
+            </div>
+
+            <div class="sub-titulo">Gestión de Tallas del Pedido</div>
+            <div class="form-group">
+                <label>¿Cómo se gestionan las tallas? <span style="color:#e06060">*</span></label>
+                <select id="gestion_tallas" onchange="cambiarGestionTallas(this.value)">
+                    <option value="">— Selecciona —</option>
+                    <option value="definida">Tallas ya definidas — se ingresan directamente</option>
+                    <option value="medida">Samitex tomará medidas personalizadas</option>
+                    <option value="usuarios">Los colaboradores enviarán sus medidas</option>
+                </select>
+            </div>
+
+            <!-- Gestión = medida -->
+            <div id="campos-medida" class="campo-condicional">
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>Fecha de toma de medidas</label>
+                        <input type="date" id="fecha_medidas">
+                    </div>
+                    <div class="form-group">
+                        <label>Sede</label>
+                        <select id="sede_medidas">
+                            <option value="">— Selecciona —</option>
+                            <option>Huancayo</option>
+                            <option>Lima</option>
+                            <option>Otra</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Modalidad</label>
+                        <select id="modalidad_medidas">
+                            <option value="">— Selecciona —</option>
+                            <option>Presencial — Samitex se desplaza</option>
+                            <option>Formato enviado por cliente</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestión = usuarios -->
+            <div id="campos-usuarios" class="campo-condicional">
+                <div class="form-row form-row-2">
+                    <div class="form-group">
+                        <label>Fecha límite de recepción</label>
+                        <input type="date" id="fecha_limite_medidas">
+                    </div>
+                    <div class="form-group">
+                        <label>Canal de recepción</label>
+                        <select id="canal_recepcion">
+                            <option value="">— Selecciona —</option>
+                            <option>Email</option>
+                            <option>Portal del cliente</option>
+                            <option>Formato físico</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         SECCIÓN 3 — Ítems / Prendas
+    ══════════════════════════════════════════════════════ -->
+    <div class="seccion" id="sec3">
+        <div class="seccion-header" onclick="toggleSec('sec3')">
+            <div style="display:flex;align-items:center;gap:10px">
+                <div class="seccion-num">3</div>
+                <span class="seccion-titulo">Ítems / Prendas</span>
+                <span id="badge-items" style="background:#1a6fbe;color:#fff;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px;">1</span>
+            </div>
+            <span class="seccion-chevron open" id="chev-sec3">▼</span>
+        </div>
+        <div class="seccion-body open" id="body-sec3">
+
+            <div id="lista-items">
+                <!-- Items se renderizan aquí por JS -->
+            </div>
+
+            <button class="btn-agregar-item" onclick="agregarItem()">
+                <span style="font-size:16px">+</span> Agregar prenda
+            </button>
+
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         SECCIÓN 4 — Entrega y Embalaje
+    ══════════════════════════════════════════════════════ -->
+    <div class="seccion" id="sec4">
+        <div class="seccion-header" onclick="toggleSec('sec4')">
+            <div style="display:flex;align-items:center;gap:10px">
+                <div class="seccion-num">4</div>
+                <span class="seccion-titulo">Entrega y Embalaje</span>
+            </div>
+            <span class="seccion-chevron" id="chev-sec4">▼</span>
+        </div>
+        <div class="seccion-body" id="body-sec4">
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label>Lugar de entrega</label>
+                    <select id="lugar_entrega">
+                        <option value="">— Selecciona —</option>
+                        <option>Almacén Central Lima</option>
+                        <option>Almacén Huancayo</option>
+                        <option>Instalaciones del cliente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de embalaje</label>
+                    <select id="tipo_embalaje">
+                        <option value="">— Selecciona —</option>
+                        <option>Colgador + porta terno</option>
+                        <option>Caja individual</option>
+                        <option>2 prendas por caja</option>
+                        <option>Bolsa plástica</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label>Rotulado por colaborador</label>
+                    <select id="rotulado">
+                        <option value="">— Selecciona —</option>
+                        <option>Sí — nombre y apellido</option>
+                        <option>No aplica</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Garantía comercial</label>
+                    <select id="garantia">
+                        <option value="">— Selecciona —</option>
+                        <option>12 meses</option>
+                        <option>6 meses</option>
+                        <option>Otro</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         SECCIÓN 5 — Observaciones
+    ══════════════════════════════════════════════════════ -->
+    <div class="seccion" id="sec5">
+        <div class="seccion-header" onclick="toggleSec('sec5')">
+            <div style="display:flex;align-items:center;gap:10px">
+                <div class="seccion-num">5</div>
+                <span class="seccion-titulo">Observaciones</span>
+            </div>
+            <span class="seccion-chevron" id="chev-sec5">▼</span>
+        </div>
+        <div class="seccion-body" id="body-sec5">
+            <div class="form-group">
+                <label>Notas técnicas</label>
+                <textarea id="observaciones" rows="4" placeholder="Instrucciones especiales, notas para producción, aclaraciones..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Barra de acciones ── -->
+    <div class="form-footer">
+        <button class="btn btn-secondary" onclick="guardarBorrador()">💾 Guardar borrador</button>
+        <button class="btn btn-primary" onclick="enviarRequerimiento()">✓ Enviar a producción</button>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ══════════════════════════════════════════════════════════════
+// DATOS DE TALLAS
+// ══════════════════════════════════════════════════════════════
+const SISTEMAS_TALLAS = {
+    'A': { nombre: 'A — Cuellos', tallas: ['14.5','15','15½','16','16½','17','17½','18'] },
+    'B': { nombre: 'B — Numéricas', tallas: ['28','30','32','34','36','38','40','42'] },
+    'C': { nombre: 'C — Estándar', tallas: ['XS','S','M','L','XL','2XL','3XL'] },
+};
+
+let _itemCounter = 0;
+let _gestionTallas = '';
+let _items = [];
+
+// ══════════════════════════════════════════════════════════════
+// SECCIONES COLAPSABLES
+// ══════════════════════════════════════════════════════════════
+function toggleSec(id) {
+    var body = document.getElementById('body-' + id);
+    var chev = document.getElementById('chev-' + id);
+    var open = body.classList.toggle('open');
+    chev.classList.toggle('open', open);
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECCIÓN 1 — Origen
+// ══════════════════════════════════════════════════════════════
+function seleccionarOrigen(val) {
+    document.getElementById('card-contrato').classList.toggle('selected', val === 'contrato');
+    document.getElementById('card-oc').classList.toggle('selected', val === 'oc');
+    document.getElementById('campos-contrato').classList.toggle('visible', val === 'contrato');
+    document.getElementById('campos-oc').classList.toggle('visible', val === 'oc');
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECCIÓN 2 — Tipo de producción
+// ══════════════════════════════════════════════════════════════
+function seleccionarTipoProd(el, val) {
+    document.querySelectorAll('.tipo-pill').forEach(function(p) { p.classList.remove('active'); });
+    el.classList.add('active');
+    document.getElementById('tipo_produccion').value = val;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECCIÓN 2 — Gestión de tallas (R2: aplica a todos los ítems)
+// ══════════════════════════════════════════════════════════════
+function cambiarGestionTallas(val) {
+    _gestionTallas = val;
+    document.getElementById('campos-medida').classList.toggle('visible', val === 'medida');
+    document.getElementById('campos-usuarios').classList.toggle('visible', val === 'usuarios');
+    // Actualizar todos los ítems existentes
+    _items.forEach(function(id) { actualizarBloquesTallas(id); });
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECCIÓN 3 — Ítems dinámicos
+// ══════════════════════════════════════════════════════════════
+function agregarItem() {
+    _itemCounter++;
+    var id = _itemCounter;
+    _items.push(id);
+    var container = document.getElementById('lista-items');
+    var div = document.createElement('div');
+    div.className = 'item-prenda';
+    div.id = 'item-' + id;
+    div.innerHTML = buildItemHTML(id);
+    container.appendChild(div);
+    actualizarBadgeItems();
+    // Inicializar sistema de tallas por defecto
+    actualizarBloquesTallas(id);
+}
+
+function buildItemHTML(id) {
+    return '<div class="item-header">' +
+        '<span class="item-num">ÍTEM ' + id + '</span>' +
+        '<button class="item-remove" onclick="eliminarItem(' + id + ')">✕ Eliminar</button>' +
+    '</div>' +
+    '<div class="form-row form-row-3">' +
+        '<div class="form-group">' +
+            '<label>Artículo / Prenda <span style="color:#e06060">*</span></label>' +
+            '<input type="text" id="item-articulo-' + id + '" placeholder="Camisa manga larga Oxford">' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label>Tipo de prenda <span style="color:#e06060">*</span></label>' +
+            '<select id="item-tipo-' + id + '">' +
+                '<option value="">— Selecciona —</option>' +
+                '<option value="CAMISA">Camisa</option>' +
+                '<option value="PANTALON">Pantalón</option>' +
+                '<option value="SACO">Saco</option>' +
+                '<option value="OTRO">Otro</option>' +
+            '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label>Código Estilo</label>' +
+            '<input type="text" id="item-estilo-' + id + '" placeholder="LYI278">' +
+        '</div>' +
+    '</div>' +
+    '<div class="form-row form-row-3">' +
+        '<div class="form-group">' +
+            '<label>Color</label>' +
+            '<select id="item-color-' + id + '">' +
+                '<option value="">— Selecciona —</option>' +
+                '<option>Azul marino</option><option>Negro</option><option>Gris plomo</option>' +
+                '<option>Beige</option><option>Verde oliva</option><option>Blanco</option>' +
+            '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label>Zona de destino</label>' +
+            '<select id="item-zona-' + id + '">' +
+                '<option value="">— Selecciona —</option>' +
+                '<option>Lima</option><option>Sierra</option><option>Selva</option><option>Costa</option>' +
+            '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label>Composición de tela</label>' +
+            '<select id="item-comp-' + id + '">' +
+                '<option value="">— Selecciona —</option>' +
+                '<option>85% Poliéster / 15% Algodón</option>' +
+                '<option>100% Lana</option>' +
+                '<option>65% Poliéster / 35% Algodón</option>' +
+                '<option>100% Algodón</option>' +
+            '</select>' +
+        '</div>' +
+    '</div>' +
+    '<div class="form-row form-row-2">' +
+        '<div class="form-group">' +
+            '<label>Proveedor de tela</label>' +
+            '<select id="item-proveedor-' + id + '">' +
+                '<option value="">— Selecciona —</option>' +
+                '<option>LAFAYETTE</option><option>ARIS INDUSTRIAL</option>' +
+                '<option>TEXFINA</option><option>CREDITEX</option>' +
+            '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label>Código de tela</label>' +
+            '<input type="text" id="item-codtela-' + id + '" placeholder="TF-2024-001">' +
+        '</div>' +
+    '</div>' +
+    // Sistema de tallas (R3: por ítem)
+    '<div class="sub-titulo">Sistema de tallas</div>' +
+    '<div class="form-row form-row-2" style="align-items:flex-start">' +
+        '<div class="form-group">' +
+            '<label>Sistema de tallas <span style="color:#e06060">*</span></label>' +
+            '<select id="item-sistema-' + id + '" onchange="cambiarSistemaTallas(' + id + ',this.value)">' +
+                '<option value="">— Selecciona sistema —</option>' +
+                '<option value="A">A — Cuellos (14.5 … 18)</option>' +
+                '<option value="B">B — Numéricas (28 … 42)</option>' +
+                '<option value="C">C — Estándar (XS … 3XL)</option>' +
+            '</select>' +
+        '</div>' +
+        '<div class="form-group" id="item-total-personas-wrap-' + id + '" style="display:none">' +
+            '<label id="item-total-label-' + id + '">Total de personas</label>' +
+            '<input type="number" id="item-total-personas-' + id + '" min="1" placeholder="0">' +
+        '</div>' +
+    '</div>' +
+    '<div id="item-tallas-block-' + id + '"></div>';
+}
+
+function eliminarItem(id) {
+    var el = document.getElementById('item-' + id);
+    if (el) el.remove();
+    _items = _items.filter(function(i) { return i !== id; });
+    actualizarBadgeItems();
+}
+
+function actualizarBadgeItems() {
+    document.getElementById('badge-items').textContent = _items.length;
+}
+
+// ══════════════════════════════════════════════════════════════
+// TALLAS — Actualizar bloque por ítem según gestión global + sistema
+// ══════════════════════════════════════════════════════════════
+function cambiarSistemaTallas(itemId, sistema) {
+    actualizarBloquesTallas(itemId);
+}
+
+function actualizarBloquesTallas(itemId) {
+    var block = document.getElementById('item-tallas-block-' + itemId);
+    if (!block) return;
+    var sistemaEl = document.getElementById('item-sistema-' + itemId);
+    var sistema = sistemaEl ? sistemaEl.value : '';
+    var totalWrap = document.getElementById('item-total-personas-wrap-' + itemId);
+    var totalLabel = document.getElementById('item-total-label-' + itemId);
+
+    block.innerHTML = '';
+
+    if (!sistema) return;
+
+    var tallas = SISTEMAS_TALLAS[sistema] ? SISTEMAS_TALLAS[sistema].tallas : [];
+
+    if (_gestionTallas === 'definida') {
+        // R5: Grid habilitado para ingreso directo
+        totalWrap.style.display = 'none';
+        block.innerHTML = buildGridTallas(itemId, sistema, tallas, false);
+    } else if (_gestionTallas === 'medida' || _gestionTallas === 'usuarios') {
+        // R6: Grid bloqueado, solo total
+        totalWrap.style.display = 'block';
+        if (totalLabel) {
+            totalLabel.textContent = _gestionTallas === 'medida' ? 'Total de personas' : 'Total esperado';
+        }
+        block.innerHTML = buildGridTallas(itemId, sistema, tallas, true);
+    } else {
+        // Sin gestión definida aún: mostrar grid bloqueado por defecto
+        totalWrap.style.display = 'none';
+        block.innerHTML = '<p style="font-size:12px;color:#555;padding:8px 0;">Selecciona primero la gestión de tallas en Datos Generales.</p>';
+    }
+}
+
+function buildGridTallas(itemId, sistema, tallas, bloqueado) {
+    var html = '<div class="talla-grid">';
+    tallas.forEach(function(t) {
+        var tId = 'talla-' + itemId + '-' + t.replace('.','_').replace('½','half');
+        html += '<div class="talla-cell">' +
+            '<span class="talla-label">' + t + '</span>' +
+            '<input class="talla-input" type="number" id="' + tId + '" min="0" value="0"' +
+            (bloqueado ? ' disabled style="opacity:.4;cursor:not-allowed"' : '') +
+            ' oninput="calcularTotal(' + itemId + ')">' +
+        '</div>';
+    });
+    html += '</div>';
+    // Total
+    html += '<div class="talla-total-row">' +
+        '<span>Total prendas:</span>' +
+        '<span class="talla-total-val" id="total-item-' + itemId + '">0</span>' +
+    '</div>';
+    return html;
+}
+
+// R7: Total automático sumando grid
+function calcularTotal(itemId) {
+    var inputs = document.querySelectorAll('[id^="talla-' + itemId + '-"]');
+    var sum = 0;
+    inputs.forEach(function(inp) { sum += parseInt(inp.value) || 0; });
+    var el = document.getElementById('total-item-' + itemId);
+    if (el) el.textContent = sum;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ACCIONES
+// ══════════════════════════════════════════════════════════════
+function guardarBorrador() {
+    showToast('Borrador guardado (Fase 2: se conectará a BD)', 'info');
+}
+
+function enviarRequerimiento() {
+    // Validaciones básicas
+    var origen = document.querySelector('input[name="origen"]:checked');
+    if (!origen) return showToast('Selecciona el origen del pedido', 'warning');
+    if (origen.value === 'contrato' && !document.getElementById('nro_contrato').value.trim())
+        return showToast('Ingresa el N° de Contrato', 'warning');
+    if (origen.value === 'oc' && !document.getElementById('nro_oc').value.trim())
+        return showToast('Ingresa el N° de Orden de Compra', 'warning');
+    if (!document.getElementById('cliente_id').value)
+        return showToast('Selecciona un cliente', 'warning');
+    if (!document.getElementById('ejecutivo_id').value)
+        return showToast('Selecciona un ejecutivo de cuentas', 'warning');
+    if (!document.getElementById('fecha_solicitud').value)
+        return showToast('Ingresa la fecha de solicitud', 'warning');
+    if (!document.getElementById('gestion_tallas').value)
+        return showToast('Selecciona cómo se gestionan las tallas', 'warning');
+    if (_items.length === 0)
+        return showToast('Agrega al menos un ítem / prenda', 'warning');
+
+    showToast('Requerimiento listo (Fase 2: se enviará a producción)', 'success');
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT — Agregar primer ítem por defecto
+// ══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+    // Fecha de solicitud = hoy por defecto
+    var hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fecha_solicitud').value = hoy;
+    // Primer ítem
+    agregarItem();
+});
+</script>
+{% endblock %}

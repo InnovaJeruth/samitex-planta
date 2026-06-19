@@ -1,0 +1,756 @@
+{% extends "base.html" %}
+{% block title %}Corte {{ of.numero_of }} — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+.of-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.of-numero  { font-size:22px; font-weight:700; }
+.of-sub     { font-size:13px; color:#888; }
+
+/* Fase tabs */
+.fase-tabs  { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+.fase-tab   { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid transparent; }
+.fase-tab.completa  { background:#0d3320; color:#4caf7d; border-color:#1d5f40; }
+.fase-tab.en_proceso{ background:#3a2a00; color:#e6a817; border-color:#6a4a00; }
+.fase-tab.pendiente { background:#1a1a1a; color:#555;    border-color:#2a2a2a; }
+.fase-tab.bloqueada { background:#111; color:#333; border-color:#1a1a1a; cursor:not-allowed !important; opacity:.5; }
+
+/* Tabla piezas */
+.pt { width:100%; border-collapse:separate; border-spacing:0; font-size:12px; }
+.pt th { background:#111; color:#888; font-size:10px; text-transform:uppercase; letter-spacing:.4px; padding:7px 8px; border-bottom:1px solid #222; white-space:nowrap; }
+.pt td { padding:7px 8px; border-bottom:1px solid #1a1a1a; vertical-align:middle; }
+.pt tr:hover td { background:#181818; }
+
+/* Sticky pieza column */
+.pt th, .pt td { border-bottom: 1px solid #1a1a1a; }
+.pt thead th { border-bottom: 1px solid #222; }
+.pt-sticky {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #0f0f0f;
+    box-shadow: 2px 0 0 #2a2a2a;
+}
+.pt thead .pt-sticky { background: #111; z-index: 3; }
+.pt tr:hover .pt-sticky { background: #181818; }
+
+/* Celdas de fase */
+.fc { text-align:center; width:52px; min-width:52px; }
+.fc-ok  { color:#4caf7d; font-size:15px; }
+.fc-num { color:#e6a817; font-size:11px; font-weight:600; }
+.fc-dot { color:#2a2a2a; font-size:18px; line-height:1; }
+.fc-na  { color:#1e1e1e; font-size:10px; }
+
+/* Mini barra */
+.mini-bar { width:44px; height:3px; background:#111; border-radius:2px; margin:2px auto 0; }
+.mini-fill{ height:100%; border-radius:2px; background:#e6a817; }
+
+/* Acción inline */
+.accion-cell { display:flex; align-items:center; gap:6px; white-space:nowrap; }
+.fase-badge  { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700;
+               background:#3a2a00; color:#e6a817; border:1px solid #6a4a00; }
+.max-hint    { font-size:10px; color:#555; }
+.btn-avance  { padding:3px 10px; font-size:11px; background:#1a3a6f; color:#4a9fff; border:none; border-radius:4px; cursor:pointer; }
+.btn-avance:hover { background:#1a4f9f; }
+.btn-completar{ padding:3px 10px; font-size:11px; background:#0d3320; color:#4caf7d; border:1px solid #1d5f40; border-radius:4px; cursor:pointer; }
+.btn-completar:hover { background:#0f4a2a; }
+.btn-rev     { padding:3px 8px; font-size:11px; background:#2a1010; color:#e06060; border:1px solid #6a2020; border-radius:4px; cursor:pointer; }
+.btn-rev:hover { background:#3a1515; }
+.done-label  { font-size:11px; color:#4caf7d; font-weight:600; }
+
+/* Bulk toolbar */
+.bulk-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#111;
+            border-bottom:1px solid #1a1a1a; flex-wrap:wrap; }
+.bulk-bar label { font-size:12px; color:#888; display:flex; align-items:center; gap:6px; cursor:pointer; }
+.bulk-bar input[type=checkbox] { accent-color:#4a9fff; width:14px; height:14px; cursor:pointer; }
+.bulk-bar input[type=number]   { width:70px; background:#1a1a1a; border:1px solid #333; border-radius:4px;
+                                  padding:3px 6px; color:#e0e0e0; font-size:12px; text-align:center; outline:none; }
+.bulk-bar input[type=number]:focus { border-color:#1a6fbe; }
+.btn-bulk-reg  { padding:3px 10px; font-size:11px; background:#1a3a6f; color:#4a9fff; border:none; border-radius:4px; cursor:pointer; }
+.btn-bulk-reg:hover { background:#1a4f9f; }
+.btn-bulk-comp { padding:3px 10px; font-size:11px; background:#0d3320; color:#4caf7d; border:1px solid #1d5f40; border-radius:4px; cursor:pointer; }
+.btn-bulk-comp:hover { background:#0f4a2a; }
+.bulk-hint { font-size:11px; color:#555; margin-left:auto; }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal-box { background:#1a1a1a; border:1px solid #333; border-radius:10px; padding:24px; width:400px; max-width:95vw; }
+.modal-titulo { font-size:15px; font-weight:700; margin-bottom:4px; }
+.modal-sub    { font-size:12px; color:#888; margin-bottom:16px; }
+.modal-field  { margin-bottom:12px; }
+.modal-field label { display:block; font-size:11px; color:#888; margin-bottom:4px; }
+.modal-field input, .modal-field textarea {
+    width:100%; background:#111; border:1px solid #333; border-radius:6px;
+    padding:8px 10px; color:#e0e0e0; font-size:14px; outline:none;
+}
+.modal-field input:focus, .modal-field textarea:focus { border-color:#1a6fbe; }
+.modal-field input.error { border-color:#8b1a1a; }
+.modal-error { color:#f88; font-size:12px; margin-top:4px; display:none; }
+.modal-restante { font-size:12px; color:#888; margin-bottom:10px; }
+.modal-restante span { color:#e6a817; font-weight:700; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+
+/* Historial */
+.hist-table { width:100%; border-collapse:collapse; font-size:12px; }
+.hist-table th { background:#111; color:#888; font-size:10px; text-transform:uppercase; padding:6px 10px; border-bottom:1px solid #222; }
+.hist-table td { padding:7px 10px; border-bottom:1px solid #1a1a1a; color:#ccc; }
+
+/* Fase strip ── tarjetas de fase sobre la grilla */
+.fase-strip { display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:4px; }
+.fsc { min-width:130px; background:#111; border:1px solid #222; border-radius:8px; padding:10px 12px; flex-shrink:0; }
+.fsc.fsc-completada { border-color:#1d5f40; background:#0a1f12; }
+.fsc.fsc-en_proceso { border-color:#6a4a00; background:#1a1200; }
+.fsc.fsc-pendiente  { border-color:#222;    background:#0e0e0e; }
+.fsc.fsc-bloqueada  { border-color:#1a1a1a; background:#0a0a0a; opacity:.5; }
+.fsc-nombre { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+.fsc-completada .fsc-nombre { color:#4caf7d; }
+.fsc-en_proceso .fsc-nombre { color:#e6a817; }
+.fsc-pendiente  .fsc-nombre { color:#888; }
+.fsc-times { font-size:10px; color:#555; line-height:1.6; margin-bottom:6px; min-height:28px; }
+.fsc-times .plan { color:#4a7faf; }
+.fsc-times .real { color:#4caf7d; }
+.fsc-pct  { height:2px; background:#1a1a1a; border-radius:1px; margin-bottom:8px; }
+.fsc-pct-fill { height:100%; border-radius:1px; }
+.fsc-completada .fsc-pct-fill { background:#4caf7d; }
+.fsc-en_proceso .fsc-pct-fill { background:#e6a817; }
+.btn-iniciar { width:100%; padding:4px 0; font-size:10px; font-weight:700; background:#1a3a6f;
+               color:#4a9fff; border:none; border-radius:4px; cursor:pointer; text-transform:uppercase; letter-spacing:.5px; }
+.btn-iniciar:hover { background:#1a4f9f; }
+.btn-iniciar:disabled { background:#111; color:#333; cursor:not-allowed; }
+
+/* Mobile: hide material column */
+@media (max-width: 900px) {
+    .pt .col-material { display: none; }
+    .pt .col-xprenda  { display: none; }
+    .pt-sticky { max-width: 160px; }
+    .pt-sticky strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+    .accion-cell { flex-wrap: wrap; gap: 4px; }
+    .accion-cell .btn-avance, .accion-cell .btn-completar, .accion-cell .btn-rev { font-size: 10px; padding: 3px 7px; }
+}
+
+/* Toast */
+.toast { position:fixed; bottom:20px; right:20px; padding:12px 18px; border-radius:8px; font-size:13px;
+         font-weight:500; z-index:999; opacity:0; transform:translateY(8px); transition:all .2s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateY(0); }
+.toast-success { background:#0d3320; border:1px solid #1d5f40; color:#4caf7d; }
+.toast-error   { background:#3a0a0a; border:1px solid #6a1a1a; color:#f88; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header OF -->
+<div class="of-header">
+    <div>
+        <div class="of-numero">OF {{ of.numero_of }}</div>
+        <div class="of-sub">{{ of.cliente }} · {{ of.tipo_prenda.value }} · {{ of.total_juegos }} juegos</div>
+    </div>
+    <span style="width:12px;height:12px;border-radius:50%;background:{{ semaforo.color }};display:inline-block;flex-shrink:0" title="{{ semaforo.estado }}"></span>
+    <span class="badge badge-{{ of.estado.value.lower() }}">{{ of.estado.value }}</span>
+    {% if semaforo.dias_restantes is not none %}
+    <span style="font-size:12px;color:#888">{{ semaforo.dias_restantes }} días restantes</span>
+    {% endif %}
+    <div style="flex:1"></div>
+    <a href="/" class="btn btn-secondary btn-sm">← Dashboard</a>
+</div>
+
+{% if tercerizado %}
+<div style="background:#1a0a2e;border:1px solid #4c1d95;border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+    <span style="font-size:20px">🏭</span>
+    <div>
+        <strong style="color:#c084fc">OF Tercerizada — {{ of.planta_externa }}</strong>
+        <div style="font-size:12px;color:#888;margin-top:3px">
+            El seguimiento de fases no aplica. Estado:
+            <span style="color:#e0e0e0;font-weight:600">{{ (of.estado_tercerizado or 'PENDIENTE_ENVIO').replace('_',' ') }}</span>
+            {% if of.fecha_recepcion_est %} · Recepción estimada: <strong>{{ of.fecha_recepcion_est }}</strong>{% endif %}
+        </div>
+    </div>
+    <a href="/of/{{ of.id }}/detalle" class="btn btn-secondary btn-sm" style="margin-left:auto">Ver detalle</a>
+</div>
+{% endif %}
+
+<!-- Franja de tarjetas por fase -->
+<div id="fase-strip" class="fase-strip">
+    <div style="font-size:12px;color:#555;padding:10px">Cargando fases...</div>
+</div>
+
+<!-- Tabs resumen (pequeños) -->
+<div id="fase-tabs" class="fase-tabs">
+    <span style="font-size:12px;color:#555">Cargando...</span>
+</div>
+
+<!-- Tabla avance por piezas -->
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+        <span class="card-title">Avance por piezas</span>
+        <button class="btn btn-secondary btn-sm" onclick="cargarEstado(); cargarStrip();">↻ Actualizar</button>
+    </div>
+    {% if puede_registrar and not tercerizado %}
+    <div class="bulk-bar" id="bulk-bar" style="display:none">
+        <label><input type="checkbox" id="bulk-check-all" onchange="toggleBulkAll(this)"> Todas las piezas</label>
+        <span style="font-size:11px;color:#555">Cantidad:</span>
+        <input type="number" id="bulk-cantidad" min="1" placeholder="0">
+        <button class="btn-bulk-reg"  onclick="accionBulkAvance()">+ Registrar selección</button>
+        <button class="btn-bulk-comp" onclick="accionBulkCompletar()">✓ Completar selección</button>
+        <span class="bulk-hint" id="bulk-hint"></span>
+    </div>
+    {% endif %}
+    <div id="tabla-container">
+        <div style="text-align:center;padding:40px;color:#555">Cargando...</div>
+    </div>
+    <div style="padding:10px 4px;font-size:11px;color:#444">
+        Cada pieza avanza de forma independiente. La OF se completa cuando todas las piezas terminan F7 Habilitado.
+    </div>
+</div>
+
+<!-- Historial -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888">Registros de cantidad</span>
+    </div>
+    <div id="hist-container">
+        <div style="text-align:center;padding:20px;color:#555;font-size:12px">Sin registros</div>
+    </div>
+</div>
+
+<!-- Modal confirmación -->
+<div class="modal-overlay" id="modal-confirm-corte">
+    <div class="modal-box" style="width:360px">
+        <div class="modal-titulo" id="confirm-titulo">¿Confirmar acción?</div>
+        <div class="modal-sub" id="confirm-sub" style="margin-bottom:20px"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="cerrarConfirm()">Cancelar</button>
+            <button class="btn btn-completar" id="confirm-ok" onclick="">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal avance -->
+<div class="modal-overlay" id="modal">
+    <div class="modal-box">
+        <div class="modal-titulo" id="modal-titulo">Registrar Avance</div>
+        <div class="modal-sub" id="modal-sub"></div>
+        <div class="modal-restante">Disponible para registrar: <span id="modal-max">—</span> unidades</div>
+        <div class="modal-field">
+            <label>Cantidad *</label>
+            <input type="number" id="modal-cantidad" min="1" placeholder="Ej: 50" oninput="validarCantidad()">
+            <div class="modal-error" id="modal-error"></div>
+        </div>
+        <div class="modal-field">
+            <label>Observación (opcional)</label>
+            <textarea id="modal-obs" rows="2" placeholder="..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn btn-completar" onclick="accionCompletar()">✓ Completar fase</button>
+            <button class="btn btn-avance" onclick="accionAvance()">+ Registrar</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const OF_ID = {{ of.id }};
+const PUEDE_REGISTRAR = {{ 'true' if puede_registrar else 'false' }};
+const FASES_NOMBRES = {
+    F1:'Tizado', F2:'Tendido', F3:'Corte', F4:'Numerado',
+    F8:'Estampado', F9:'Auditoría', F5:'Fusionado', F6:'Calidad', F7:'Habilitado'
+};
+const ORDEN_FASES = ['F1','F2','F3','F4','F8','F9','F5','F6','F7'];
+let estadoActual = null;
+let _piezaId = null, _faseId = null, _maxRestante = 0;
+
+// ── Carga de datos ────────────────────────────────────────────
+async function cargarEstado() {
+    const [resEstado, resHist] = await Promise.all([
+        fetch(`/corte/api/${OF_ID}/estado`),
+        fetch(`/corte/api/${OF_ID}/historial`),
+    ]);
+    estadoActual = await resEstado.json();
+    const historial = await resHist.json();
+    renderTabla();
+    renderHistorial(historial);
+}
+
+// ── Render tabla ──────────────────────────────────────────────
+function renderTabla() {
+    if (!estadoActual) return;
+    const piezas = estadoActual.piezas;
+    if (!piezas.length) {
+        document.getElementById('tabla-container').innerHTML =
+            '<div style="text-align:center;padding:40px;color:#555">Sin piezas en esta OF</div>';
+        return;
+    }
+
+    // Fases aplicables
+    const fasesSet = new Set();
+    piezas.forEach(p => Object.keys(p.fases).forEach(f => fasesSet.add(f)));
+    const fases = ORDEN_FASES.filter(f => fasesSet.has(f));
+
+    // Tabs
+    renderTabs(piezas, fases);
+
+    // Tabla
+    let html = `<div style="overflow-x:auto"><table class="pt"><thead><tr>
+        <th class="pt-sticky">Pieza</th><th class="col-material">Material</th><th class="col-xprenda" style="text-align:center">x&nbsp;Prenda</th>
+        ${fases.map((f,i) => `<th class="fc">${i+1}.&nbsp;${(FASES_NOMBRES[f]||f).substring(0,3).toUpperCase()}</th>`).join('')}
+        <th style="min-width:200px">Registrar</th>
+    </tr></thead><tbody>`;
+
+    // Gate Fusionado → Calidad
+    const gateFusionadoCerrado = !piezas.some(p => p.fusionado && !(p.fases["F5"] && p.fases["F5"].completada));
+
+    piezas.forEach(p => {
+        const _faseActualPieza = getFaseActual(p);
+        const bloqueadaPorGate = !gateFusionadoCerrado && _faseActualPieza === "F6";
+
+        html += `<tr><td class="pt-sticky">
+            ${PUEDE_REGISTRAR && !bloqueadaPorGate ? `<input type="checkbox" class="pieza-check" data-pieza-id="${p.id}" data-fase-actual="${_faseActualPieza}" style="margin-right:6px;accent-color:#4a9fff;cursor:pointer">` : '<span style="display:inline-block;width:20px"></span>'}
+            <strong>${p.nombre}</strong></td>
+            <td class="col-material" style="color:#888">${p.material||'—'}</td>
+            <td class="col-xprenda" style="color:#888;text-align:center">x${p.cantidad_x_prenda||1}</td>`;
+
+        fases.forEach(f => {
+            const fase = p.fases[f];
+            if (!fase) {
+                html += `<td class="fc fc-na">n/a</td>`;
+            } else if (fase.completada) {
+                html += `<td class="fc fc-ok">✓</td>`;
+            } else if (fase.cantidad_actual > 0) {
+                const pct = fase.porcentaje;
+                html += `<td class="fc fc-num">
+                    ${fase.cantidad_actual}
+                    <div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div>
+                </td>`;
+            } else {
+                html += `<td class="fc fc-dot">·</td>`;
+            }
+        });
+
+        // Acción
+        const faseActual = getFaseActual(p);
+        if (bloqueadaPorGate) {
+            html += `<td><div class="accion-cell">
+                <span class="fase-badge" style="background:#2a1a00;color:#a06020">Calidad</span>
+                <span style="font-size:11px;color:#666">🔒 Espera Fusionado</span>
+            </div></td>`;
+        } else if (faseActual) {
+            const faseData = p.fases[faseActual];
+            const restante = faseData ? faseData.max_cantidad - faseData.cantidad_actual : 0;
+            const botonesAccion = PUEDE_REGISTRAR ? `
+                <button class="btn-avance" onclick="abrirModal(${p.id},'${faseActual}','${p.nombre}',${restante})">+ Avance</button>
+                <button class="btn-completar" onclick="completarDirecto(${p.id},'${faseActual}','${p.nombre}')">Completar</button>
+                <button class="btn-rev" onclick="revertirUltimo(${p.id},'${faseActual}','${p.nombre}')" title="Revertir último registro">Rev</button>
+            ` : '<span style="font-size:11px;color:#555">🔒 Solo lectura</span>';
+            html += `<td><div class="accion-cell">
+                <span class="fase-badge">${FASES_NOMBRES[faseActual]||faseActual}</span>
+                <span class="max-hint">Max ${restante}</span>
+                ${botonesAccion}
+            </div></td>`;
+        } else {
+            html += `<td><span class="done-label">✓ Completa</span></td>`;
+        }
+        html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    document.getElementById('tabla-container').innerHTML = html;
+
+    window._piezasCache = piezas;
+    // Inicializar bulk con la fase mayoritaria activa
+    if (PUEDE_REGISTRAR) {
+        const fasesActivas = {};
+        piezas.forEach(p => {
+            const fa = getFaseActual(p);
+            const bloq = !gateFusionadoCerrado && fa === "F6";
+            if (fa && !bloq) fasesActivas[fa] = (fasesActivas[fa] || 0) + 1;
+        });
+        const faseMayoria = Object.entries(fasesActivas).sort((a,b) => b[1]-a[1])[0];
+        if (faseMayoria) {
+            const piezasEnFase = piezas.filter(p => getFaseActual(p) === faseMayoria[0]).map(p => p.id);
+            inicializarBulk(faseMayoria[0], piezasEnFase);
+            _actualizarCheckboxesBulk(faseMayoria[0]);
+        }
+    }
+}
+
+function _tabBloqueada(faseId, piezas) {
+    const idx = ORDEN_FASES.indexOf(faseId);
+    if (idx <= 0) return false;
+    // Buscar la fase anterior que realmente exista en alguna pieza (saltea F8/F9 si no aplican)
+    let fasePrev = null;
+    for (let i = idx - 1; i >= 0; i--) {
+        if (piezas.some(p => p.fases[ORDEN_FASES[i]])) {
+            fasePrev = ORDEN_FASES[i];
+            break;
+        }
+    }
+    if (!fasePrev) return false;
+    return !piezas.some(p => p.fases[fasePrev] && p.fases[fasePrev].cantidad_actual > 0);
+}
+
+function renderTabs(piezas, fases) {
+    const html = fases.map(f => {
+        const aplicables = piezas.filter(p => p.fases[f]);
+        const completadas = aplicables.filter(p => p.fases[f]?.completada).length;
+        const enProceso = aplicables.filter(p => !p.fases[f]?.completada && p.fases[f]?.cantidad_actual > 0).length;
+        const bloqueada = _tabBloqueada(f, piezas);
+        const cls = bloqueada ? 'bloqueada' : (completadas === aplicables.length ? 'completa' : (enProceso > 0 || completadas > 0 ? 'en_proceso' : 'pendiente'));
+        const handler = bloqueada ? '' : `onclick="cambiarFaseBulk('${f}')"`;
+        const cursor = bloqueada ? '' : 'cursor:pointer';
+        return `<span class="fase-tab ${cls}" style="${cursor}" ${handler}>${FASES_NOMBRES[f]||f} (${completadas}/${aplicables.length})</span>`;
+    }).join('');
+    document.getElementById('fase-tabs').innerHTML = html;
+}
+
+function getFaseActual(pieza) {
+    for (const f of ORDEN_FASES) {
+        const fase = pieza.fases[f];
+        if (fase && !fase.completada) return f;
+    }
+    return null;
+}
+
+function cambiarFaseBulk(faseId) {
+    if (!PUEDE_REGISTRAR || !window._piezasCache) return;
+    const piezas = window._piezasCache;
+    // Validar cascada: fase anterior debe tener avance
+    if (_tabBloqueada(faseId, piezas)) {
+        const idx = ORDEN_FASES.indexOf(faseId);
+        const fasePrev = idx > 0 ? (FASES_NOMBRES[ORDEN_FASES[idx-1]] || ORDEN_FASES[idx-1]) : '';
+        mostrarToast(`Bloqueada — registra avance en ${fasePrev} primero`, 'error');
+        return;
+    }
+    // Piezas que tienen esa fase y no está completa
+    const ids = piezas.filter(p => p.fases[faseId] && !p.fases[faseId].completada).map(p => p.id);
+    inicializarBulk(faseId, ids);
+    _actualizarCheckboxesBulk(faseId);
+    // Resaltar tab activo
+    document.querySelectorAll('.fase-tab').forEach(t => t.style.outline = '');
+    const tabs = document.querySelectorAll('.fase-tab');
+    const fases = piezas[0] ? Object.keys(piezas[0].fases) : [];
+    // Usar ORDEN_FASES para encontrar el índice correcto
+    const idx = ORDEN_FASES.indexOf(faseId);
+    if (tabs[idx]) tabs[idx].style.outline = '2px solid #4a9fff';
+}
+
+// ── Render historial ──────────────────────────────────────────
+function renderHistorial(registros) {
+    if (!registros.length) {
+        document.getElementById('hist-container').innerHTML =
+            '<div style="text-align:center;padding:20px;color:#555;font-size:12px">Sin registros</div>';
+        return;
+    }
+    let html = `<div style="overflow-x:auto"><table class="hist-table"><thead><tr>
+        <th>Fecha</th><th>Pieza</th><th>Fase</th><th>Cantidad</th><th>Usuario</th><th>Observación</th>
+    </tr></thead><tbody>`;
+    registros.forEach(r => {
+        const fecha = new Date(r.created_at).toLocaleString('es-PE', {
+            day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
+        });
+        html += `<tr>
+            <td style="color:#666">${fecha}</td>
+            <td>${r.pieza_nombre}</td>
+            <td><span style="color:#e6a817;font-weight:600">${FASES_NOMBRES[r.fase_id]||r.fase_id}</span></td>
+            <td style="color:#4caf7d;font-weight:700">+${r.cantidad}</td>
+            <td style="color:#888">${r.usuario_nombre}</td>
+            <td style="color:#666">${r.observacion||'—'}</td>
+        </tr>`;
+    });
+    html += '</tbody></table></div>';
+    document.getElementById('hist-container').innerHTML = html;
+}
+
+// ── Modal ─────────────────────────────────────────────────────
+function abrirModal(piezaId, faseId, nombrePieza, restante) {
+    _piezaId = piezaId; _faseId = faseId; _maxRestante = restante;
+    document.getElementById('modal-titulo').textContent = `Registrar Avance`;
+    document.getElementById('modal-sub').textContent = `${nombrePieza} — ${FASES_NOMBRES[faseId]||faseId}`;
+    document.getElementById('modal-max').textContent = restante;
+    document.getElementById('modal-cantidad').value = '';
+    document.getElementById('modal-cantidad').max = restante;
+    document.getElementById('modal-obs').value = '';
+    ocultarError();
+    document.getElementById('modal').classList.add('show');
+    setTimeout(() => document.getElementById('modal-cantidad').focus(), 100);
+}
+
+function cerrarModal() {
+    document.getElementById('modal').classList.remove('show');
+    _piezaId = null; _faseId = null; _maxRestante = 0;
+}
+
+function validarCantidad() {
+    const val = parseInt(document.getElementById('modal-cantidad').value);
+    const inp = document.getElementById('modal-cantidad');
+    if (val > _maxRestante) {
+        inp.classList.add('error');
+        mostrarError(`Máximo permitido: ${_maxRestante}`);
+    } else {
+        inp.classList.remove('error');
+        ocultarError();
+    }
+}
+
+function mostrarError(msg) {
+    const el = document.getElementById('modal-error');
+    el.textContent = msg; el.style.display = 'block';
+}
+function ocultarError() {
+    const el = document.getElementById('modal-error');
+    el.textContent = ''; el.style.display = 'none';
+}
+
+async function accionAvance() {
+    const cantidad = parseInt(document.getElementById('modal-cantidad').value);
+    if (!cantidad || cantidad < 1) { mostrarError('Ingresa una cantidad válida'); return; }
+    if (cantidad > _maxRestante) { mostrarError(`Máximo permitido: ${_maxRestante}`); return; }
+
+    const obs = document.getElementById('modal-obs').value;
+    const res = await fetch(`/corte/api/${OF_ID}/avance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pieza_id: _piezaId, fase_id: _faseId, cantidad, observacion: obs }),
+    });
+    if (res.ok) {
+        cerrarModal();
+        mostrarToast(`+${cantidad} registrado en ${FASES_NOMBRES[_faseId]||_faseId}`, 'success');
+        await cargarEstado();
+    } else {
+        const d = await res.json();
+        mostrarError(d.detail || 'Error al registrar');
+    }
+}
+
+async function accionCompletar() {
+    const res = await fetch(`/corte/api/${OF_ID}/completar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pieza_id: _piezaId, fase_id: _faseId }),
+    });
+    if (res.ok) {
+        cerrarModal();
+        mostrarToast(`${FASES_NOMBRES[_faseId]||_faseId} completado`, 'success');
+        await cargarEstado();
+    } else {
+        const d = await res.json();
+        mostrarError(d.detail || 'Error');
+    }
+}
+
+function completarDirecto(piezaId, faseId, nombrePieza) {
+    mostrarConfirm(
+        `Completar ${FASES_NOMBRES[faseId]||faseId}`,
+        `¿Marcar como completa la fase <strong>${FASES_NOMBRES[faseId]||faseId}</strong> para <strong>${nombrePieza}</strong>?`,
+        async () => {
+            const res = await fetch(`/corte/api/${OF_ID}/completar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pieza_id: piezaId, fase_id: faseId }),
+            });
+            if (res.ok) {
+                mostrarToast(`${FASES_NOMBRES[faseId]||faseId} completado`, 'success');
+                await cargarEstado();
+            } else {
+                const d = await res.json();
+                mostrarToast(d.detail || 'Error', 'error');
+            }
+        }
+    );
+}
+
+async function revertirUltimo(piezaId, faseId, nombrePieza) {
+    const res = await fetch(`/corte/api/${OF_ID}/historial`);
+    const historial = await res.json();
+    const ultimo = historial.find(r => r.pieza_id === piezaId && r.fase_id === faseId);
+    if (!ultimo) { mostrarToast('Sin registros para revertir', 'error'); return; }
+
+    mostrarConfirm(
+        'Revertir registro',
+        `¿Revertir <strong>+${ultimo.cantidad}</strong> de <strong>${nombrePieza}</strong> en ${FASES_NOMBRES[faseId]||faseId}?`,
+        async () => {
+            const res2 = await fetch(`/corte/api/${OF_ID}/revertir/${ultimo.id}`, { method:'POST' });
+            if (res2.ok) {
+                mostrarToast('Registro revertido', 'success');
+                await cargarEstado();
+            } else {
+                const d = await res2.json();
+                mostrarToast(d.detail || 'Error', 'error');
+            }
+        }
+    );
+}
+
+// ── Modal confirmación ────────────────────────────────────────
+let _confirmCallback = null;
+function mostrarConfirm(titulo, subtexto, callback) {
+    _confirmCallback = callback;
+    document.getElementById('confirm-titulo').textContent = titulo;
+    document.getElementById('confirm-sub').innerHTML = subtexto;
+    document.getElementById('confirm-ok').onclick = function() { var cb = _confirmCallback; cerrarConfirm(); if (cb) cb(); };
+    document.getElementById('modal-confirm-corte').classList.add('show');
+}
+function cerrarConfirm() {
+    document.getElementById('modal-confirm-corte').classList.remove('show');
+    _confirmCallback = null;
+}
+
+// ── Toast local ───────────────────────────────────────────────
+function mostrarToast(msg, tipo) {
+    if (window.showToast) { showToast(msg, tipo); return; }
+    var el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'toast toast-' + (tipo || 'success') + ' show';
+    setTimeout(function() { el.classList.remove('show'); }, 3500);
+}
+
+// ── Bulk ─────────────────────────────────────────────────────
+let _bulkFaseId = null;
+let _bulkPiezaIds = [];
+
+function inicializarBulk(faseId, piezaIds) {
+    _bulkFaseId = faseId;
+    _bulkPiezaIds = piezaIds;
+    const bar = document.getElementById('bulk-bar');
+    if (bar) {
+        bar.style.display = 'flex';
+        document.getElementById('bulk-hint').textContent = `Fase: ${FASES_NOMBRES[faseId]||faseId} · ${piezaIds.length} piezas activas`;
+        document.getElementById('bulk-check-all').checked = false;
+        document.getElementById('bulk-cantidad').value = '';
+    }
+}
+
+function _actualizarCheckboxesBulk(faseId) {
+    document.querySelectorAll('.pieza-check').forEach(cb => {
+        const coincide = cb.dataset.faseActual === faseId;
+        cb.checked = false;
+        cb.disabled = !coincide;
+        cb.style.opacity = coincide ? '' : '0.25';
+        cb.style.cursor = coincide ? 'pointer' : 'not-allowed';
+    });
+    const allCb = document.getElementById('bulk-check-all');
+    if (allCb) allCb.checked = false;
+}
+
+function toggleBulkAll(cb) {
+    document.querySelectorAll('.pieza-check').forEach(c => {
+        if (!c.disabled) c.checked = cb.checked;
+    });
+}
+
+function getBulkPiezasSeleccionadas() {
+    const checks = document.querySelectorAll('.pieza-check:checked');
+    return Array.from(checks).map(c => parseInt(c.dataset.piezaId));
+}
+
+async function accionBulkAvance() {
+    const piezas = getBulkPiezasSeleccionadas();
+    const cantidad = parseInt(document.getElementById('bulk-cantidad').value);
+    if (!piezas.length) { mostrarToast('Selecciona al menos una pieza', 'error'); return; }
+    if (!cantidad || cantidad < 1) { mostrarToast('Ingresa una cantidad válida', 'error'); return; }
+
+    const res = await fetch(`/corte/api/${OF_ID}/avance-bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fase_id: _bulkFaseId, cantidad, pieza_ids: piezas }),
+    });
+    if (res.ok) {
+        const d = await res.json();
+        mostrarToast(`+${cantidad} registrado en ${d.registradas} piezas`, 'success');
+        await cargarEstado(); await cargarStrip();
+    } else {
+        const d = await res.json();
+        mostrarToast(d.detail || 'Error en bulk', 'error');
+    }
+}
+
+async function accionBulkCompletar() {
+    const piezas = getBulkPiezasSeleccionadas();
+    if (!piezas.length) { mostrarToast('Selecciona al menos una pieza', 'error'); return; }
+
+    mostrarConfirm(
+        'Completar selección',
+        `¿Completar <strong>${FASES_NOMBRES[_bulkFaseId]||_bulkFaseId}</strong> para <strong>${piezas.length} piezas</strong>?`,
+        async () => {
+            const res = await fetch(`/corte/api/${OF_ID}/completar-bulk`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fase_id: _bulkFaseId, pieza_ids: piezas }),
+            });
+            if (res.ok) {
+                const d = await res.json();
+                mostrarToast(`${d.completadas} piezas completadas en ${FASES_NOMBRES[_bulkFaseId]||_bulkFaseId}`, 'success');
+                await cargarEstado(); await cargarStrip();
+            } else {
+                const d = await res.json();
+                mostrarToast(d.detail || 'Error', 'error');
+            }
+        }
+    );
+}
+
+// ── Franja de fases (strip) ──────────────────────────────────
+async function cargarStrip() {
+    if ({{ 'true' if tercerizado else 'false' }}) return;
+    try {
+        const res = await fetch(`/corte/api/${OF_ID}/fases/strip`);
+        if (!res.ok) return;
+        const fases = await res.json();
+        renderStrip(fases);
+    } catch(e) { console.warn('strip error', e); }
+}
+
+function renderStrip(fases) {
+    const cont = document.getElementById('fase-strip');
+    if (!fases.length) { cont.innerHTML = ''; return; }
+    cont.innerHTML = fases.map(f => {
+        const cls = f.puede_iniciar ? f.estado : (f.estado === 'pendiente' ? 'bloqueada' : f.estado);
+        const tiemposPlan = f.inicio_programado
+            ? `<span class="plan">▷ ${f.inicio_programado}${f.fin_programado ? ' → '+f.fin_programado : ''}</span>`
+            : `<span style="color:#333">Sin programar</span>`;
+        const tiemposReal = f.inicio_real
+            ? `<span class="real">● ${f.inicio_real}${f.fin_real ? ' → '+f.fin_real : ' (en curso)'}</span>`
+            : '';
+        const pctStyle = f.estado === 'completada' ? 'width:100%' : `width:${f.pct}%`;
+        let boton = '';
+        if (!PUEDE_REGISTRAR) {
+            boton = '';
+        } else if (f.estado === 'completada') {
+            boton = `<button class="btn-iniciar" disabled style="background:#0a1f12;color:#1d5f40">✓ Completada</button>`;
+        } else if (f.inicio_real) {
+            boton = `<button class="btn-iniciar" disabled style="background:#1a1200;color:#6a4a00">⏱ En curso</button>`;
+        } else if (f.puede_iniciar) {
+            boton = `<button class="btn-iniciar" onclick="iniciarFase('${f.fase_id}')">▶ Iniciar</button>`;
+        } else {
+            boton = `<button class="btn-iniciar" disabled title="Fase anterior sin avance">🔒 Bloqueada</button>`;
+        }
+        return `<div class="fsc fsc-${cls}">
+            <div class="fsc-nombre">${f.fase_id} ${f.nombre}</div>
+            <div class="fsc-times">${tiemposPlan}<br>${tiemposReal}</div>
+            <div class="fsc-pct"><div class="fsc-pct-fill" style="${pctStyle}"></div></div>
+            ${boton}
+        </div>`;
+    }).join('');
+}
+
+async function iniciarFase(faseId) {
+    const res = await fetch(`/corte/api/${OF_ID}/fases/${faseId}/iniciar`, { method: 'POST' });
+    if (res.ok) {
+        const d = await res.json();
+        mostrarToast(`${FASES_NOMBRES[faseId]||faseId} iniciado — ${d.inicio_real}`, 'success');
+        await cargarStrip();
+    } else {
+        const d = await res.json();
+        mostrarToast(d.detail || 'Error al iniciar fase', 'error');
+    }
+}
+
+// ── Init ──────────────────────────────────────────────────────
+cargarEstado();
+cargarStrip();
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Requerimientos Comerciales — Samitex{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <span class="page-title">Requerimientos de Producción</span>
+    {% if current_user.rol.value in ['ADMIN','PLANEADOR','COMERCIAL','COMERCIAL_MARCA'] %}
+    <a href="/comercial/nuevo" class="btn btn-primary btn-sm">+ Nuevo requerimiento</a>
+    {% endif %}
+</div>
+
+{% if requerimientos %}
+<table class="tabla-of" style="width:100%;border-collapse:collapse;">
+    <thead>
+        <tr>
+            <th>N° REQ</th>
+            <th>Cliente</th>
+            <th>Tipo</th>
+            <th>F. Solicitud</th>
+            <th>F. APT</th>
+            <th>Ejecutivo</th>
+            <th>Estado</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for req in requerimientos %}
+        <tr>
+            <td>{{ req.numero }}</td>
+            <td>{{ req.cliente }}</td>
+            <td>{{ req.tipo_produccion }}</td>
+            <td>{{ req.fecha_solicitud }}</td>
+            <td>{{ req.fecha_apt or '—' }}</td>
+            <td>{{ req.ejecutivo }}</td>
+            <td>{{ req.estado }}</td>
+            <td><a href="/comercial/{{ req.id }}" class="btn btn-sm btn-secondary">Ver</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div style="text-align:center;padding:60px 20px;color:#555;">
+    <div style="font-size:40px;margin-bottom:14px;">📋</div>
+    <p style="font-size:15px;margin-bottom:6px;">No hay requerimientos registrados aún.</p>
+    {% if current_user.rol.value in ['ADMIN','PLANEADOR','COMERCIAL','COMERCIAL_MARCA'] %}
+    <p style="font-size:13px;">
+        <a href="/comercial/nuevo" style="color:#4a9fff;">Crear el primero →</a>
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

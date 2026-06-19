@@ -1,0 +1,29 @@
+# ─── Web Framework ───────────────────────────────────────────
+fastapi==0.110.1
+uvicorn[standard]==0.29.0          # servidor ASGI con WebSockets
+websockets==12.0                   # soporte WebSocket
+
+# ─── Templates ───────────────────────────────────────────────
+jinja2==3.1.3
+aiofiles==23.2.1                   # servir archivos estáticos async
+
+# ─── Base de Datos ────────────────────────────────────────────
+sqlalchemy==2.0.36                 # ORM principal
+pyodbc==5.2.0                      # conector ODBC para SQL Server
+alembic==1.13.1                    # migraciones de BD
+
+# ─── Validación de datos ─────────────────────────────────────
+pydantic==2.10.6
+pydantic-settings==2.7.0           # config desde .env
+
+# ─── Autenticación ───────────────────────────────────────────
+python-jose[cryptography]==3.3.0   # JWT tokens
+bcrypt==4.2.1                      # hash de contraseñas (directo, sin passlib)
+passlib[bcrypt]==1.7.4             # requerido por dependencias (no usar para hash)
+
+# ─── Uploads / Forms ─────────────────────────────────────────
+python-multipart==0.0.9            # upload de archivos
+
+# ─── Utilidades ──────────────────────────────────────────────
+python-dotenv==1.0.1               # leer .env
+httpx==0.27.0                      # cliente HTTP async (para tests e integraciones)

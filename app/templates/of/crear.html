@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Nueva OF — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Layout ── */
+.of-grid   { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.of-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
+
+/* ── Progreso ── */
+.progress-section { background:#141414; border:1px solid #2a2a2a; border-radius:8px; padding:14px; margin-bottom:16px; }
+.progress-label   { display:flex; justify-content:space-between; font-size:12px; color:#888; margin-bottom:6px; }
+.progress-bar     { height:6px; background:#111; border-radius:3px; }
+.progress-fill    { height:100%; border-radius:3px; background:#1a6fbe; transition:width .3s; }
+.req-dots         { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.req-dot          { width:8px; height:8px; border-radius:50%; }
+.req-dot.ok       { background:#4caf7d; }
+.req-dot.err      { background:#2a2a2a; border:1px solid #444; }
+
+/* ── Info card ── */
+.info-card      { background:#0d1a2e; border:1px solid #1a3a6f; border-radius:8px; padding:16px 18px; margin-bottom:16px; display:flex; align-items:flex-start; gap:12px; }
+.info-icon      { font-size:20px; flex-shrink:0; margin-top:1px; }
+.info-body h4   { font-size:13px; font-weight:600; color:#4a9fff; margin-bottom:4px; }
+.info-body p    { font-size:12px; color:#8ab4f8; line-height:1.5; margin:0; }
+
+/* ── Toast ── */
+.toast         { position:fixed; top:16px; right:16px; padding:12px 18px; border-radius:8px; font-size:13px; font-weight:500; z-index:999; opacity:0; transform:translateY(-8px); transition:all .2s; pointer-events:none; }
+.toast.show    { opacity:1; transform:translateY(0); }
+.toast-success { background:#0d3320; border:1px solid #1d5f40; color:#4caf7d; }
+.toast-error   { background:#3a0a0a; border:1px solid #6a1a1a; color:#f88; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <span class="page-title">Nueva Orden de Fabricación</span>
+    <a href="/" class="btn btn-secondary">← Volver</a>
+</div>
+
+<!-- PROGRESO -->
+<div class="progress-section">
+    <div class="progress-label">
+        <span>Datos obligatorios</span>
+        <span id="prog-txt">0 / 4</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="req-dots" id="req-dots"></div>
+</div>
+
+<!-- DATOS GENERALES -->
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header"><span class="card-title">Datos generales</span></div>
+    <div class="of-grid">
+        <div class="form-group">
+            <label>N° OF *</label>
+            <input id="numero_of" placeholder="826501" oninput="actualizarProgreso()">
+        </div>
+        <div class="form-group">
+            <label>Cliente *</label>
+            <input id="cliente" placeholder="Empresa S.A.C." oninput="actualizarProgreso()">
+        </div>
+    </div>
+    <div class="of-grid-3">
+        <div class="form-group">
+            <label>Tipo de Prenda *</label>
+            <select id="tipo_prenda" onchange="actualizarProgreso()">
+                <option value="">Seleccionar...</option>
+                <option value="SACO">Saco</option>
+                <option value="PANTALON">Pantalón</option>
+                <option value="CAMISA">Camisa</option>
+                <option value="OTRO">Otro</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Total Juegos *</label>
+            <input id="total_juegos" type="number" min="1" placeholder="170" oninput="actualizarProgreso()">
+        </div>
+        <div class="form-group">
+            <label>Fecha APT</label>
+            <input id="fecha_apt" type="date" style="border-color:#bf9000">
+        </div>
+    </div>
+    <div class="of-grid">
+        <div class="form-group">
+            <label>Tipo de Cliente *</label>
+            <select id="tipo_cliente">
+                <option value="INSTITUCION">Institución</option>
+                <option value="MARCA">Marca</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Responsable</label>
+            <select id="responsable_id">
+                <option value="">Sin asignar</option>
+                {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="of-grid">
+        <div class="form-group" style="align-self:end;padding-bottom:2px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input id="estampado_activo" type="checkbox" style="width:auto">
+                Activar Estampado/Bordado (F8 + F9)
+            </label>
+        </div>
+    </div>
+</div>
+
+<!-- INFO: piezas auto -->
+<div class="info-card">
+    <div class="info-icon">🔧</div>
+    <div class="info-body">
+        <h4>Piezas generadas automáticamente</h4>
+        <p>Al subir la <strong>Ficha Técnica</strong> en el detalle de la OF, las piezas se generarán automáticamente desde la plantilla del tipo de prenda. No es necesario ingresarlas aquí.</p>
+    </div>
+</div>
+
+<!-- BOTONES -->
+<div style="display:flex;justify-content:flex-end;gap:10px;align-items:center">
+    <a href="/" class="btn btn-secondary">Cancelar</a>
+    <button class="btn btn-primary" id="btn-guardar" onclick="crearOF()" style="padding:10px 28px">
+        💾 Guardar Borrador
+    </button>
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function actualizarProgreso() {
+    const checks = [
+        !!document.getElementById('numero_of').value.trim(),
+        !!document.getElementById('cliente').value.trim(),
+        !!document.getElementById('tipo_prenda').value,
+        !!document.getElementById('total_juegos').value,
+    ];
+    const ok  = checks.filter(Boolean).length;
+    const pct = Math.round(ok / checks.length * 100);
+    document.getElementById('prog-fill').style.width = pct + '%';
+    document.getElementById('prog-txt').textContent  = `${ok} / ${checks.length}`;
+    document.getElementById('req-dots').innerHTML =
+        checks.map(c => `<span class="req-dot ${c?'ok':'err'}"></span>`).join('');
+}
+
+async function crearOF() {
+    const numero_of    = document.getElementById('numero_of').value.trim();
+    const cliente      = document.getElementById('cliente').value.trim();
+    const tipo_prenda  = document.getElementById('tipo_prenda').value;
+    const total_juegos = parseInt(document.getElementById('total_juegos').value);
+
+    if (!numero_of || !cliente || !tipo_prenda || !total_juegos) {
+        mostrarToast('Completa los campos obligatorios (N° OF, Cliente, Tipo, Juegos)', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btn-guardar');
+    btn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('numero_of',        numero_of);
+    fd.append('cliente',          cliente);
+    fd.append('tipo_prenda',      tipo_prenda);
+    fd.append('total_juegos',     total_juegos);
+    fd.append('tipo_cliente',     document.getElementById('tipo_cliente').value || 'INSTITUCION');
+    fd.append('estampado_activo', document.getElementById('estampado_activo').checked);
+
+    const fecha_apt = document.getElementById('fecha_apt').value;
+    if (fecha_apt) fd.append('fecha_apt', fecha_apt);
+
+    const resp_id = document.getElementById('responsable_id').value;
+    if (resp_id) fd.append('responsable_id', resp_id);
+
+    mostrarToast('Guardando...', 'success');
+    const res = await fetch('/of/api/crear', { method: 'POST', body: fd });
+    if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        mostrarToast(d.detail || 'Error al crear OF', 'error');
+        btn.disabled = false;
+        return;
+    }
+    const { id: of_id, numero_of: nof } = await res.json();
+    mostrarToast(`OF ${nof} guardada como borrador ✓`, 'success');
+    setTimeout(() => window.location.href = `/of/${of_id}/detalle`, 1200);
+}
+
+function mostrarToast(msg, tipo = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className   = `toast toast-${tipo} show`;
+    setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+actualizarProgreso();
+</script>
+{% endblock %}

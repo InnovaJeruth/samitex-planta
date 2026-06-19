@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Samitex — Iniciar sesión</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 36px 32px; width: 360px; }
+        .brand { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+        .sub { font-size: 13px; color: #666; margin-bottom: 28px; }
+        label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; margin-top: 14px; font-weight: 500; }
+        input { width: 100%; background: #111; border: 1px solid #333; border-radius: 6px; padding: 9px 12px; color: #e0e0e0; font-size: 14px; outline: none; transition: border-color .15s; }
+        input:focus { border-color: #1a6fbe; }
+        button { width: 100%; margin-top: 20px; padding: 10px; background: #1a6fbe; color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        button:hover:not(:disabled) { background: #1a5fa0; }
+        button:disabled { opacity: .6; cursor: not-allowed; }
+        .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error { background: #3a0a0a; border: 1px solid #6a1a1a; color: #f88; padding: 9px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 4px; display: none; }
+        .divider { border: none; border-top: 1px solid #2a2a2a; margin: 24px 0 0; }
+        .hint { font-size: 11px; color: #555; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <div class="brand">⚙ Samitex Planta</div>
+        <div class="sub">Sistema de seguimiento de producción</div>
+        <div id="error" class="error"></div>
+        <label for="username">Usuario</label>
+        <input id="username" type="text" placeholder="usuario" autocomplete="username">
+        <label for="password">Contraseña</label>
+        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+        <button id="btn" onclick="login()">
+            <div class="spinner" id="spinner"></div>
+            <span id="btn-text">Ingresar</span>
+        </button>
+        <hr class="divider">
+        <div class="hint">Credenciales asignadas por el administrador del sistema.</div>
+    </div>
+    <script>
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errEl   = document.getElementById('error');
+            const btn     = document.getElementById('btn');
+            const spinner = document.getElementById('spinner');
+
+            errEl.style.display = 'none';
+
+            if (!username || !password) {
+                errEl.textContent = 'Ingresa usuario y contraseña';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            spinner.style.display = 'block';
+
+            try {
+                const body = new URLSearchParams({ username, password });
+                const res  = await fetch('/auth/login', {
+                    method: 'POST',
+                    body,
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    // La cookie HttpOnly ya fue seteada por el servidor
+                    // Redirigir al dashboard (o a la URL que venía antes)
+                    const next = new URLSearchParams(window.location.search).get('next') || '/';
+                    window.location.href = next;
+                } else {
+                    errEl.textContent = data.detail || 'Usuario o contraseña incorrectos';
+                    errEl.style.display = 'block';
+                    document.getElementById('password').value = '';
+                    document.getElementById('password').focus();
+                }
+            } catch {
+                errEl.textContent = 'Error de conexión. Intenta nuevamente.';
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+        // Auto-focus en el campo usuario al cargar
+        window.addEventListener('load', () => document.getElementById('username').focus());
+    </script>
+</body>
+</html>

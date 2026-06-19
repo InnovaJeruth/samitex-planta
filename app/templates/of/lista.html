@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Órdenes — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+.of-table { width:100%; border-collapse:separate; border-spacing:0; font-size:13px; }
+.of-table th { text-align:left; padding:8px 12px; background:#111; color:#888; font-weight:500;
+               font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+               border-bottom:1px solid #2a2a2a; white-space:nowrap; }
+.of-table td { padding:10px 12px; border-bottom:1px solid #1e1e1e; }
+.of-table tr:hover td { background:#1e1e1e; }
+
+/* Sticky primera columna */
+.of-table .col-of { position:sticky; left:0; z-index:2; background:#1a1a1a; box-shadow:2px 0 0 #2a2a2a; }
+.of-table thead .col-of { background:#111; z-index:3; }
+.of-table tr:hover .col-of { background:#1e1e1e; }
+
+/* Filtros */
+.filter-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+.filter-bar input, .filter-bar select {
+    background:#1a1a1a; border:1px solid #2a2a2a; color:#e0e0e0;
+    padding:6px 10px; border-radius:6px; font-size:13px; outline:none;
+}
+.filter-bar input:focus, .filter-bar select:focus { border-color:#444; }
+.filter-bar input[name="q"] { min-width:200px; }
+
+/* Paginación */
+.pagination { display:flex; gap:6px; align-items:center; justify-content:center;
+              margin-top:16px; flex-wrap:wrap; }
+.pagination a, .pagination span {
+    display:inline-block; padding:5px 11px; border-radius:6px; font-size:13px;
+    text-decoration:none; border:1px solid #2a2a2a;
+}
+.pagination a { color:#e0e0e0; background:#1a1a1a; }
+.pagination a:hover { background:#2a2a2a; }
+.pagination .active { background:#1a5ba3; color:#fff; border-color:#1a5ba3; font-weight:600; }
+.pagination .disabled { color:#444; pointer-events:none; background:#111; }
+.pagination-info { text-align:center; color:#666; font-size:12px; margin-top:6px; }
+
+@media (max-width:900px) {
+    .of-table .col-juegos  { display:none; }
+    .of-table .col-fecha   { display:none; }
+    .of-table .col-of      { min-width:80px; }
+    .of-table .col-acciones a.btn { font-size:11px; padding:4px 8px; }
+    .filter-bar { gap:6px; }
+    .filter-bar input[name="q"] { min-width:140px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <span class="page-title">Todas las Órdenes de Fabricación</span>
+    <a href="/of/crear" class="btn btn-primary">+ Nueva OF</a>
+</div>
+
+{# ── Filtros ── #}
+<form method="get" action="/of/" class="filter-bar">
+    <input type="text" name="q" placeholder="Buscar N° OF o cliente…" value="{{ q }}">
+    <select name="estado">
+        <option value="">Todos los estados</option>
+        {% for e in estados_enum %}
+        <option value="{{ e }}" {% if estado == e %}selected{% endif %}>{{ e }}</option>
+        {% endfor %}
+    </select>
+    <select name="tipo_prenda">
+        <option value="">Todas las prendas</option>
+        {% for t in tipos_prenda_enum %}
+        <option value="{{ t }}" {% if tipo_prenda == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-secondary btn-sm">Filtrar</button>
+    {% if q or estado or tipo_prenda %}
+    <a href="/of/" class="btn btn-sm" style="color:#888">✕ Limpiar</a>
+    {% endif %}
+</form>
+
+<div class="card" style="padding:0">
+    <div style="overflow-x:auto">
+    <table class="of-table">
+        <thead>
+            <tr>
+                <th class="col-of">N° OF</th>
+                <th>Cliente</th>
+                <th>Prenda</th>
+                <th class="col-juegos">Juegos</th>
+                <th>Estado</th>
+                <th class="col-fecha">Creación</th>
+                <th class="col-acciones"></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for of in ofs %}
+        <tr>
+            <td class="col-of"><strong>{{ of.numero_of }}</strong></td>
+            <td>{{ of.cliente }}</td>
+            <td>{{ of.tipo_prenda.value }}</td>
+            <td class="col-juegos">{{ of.total_juegos }}</td>
+            <td><span class="badge badge-{{ of.estado.value.lower() }}">{{ of.estado.value }}</span></td>
+            <td class="col-fecha">{{ of.fecha_creacion }}</td>
+            <td class="col-acciones" style="white-space:nowrap">
+                <a href="/of/{{ of.id }}/detalle" class="btn btn-secondary btn-sm">Detalle</a>
+                <a href="/corte/{{ of.id }}" class="btn btn-primary btn-sm">Seguimiento</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:#555;padding:20px">Sin órdenes registradas</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+{# ── Paginación ── #}
+{% if total_pages > 1 %}
+{% set qs_base = ("&q=" ~ q if q else "") ~ ("&estado=" ~ estado if estado else "") ~ ("&tipo_prenda=" ~ tipo_prenda if tipo_prenda else "") %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}{{ qs_base }}">‹ Ant</a>
+    {% else %}
+    <span class="disabled">‹ Ant</span>
+    {% endif %}
+
+    {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+        <span class="active">{{ p }}</span>
+        {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+        <a href="?page={{ p }}{{ qs_base }}">{{ p }}</a>
+        {% elif p == page - 3 or p == page + 3 %}
+        <span class="disabled">…</span>
+        {% endif %}
+    {% endfor %}
+
+    {% if page < total_pages %}
+    <a href="?page={{ page + 1 }}{{ qs_base }}">Sig ›</a>
+    {% else %}
+    <span class="disabled">Sig ›</span>
+    {% endif %}
+</div>
+<p class="pagination-info">{{ total }} órdenes — página {{ page }} de {{ total_pages }}</p>
+{% else %}
+<p class="pagination-info">{{ total }} orden{% if total != 1 %}es{% endif %}</p>
+{% endif %}
+{% endblock %}

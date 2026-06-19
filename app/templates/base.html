@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Samitex Planta{% endblock %}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; min-height: 100vh; }
+
+        /* NAV */
+        nav { background: #1a1a1a; border-bottom: 1px solid #333; padding: 0 24px; display: flex; align-items: center; height: 52px; gap: 8px; }
+        nav .brand { font-weight: 700; font-size: 16px; color: #fff; margin-right: 24px; letter-spacing: .5px; }
+        nav a { color: #aaa; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+        nav a:hover, nav a.active { background: #2a2a2a; color: #fff; }
+        nav .spacer { flex: 1; }
+        nav .user-badge { background: #2a2a2a; padding: 4px 12px; border-radius: 20px; font-size: 12px; color: #ccc; display: flex; align-items: center; gap: 6px; }
+        nav .user-badge .rol-dot { width: 7px; height: 7px; border-radius: 50%; background: #1a6fbe; flex-shrink: 0; }
+        nav .logout-btn { background: none; border: 1px solid #444; color: #888; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all .15s; }
+        nav .logout-btn:hover { background: #3a0a0a; border-color: #6a1a1a; color: #f88; }
+        /* nav-links: always visible as flex row on desktop */
+        nav .nav-links { display: contents; }
+        /* user footer only shows on mobile */
+        .nav-user-footer { display: none; }
+        nav .nav-links a { color: #aaa; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+        nav .nav-links a:hover, nav .nav-links a.active { background: #2a2a2a; color: #fff; }
+
+        /* MAIN */
+        main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+        /* CARDS */
+        .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 20px; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .card-title { font-size: 15px; font-weight: 600; color: #fff; }
+
+        /* BUTTONS */
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; transition: all .15s; text-decoration: none; }
+        .btn-primary { background: #1a6fbe; color: #fff; }
+        .btn-primary:hover { background: #1a5fa0; }
+        .btn-success { background: #1e7d34; color: #fff; }
+        .btn-danger { background: #8b1a1a; color: #fff; }
+        .btn-secondary { background: #2a2a2a; color: #ccc; border: 1px solid #444; }
+        .btn-secondary:hover { background: #333; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+        /* TABLE */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 8px 12px; background: #111; color: #888; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #2a2a2a; }
+        td { padding: 10px 12px; border-bottom: 1px solid #1e1e1e; }
+        tr:hover td { background: #1e1e1e; }
+
+        /* BADGES */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-borrador  { background: #2a2a2a; color: #888; }
+        .badge-activa    { background: #1a3a6f; color: #4a9fff; }
+        .badge-en_proceso{ background: #3a2a00; color: #e6a817; }
+        .badge-completada{ background: #0d3320; color: #4caf7d; }
+        .badge-anulada   { background: #3a0a0a; color: #e06060; }
+
+        /* SEMAFORO DOT */
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+        /* FLASH */
+        .flash { padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+        .flash-error { background: #3a0a0a; border: 1px solid #6a1a1a; color: #f88; }
+        .flash-success { background: #0d3320; border: 1px solid #1d5f40; color: #6f6; }
+
+        /* PAGE HEADER */
+        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .page-title { font-size: 20px; font-weight: 700; color: #fff; }
+
+        /* FORM */
+        .form-group { margin-bottom: 14px; }
+        label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; font-weight: 500; }
+        input, select, textarea { width: 100%; background: #111; border: 1px solid #333; border-radius: 6px; padding: 8px 10px; color: #e0e0e0; font-size: 13px; outline: none; }
+        input:focus, select:focus, textarea:focus { border-color: #1a6fbe; }
+        .form-row { display: grid; gap: 12px; }
+        .form-row-2 { grid-template-columns: 1fr 1fr; }
+        .form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+        /* TOAST ANIMATIONS */
+        @keyframes toastIn  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes toastOut { from { opacity:1; transform:translateY(0); }   to { opacity:0; transform:translateY(8px); } }
+
+        /* ── RESPONSIVE MOBILE (< 900px) ─────────────────────── */
+        @media (max-width: 900px) {
+            /* Nav: first row = brand + hamburger, dropdown below */
+            nav { flex-wrap: wrap; height: auto; padding: 0 16px; position: relative; }
+            nav .brand { padding: 12px 0; flex: 1; }
+            nav .spacer { display: none; }
+            /* Hide user-badge and logout on mobile (shown in desktop nav row) */
+            nav .user-badge { display: none !important; }
+            nav .logout-btn { display: none !important; }
+            nav .hamburger {
+                display: flex !important;
+                align-items: center; justify-content: center;
+                background: none; border: 1px solid #444; color: #ccc;
+                width: 36px; height: 36px; border-radius: 6px;
+                font-size: 18px; cursor: pointer;
+                align-self: center;
+            }
+            nav .nav-links {
+                display: none;
+                width: 100%;
+                flex-direction: column;
+                background: #1a1a1a;
+                border-top: 1px solid #2a2a2a;
+                padding: 4px 0 8px;
+            }
+            nav .nav-links.open { display: flex; }
+            nav .nav-links a {
+                padding: 12px 16px;
+                border-radius: 0;
+                font-size: 14px;
+                border-bottom: 1px solid #222;
+            }
+            nav .nav-links a:last-child { border-bottom: none; }
+            .nav-user-footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px 16px;
+                border-top: 1px solid #2a2a2a;
+                margin-top: 4px;
+            }
+            .nav-user-info { font-size: 12px; color: #888; display: flex; align-items: center; gap: 6px; }
+            .nav-logout-mobile {
+                background: none; border: 1px solid #6a1a1a; color: #f88;
+                padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+            }
+
+            /* Main: less padding */
+            main { padding: 12px; }
+
+            /* Tables: horizontal scroll */
+            .table-wrap, table { overflow-x: auto; display: block; }
+            td, th { white-space: nowrap; }
+
+            /* Cards: reduce padding */
+            .card { padding: 12px; }
+
+            /* Page header: stack */
+            .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+
+            /* Forms: single column */
+            .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
+
+            /* Buttons: full width on mobile when in a group */
+            .btn-group-mobile .btn { width: 100%; justify-content: center; }
+
+            /* Toast: full width bottom */
+            #toast-container { left: 12px; right: 12px; bottom: 12px; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- ── Toast container ─────────────────────────────────── -->
+    <div id="toast-container" style="
+        position:fixed; bottom:24px; right:24px; z-index:9999;
+        display:flex; flex-direction:column; gap:10px; pointer-events:none;
+    "></div>
+
+    <!-- ── Confirm modal ──────────────────────────────────── -->
+    <div id="modal-confirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:10px;padding:28px 32px;min-width:320px;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.6);">
+            <p id="modal-confirm-msg" style="font-size:14px;color:#e0e0e0;margin-bottom:24px;line-height:1.5;"></p>
+            <div style="display:flex;justify-content:flex-end;gap:10px;">
+                <button onclick="_confirmResolve(false)" style="background:#2a2a2a;border:1px solid #444;color:#ccc;padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;">Cancelar</button>
+                <button id="modal-confirm-ok" onclick="_confirmResolve(true)" style="background:#1a6fbe;border:none;color:#fff;padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ── Toast ──────────────────────────────────────────────────
+    function showToast(msg, type, duration) {
+        type = type || 'error';
+        duration = duration || 4000;
+        var colors = {
+            error:   { bg:'#2e0a0a', border:'#7f1d1d', icon:'✕', color:'#fca5a5' },
+            success: { bg:'#052e16', border:'#166534', icon:'✓', color:'#86efac' },
+            warning: { bg:'#2d1800', border:'#92400e', icon:'⚠', color:'#fcd34d' },
+            info:    { bg:'#0c1a2e', border:'#1e3a5f', icon:'ℹ', color:'#93c5fd' }
+        };
+        var c = colors[type] || colors.error;
+        var container = document.getElementById('toast-container');
+        if (!container) return;
+        var toast = document.createElement('div');
+        toast.style.cssText = 'background:'+c.bg+';border:1px solid '+c.border+';border-radius:8px;padding:12px 16px;min-width:260px;max-width:380px;display:flex;align-items:flex-start;gap:10px;pointer-events:auto;animation:toastIn .25s ease;cursor:pointer;';
+        var icon = document.createElement('span');
+        icon.textContent = c.icon;
+        icon.style.cssText = 'color:'+c.color+';font-size:14px;flex-shrink:0;margin-top:1px;';
+        var text = document.createElement('span');
+        text.textContent = msg;
+        text.style.cssText = 'color:'+c.color+';font-size:13px;line-height:1.4;flex:1;';
+        toast.appendChild(icon);
+        toast.appendChild(text);
+        toast.onclick = function() { dismissToast(toast); };
+        container.appendChild(toast);
+        setTimeout(function() { dismissToast(toast); }, duration);
+    }
+    function dismissToast(toast) {
+        if (!toast.parentNode) return;
+        toast.style.animation = 'toastOut .2s ease forwards';
+        setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
+    }
+    // Override native alert
+    window.alert = function(msg) { showToast(String(msg), 'error'); };
+
+    // ── Confirm modal ──────────────────────────────────────────
+    var _confirmResolve = null;
+    function showConfirm(msg, onConfirm, okLabel, okClass) {
+        var overlay = document.getElementById('modal-confirm');
+        document.getElementById('modal-confirm-msg').textContent = msg;
+        var okBtn = document.getElementById('modal-confirm-ok');
+        okBtn.textContent = okLabel || 'Confirmar';
+        okBtn.style.background = (okClass === 'danger') ? '#8b1a1a' : '#1a6fbe';
+        overlay.style.display = 'flex';
+        _confirmResolve = function(result) {
+            overlay.style.display = 'none';
+            _confirmResolve = null;
+            if (result && typeof onConfirm === 'function') onConfirm();
+        };
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && _confirmResolve) _confirmResolve(false);
+    });
+
+    // ── CSRF helpers ──────────────────────────────────────────
+    function _getCsrfToken() {
+        var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        if (!match) return '';
+        // El valor de la cookie es "token.firma" — el header envía sólo el token puro
+        return match[1].split('.')[0];
+    }
+    var _CSRF_UNSAFE = ['POST','PUT','PATCH','DELETE'];
+
+    // ── Auth helpers ───────────────────────────────────────────
+    function logout() {
+        fetch('/auth/logout', { method: 'POST' }).then(function() { window.location.href = '/auth/login'; });
+    }
+    var _origFetch = window.fetch;
+    window.fetch = function(url, opts) {
+        opts = opts || {};
+        var method = (opts.method || 'GET').toUpperCase();
+        if (_CSRF_UNSAFE.indexOf(method) !== -1) {
+            opts.headers = opts.headers || {};
+            // Soportar tanto objetos planos como Headers instance
+            if (opts.headers instanceof Headers) {
+                opts.headers.set('x-csrf-token', _getCsrfToken());
+            } else {
+                opts.headers['x-csrf-token'] = _getCsrfToken();
+            }
+        }
+        return _origFetch(url, opts).then(function(r) {
+            if (r.status === 401) { window.location.href = '/auth/login'; }
+            return r;
+        });
+    };
+    </script>
+    <script>
+    function toggleMobileNav() {
+        var links = document.getElementById('nav-links');
+        var btn = document.getElementById('nav-hamburger');
+        if (links) links.classList.toggle('open');
+        if (btn) btn.textContent = (links && links.classList.contains('open')) ? '✕' : '☰';
+    }
+    // Close mobile nav when a link is clicked
+    document.addEventListener('DOMContentLoaded', function() {
+        var links = document.getElementById('nav-links');
+        if (links) {
+            links.querySelectorAll('a').forEach(function(a) {
+                a.addEventListener('click', function() {
+                    links.classList.remove('open');
+                    var btn = document.getElementById('nav-hamburger');
+                    if (btn) btn.textContent = '☰';
+                });
+            });
+        }
+    });
+    </script>
+
+    <!-- ── Nav ────────────────────────────────────────────── -->
+    {% set rol = current_user.rol.value if current_user.rol and current_user.rol.value else current_user.rol|string %}
+    <nav>
+        <span class="brand">⚙ Samitex Planta</span>
+        <!-- Nav links: display:contents on desktop (flow inline), dropdown on mobile -->
+        <div class="nav-links" id="nav-links">
+            <a href="/" {% if request.url.path == '/' %}class="active"{% endif %}>Dashboard</a>
+            <a href="/of/" {% if request.url.path.startswith('/of') and 'plan-corte' not in request.url.path %}class="active"{% endif %}>Órdenes</a>
+            {% if rol in ['ADMIN','PLANEADOR','GERENTE_PLANTA','GERENCIA'] %}
+            <a href="/of/plan-corte" {% if 'plan-corte' in request.url.path %}class="active"{% endif %}>Plan de Corte</a>
+            {% endif %}
+            {% if rol in ['ADMIN','PLANEADOR','GERENTE_PLANTA','GERENCIA'] %}
+            <a href="/plantas/" {% if request.url.path.startswith('/plantas') %}class="active"{% endif %}>Plantas</a>
+            {% endif %}
+            {% if rol in ['ADMIN','PLANEADOR','COMERCIAL','COMERCIAL_MARCA','PLANEAMIENTO_MARCA','GERENTE_PLANTA','GERENCIA'] %}
+            <a href="/comercial/" {% if request.url.path.startswith('/comercial') %}class="active"{% endif %}>Comercial</a>
+            {% endif %}
+            {% if rol in ['ADMIN','SUPERVISOR_CORTE','GERENTE_PLANTA','PLANEADOR','GERENCIA'] %}
+            <a href="/supervisor/programacion" {% if request.url.path.startswith('/supervisor') %}class="active"{% endif %}>Programación</a>
+            {% endif %}
+            {% if rol == 'ADMIN' %}
+            <a href="/admin/" {% if request.url.path.startswith('/admin') %}class="active"{% endif %}>Admin</a>
+            {% endif %}
+            <!-- Mobile-only: user info + logout at bottom of dropdown -->
+            <div class="nav-user-footer">
+                <span class="nav-user-info">
+                    <span class="rol-dot" style="width:7px;height:7px;border-radius:50%;background:#1a6fbe;flex-shrink:0;display:inline-block"></span>
+                    {{ current_user.nombre }} &nbsp;·&nbsp; {{ rol }}
+                </span>
+                <button class="nav-logout-mobile" onclick="logout()">Salir</button>
+            </div>
+        </div>
+        <span class="spacer"></span>
+        <span class="user-badge">
+            <span class="rol-dot"></span>
+            {{ current_user.nombre }} &nbsp;·&nbsp; {{ rol }}
+        </span>
+        <button class="logout-btn" onclick="logout()">Salir</button>
+        <!-- Hamburger: hidden on desktop, shown on mobile via media query -->
+        <button class="hamburger" id="nav-hamburger" onclick="toggleMobileNav()" style="display:none;" aria-label="Menú">☰</button>
+    </nav>
+
+
+    <!-- ── Content ──────────────────────────────────── -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

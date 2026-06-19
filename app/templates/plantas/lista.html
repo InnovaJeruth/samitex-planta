@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Plantas Externas — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+.plantas-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.plantas-header h2 { font-size:20px; font-weight:700; color:#fff; margin:0; }
+.metric-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; padding:2px 8px; border-radius:10px; }
+.metric-ok    { background:#0a2e0a; color:#4caf7d; border:1px solid #1a5e1a; }
+.metric-warn  { background:#2e1e0a; color:#e6a817; border:1px solid #5e3e0a; }
+.metric-bad   { background:#2e0a0a; color:#e85656; border:1px solid #5e1a1a; }
+.metric-gray  { background:#1a1a1a; color:#888; border:1px solid #2a2a2a; }
+.plant-card { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:16px; margin-bottom:12px; }
+.plant-card.inactiva { opacity:.5; }
+.plant-name { font-size:15px; font-weight:700; color:#fff; margin-bottom:4px; }
+.plant-meta { font-size:11px; color:#888; display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+.plant-metrics { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.plant-actions { display:flex; gap:8px; }
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:200; display:flex; align-items:center; justify-content:center; }
+.modal-box { background:#1a1a1a; border:1px solid #3a3a3a; border-radius:10px; padding:24px; width:440px; max-width:95vw; }
+.modal-title { font-size:16px; font-weight:700; color:#fff; margin-bottom:16px; }
+.modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+.form-group { margin-bottom:12px; }
+.form-group label { font-size:11px; color:#888; display:block; margin-bottom:4px; }
+.form-group input { width:100%; background:#0f0f0f; border:1px solid #3a3a3a; border-radius:6px; padding:8px; color:#e0e0e0; font-size:13px; box-sizing:border-box; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="plantas-header">
+    <h2>🏭 Plantas Externas</h2>
+    <button class="btn btn-primary btn-sm" onclick="abrirModalCrear()">+ Nueva planta</button>
+</div>
+
+{% if not plantas %}
+<div style="text-align:center;padding:40px;color:#555">
+    No hay plantas registradas aún.
+</div>
+{% endif %}
+
+{% for p in plantas_data %}
+<div class="plant-card {% if not p.planta.activo %}inactiva{% endif %}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+            <div class="plant-name">
+                {{ p.planta.nombre }}
+                {% if not p.planta.activo %}<span style="font-size:11px;color:#555;font-weight:400"> (inactiva)</span>{% endif %}
+            </div>
+            <div class="plant-meta">
+                <span>RUC: <strong>{{ p.planta.ruc }}</strong></span>
+                <span>Encargado: <strong>{{ p.planta.encargado }}</strong></span>
+                <span>{{ p.planta.direccion }}</span>
+            </div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:#555">
+            desde {{ p.planta.created_at.strftime('%d/%m/%Y') if p.planta.created_at else '—' }}
+        </div>
+    </div>
+    <div class="plant-metrics">
+        <span class="metric-badge {% if p.total_ofs > 0 %}metric-warn{% else %}metric-gray{% endif %}">
+            📋 {{ p.total_ofs }} OFs tercerizadas
+        </span>
+        <span class="metric-badge {% if p.pct_cumplimiento is not none and p.pct_cumplimiento >= 80 %}metric-ok{% elif p.pct_cumplimiento is not none and p.pct_cumplimiento >= 50 %}metric-warn{% elif p.total_ofs > 0 %}metric-bad{% else %}metric-gray{% endif %}">
+            ✓ {{ p.pct_cumplimiento if p.pct_cumplimiento is not none else "—" }}% cumplimiento
+        </span>
+        {% if p.avg_retraso > 0 %}
+        <span class="metric-badge metric-bad">⏱ +{{ p.avg_retraso }}d promedio retraso</span>
+        {% elif p.total_ofs > 0 %}
+        <span class="metric-badge metric-ok">⏱ Sin retrasos</span>
+        {% endif %}
+        {% if p.cambios_fecha > 0 %}
+        <span class="metric-badge metric-warn">📅 {{ p.cambios_fecha }} cambios de fecha</span>
+        {% endif %}
+    </div>
+    <div class="plant-actions">
+        <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px"
+                onclick="abrirModalEditar({{ p.planta.id }}, '{{ p.planta.nombre|e }}', '{{ p.planta.ruc }}', '{{ p.planta.encargado|e }}', '{{ p.planta.direccion|e }}')">
+            ✏ Editar
+        </button>
+        {% if p.planta.activo %}
+        <button class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:#2e0a0a;border:1px solid #5e1a1a;color:#e85656"
+                onclick="desactivarPlanta({{ p.planta.id }})">
+            Desactivar
+        </button>
+        {% else %}
+        <button class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:#0a2e0a;border:1px solid #1a5e1a;color:#4caf7d"
+                onclick="activarPlanta({{ p.planta.id }})">
+            Reactivar
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+<!-- MODAL CREAR -->
+<div class="modal-overlay" id="modal-crear" style="display:none">
+    <div class="modal-box">
+        <div class="modal-title">+ Nueva Planta Externa</div>
+        <div class="form-group"><label>Nombre *</label><input type="text" id="c-nombre" placeholder="Ej: Confecciones Pérez SAC"></div>
+        <div class="form-group"><label>RUC *</label><input type="text" id="c-ruc" maxlength="11" placeholder="11 dígitos"></div>
+        <div class="form-group"><label>Encargado *</label><input type="text" id="c-encargado" placeholder="Nombre del responsable"></div>
+        <div class="form-group"><label>Dirección *</label><input type="text" id="c-direccion" placeholder="Dirección completa"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-crear').style.display='none'">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="crearPlanta()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div class="modal-overlay" id="modal-editar" style="display:none">
+    <div class="modal-box">
+        <div class="modal-title">✏ Editar Planta</div>
+        <input type="hidden" id="e-id">
+        <div class="form-group"><label>Nombre *</label><input type="text" id="e-nombre"></div>
+        <div class="form-group"><label>RUC *</label><input type="text" id="e-ruc" maxlength="11"></div>
+        <div class="form-group"><label>Encargado *</label><input type="text" id="e-encargado"></div>
+        <div class="form-group"><label>Dirección *</label><input type="text" id="e-direccion"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-editar').style.display='none'">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="editarPlanta()">Guardar cambios</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalCrear() {
+    ['c-nombre','c-ruc','c-encargado','c-direccion'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('modal-crear').style.display = 'flex';
+}
+
+function abrirModalEditar(id, nombre, ruc, encargado, direccion) {
+    document.getElementById('e-id').value = id;
+    document.getElementById('e-nombre').value = nombre;
+    document.getElementById('e-ruc').value = ruc;
+    document.getElementById('e-encargado').value = encargado;
+    document.getElementById('e-direccion').value = direccion;
+    document.getElementById('modal-editar').style.display = 'flex';
+}
+
+async function crearPlanta() {
+    const body = {
+        nombre:    document.getElementById('c-nombre').value.trim(),
+        ruc:       document.getElementById('c-ruc').value.trim(),
+        encargado: document.getElementById('c-encargado').value.trim(),
+        direccion: document.getElementById('c-direccion').value.trim(),
+    };
+    if (!body.nombre || !body.ruc || !body.encargado || !body.direccion)
+        return showToast('Todos los campos son obligatorios', 'warning');
+    if (body.ruc.length !== 11 || isNaN(body.ruc))
+        return showToast('El RUC debe tener 11 dígitos numéricos', 'warning');
+    const r = await fetch('/plantas/api/crear', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (r.ok) location.reload();
+    else showToast(d.detail || 'Error al crear planta');
+}
+
+async function editarPlanta() {
+    const id = document.getElementById('e-id').value;
+    const body = {
+        nombre:    document.getElementById('e-nombre').value.trim(),
+        ruc:       document.getElementById('e-ruc').value.trim(),
+        encargado: document.getElementById('e-encargado').value.trim(),
+        direccion: document.getElementById('e-direccion').value.trim(),
+    };
+    if (!body.nombre || !body.ruc || !body.encargado || !body.direccion)
+        return showToast('Todos los campos son obligatorios', 'warning');
+    const r = await fetch(`/plantas/api/${id}`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (r.ok) location.reload();
+    else showToast(d.detail || 'Error al editar');
+}
+
+async function desactivarPlanta(id) {
+    if (!confirm('¿Desactivar esta planta? No podrá asignarse a nuevas OFs.')) return;
+    const r = await fetch(`/plantas/api/${id}`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({activo: false}),
+    });
+    if (r.ok) location.reload();
+    else { const d = await r.json(); showToast(d.detail || 'Error'); }
+}
+
+async function activarPlanta(id) {
+    const r = await fetch(`/plantas/api/${id}`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({activo: true}),
+    });
+    if (r.ok) location.reload();
+    else { const d = await r.json(); showToast(d.detail || 'Error'); }
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.getElementById('modal-crear').style.display = 'none';
+        document.getElementById('modal-editar').style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

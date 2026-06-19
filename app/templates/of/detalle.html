@@ -1,0 +1,845 @@
+{% extends "base.html" %}
+{% block title %}OF {{ of.numero_of }} — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Layout ── */
+.detalle-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+
+/* ── Header OF ── */
+.of-header { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:20px; margin-bottom:16px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.of-numero { font-size:22px; font-weight:700; color:#fff; }
+.of-meta   { flex:1; display:flex; flex-wrap:wrap; gap:16px; }
+.meta-item { font-size:12px; color:#888; }
+.meta-item strong { display:block; color:#e0e0e0; font-size:14px; }
+.semaforo-chip { padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700; }
+.sem-VENCIDO   { background:#3a0a0a; color:#f88; }
+.sem-ALERTA    { background:#2d1f00; color:#e6a817; }
+.sem-A_TIEMPO  { background:#0d3320; color:#4caf7d; }
+.sem-OK_FECHA  { background:#0d3320; color:#4caf7d; }
+.sem-OK_TARDE  { background:#1a1a2a; color:#4a9fff; }
+.sem-SIN_FECHA { background:#2a2a2a; color:#888; }
+
+/* ── Gates ── */
+.gate-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #1e1e1e; }
+.gate-row:last-child { border-bottom:none; }
+.gate-icon { width:20px; text-align:center; font-size:14px; }
+.gate-info { flex:1; }
+.gate-label { font-size:13px; font-weight:600; color:#e0e0e0; }
+.gate-area  { font-size:11px; color:#666; }
+.gate-valor { font-size:11px; color:#4caf7d; font-style:italic; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gate-estado { font-size:11px; font-weight:600; }
+.gate-estado.pass    { color:#4caf7d; }
+.gate-estado.fail    { color:#e6a817; }
+.gate-estado.blocked { color:#444; }
+
+/* ── Documentos ── */
+.doc-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #1e1e1e; }
+.doc-row:last-child { border-bottom:none; }
+.doc-tipo { font-size:11px; color:#888; font-weight:600; min-width:150px; }
+.doc-nombre { font-size:13px; color:#e0e0e0; flex:1; }
+.doc-fecha  { font-size:11px; color:#555; }
+
+/* ── Piezas / fases ── */
+.fase-mini { display:inline-block; width:22px; height:22px; border-radius:4px; text-align:center; line-height:22px; font-size:10px; font-weight:700; }
+.fase-ok     { background:#0d3320; color:#4caf7d; }
+.fase-parcial{ background:#3a2a00; color:#e6a817; }
+.fase-pend   { background:#1a1a1a; color:#444; border:1px solid #2a2a2a; }
+.fase-na     { background:#111; color:#333; }
+
+/* ── Historial ── */
+.hist-row { display:grid; grid-template-columns:120px 100px 80px 60px 1fr 100px; gap:8px; align-items:center; padding:7px 12px; border-bottom:1px solid #1a1a1a; font-size:12px; }
+.hist-row:hover { background:#1e1e1e; }
+.hist-head { color:#888; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+
+/* ── Botones de estado ── */
+.estado-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ── Toast ── */
+.toast { position:fixed; top:16px; right:16px; padding:12px 18px; border-radius:8px; font-size:13px; font-weight:500; z-index:999; opacity:0; transform:translateY(-8px); transition:all .2s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateY(0); }
+.toast-success { background:#0d3320; border:1px solid #1d5f40; color:#4caf7d; }
+.toast-error   { background:#3a0a0a; border:1px solid #6a1a1a; color:#f88; }
+
+/* ── Tercerización ── */
+.badge-tercerizada { background:#2a0a4e; color:#c084fc; border:1px solid #6d28d9; }
+.terc-banner { background:#1a0a2e; border:1px solid #4c1d95; border-radius:8px; padding:14px 18px; margin-bottom:16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.terc-banner-icon { font-size:22px; flex-shrink:0; }
+.terc-banner-info { flex:1; }
+.terc-banner-info h4 { font-size:13px; font-weight:700; color:#c084fc; margin-bottom:6px; }
+.terc-banner-info .terc-meta { display:flex; flex-wrap:wrap; gap:16px; }
+.terc-meta-item { font-size:12px; color:#888; }
+.terc-meta-item strong { display:block; font-size:13px; color:#e0e0e0; }
+.terc-estado-pill { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.terc-PENDIENTE_ENVIO { background:#2a1a00; color:#f59e0b; border:1px solid #78350f; }
+.terc-ENVIADA         { background:#0a1a3e; color:#60a5fa; border:1px solid #1d4ed8; }
+.terc-RECIBIDA        { background:#0d3320; color:#4caf7d; border:1px solid #1d5f40; }
+/* Modal */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:200; display:flex; align-items:center; justify-content:center; }
+.modal-box { background:#1a1a1a; border:1px solid #3a3a3a; border-radius:10px; padding:24px; width:420px; max-width:95vw; }
+.modal-title { font-size:16px; font-weight:700; color:#fff; margin-bottom:16px; }
+.modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- HEADER OF -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div class="page-title">Orden {{ of.numero_of }}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="/of/" class="btn btn-secondary btn-sm">← Órdenes</a>
+        <a href="/corte/{{ of.id }}" class="btn btn-primary btn-sm">▶ Seguimiento</a>
+    </div>
+</div>
+
+<div class="of-header">
+    <div>
+        <div class="of-numero">{{ of.numero_of }}</div>
+        <div style="margin-top:6px">
+            <span class="badge badge-{{ of.estado.value.lower() }}">{{ of.estado.value }}</span>
+            {% if of.tercerizado %}
+            <span class="badge badge-tercerizada" style="margin-left:6px">⬆ TERCERIZADA</span>
+            {% endif %}
+            {% if semaforo and semaforo != 'SIN_FECHA' %}
+            <span class="semaforo-chip sem-{{ semaforo }}" style="margin-left:8px">{{ semaforo.replace('_',' ') }}</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="of-meta">
+        <div class="meta-item"><strong>{{ of.cliente }}</strong>Cliente</div>
+        <div class="meta-item"><strong>{{ of.tipo_prenda.value }}</strong>Tipo prenda</div>
+        <div class="meta-item">
+            <strong style="color:{% if tipo_cliente == 'MARCA' %}#e6a817{% else %}#4a9fff{% endif %}">
+                {{ tipo_cliente }}
+            </strong>Tipo cliente
+        </div>
+        <div class="meta-item"><strong>{{ of.total_juegos }}</strong>Juegos</div>
+        <div class="meta-item"><strong>{{ of.fecha_apt or '—' }}</strong>Fecha APT</div>
+        <div class="meta-item"><strong>{{ of.fecha_creacion }}</strong>Creación</div>
+        <div class="meta-item">
+            <strong style="color:{% if of.estado_docs.value == 'COMPLETA' %}#4caf7d{% elif of.estado_docs.value == 'EN_DOCUMENTACION' %}#e6a817{% else %}#555{% endif %}">
+                {{ of.estado_docs.value.replace('_',' ') }}
+            </strong>Docs
+        </div>
+        {% if of.responsable %}<div class="meta-item"><strong>{{ of.responsable.nombre }}</strong>Responsable</div>{% endif %}
+    </div>
+    <!-- Acciones de estado -->
+    {% set _rol = current_user.rol.value if current_user.rol is not string else current_user.rol %}
+    <div class="estado-actions">
+        {% if _rol in ('ADMIN', 'PLANEADOR') %}
+            {% if of.estado.value == 'BORRADOR' and puede_activar %}
+            <button class="btn btn-success btn-sm" onclick="activarOF()">✓ Activar OF</button>
+            {% elif of.estado.value == 'BORRADOR' and not puede_activar %}
+            <button class="btn btn-secondary btn-sm" disabled title="Gates pendientes">✗ Pendiente gates</button>
+            {% elif of.estado.value == 'EN_PROCESO' %}
+            <button class="btn btn-success btn-sm" onclick="completarOF()">✓ Marcar Completada</button>
+            {% endif %}
+            {% if of.estado.value == 'ACTIVA' and of.estado_docs.value == 'COMPLETA' and not of.tercerizado and not tiene_avance %}
+            <button class="btn btn-sm" style="background:#2a0a4e;border:1px solid #6d28d9;color:#c084fc" onclick="abrirModalTercerizar()">⬆ Tercerizar</button>
+            {% elif of.tercerizado and of.estado_tercerizado == 'PENDIENTE_ENVIO' %}
+            <button class="btn btn-sm" style="background:#0a1a3e;border:1px solid #1d4ed8;color:#60a5fa" onclick="marcarEnviada()">📦 Marcar Enviada</button>
+            {% elif of.tercerizado and of.estado_tercerizado == 'ENVIADA' %}
+            <button class="btn btn-success btn-sm" onclick="abrirModalRecepcion()">📥 Registrar Recepción</button>
+            {% endif %}
+            {% if of.tercerizado and of.estado_tercerizado in ('PENDIENTE_ENVIO', 'ENVIADA') %}
+            <button class="btn btn-sm" style="background:#1a1a2e;border:1px solid #4a3a7a;color:#a78bfa;font-size:11px" onclick="abrirModalFechaTerc()">📅 Actualizar fecha</button>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% if of.tercerizado %}
+<div class="terc-banner">
+    <div class="terc-banner-icon">🏭</div>
+    <div class="terc-banner-info">
+        <h4>OF Tercerizada
+            <span class="terc-estado-pill terc-{{ of.estado_tercerizado }}" style="margin-left:8px">
+                {{ (of.estado_tercerizado or 'PENDIENTE_ENVIO').replace('_',' ') }}
+            </span>
+        </h4>
+        <div class="terc-meta">
+            <div class="terc-meta-item"><strong>{{ of.planta_externa }}</strong>Planta externa</div>
+            {% if of.fecha_envio %}<div class="terc-meta-item"><strong>{{ of.fecha_envio }}</strong>Fecha envío</div>{% endif %}
+            {% if of.fecha_recepcion_est %}<div class="terc-meta-item"><strong>{{ of.fecha_recepcion_est }}</strong>Recepción estimada</div>{% endif %}
+            {% if of.fecha_recepcion_real %}<div class="terc-meta-item"><strong>{{ of.fecha_recepcion_real }}</strong>Recepción real</div>{% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% set ROLES_DOC = ('UDP','COMERCIAL','COMERCIAL_MARCA','PLANEAMIENTO_MARCA','INGENIERIA','LOGISTICA','CALIDAD') %}
+{% set es_rol_doc = _rol in ROLES_DOC %}
+
+<div class="detalle-grid">
+    <!-- GATES OVERVIEW: solo para roles de gestión/supervisión -->
+    {% if not es_rol_doc %}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Gates — Cadena documental</span>
+            <span style="font-size:11px;color:{% if puede_activar %}#4caf7d{% else %}#e6a817{% endif %}">
+                {% if puede_activar %}✓ Todos completados{% else %}{{ gates.values() | selectattr('pasado', 'equalto', False) | list | length }} pendientes{% endif %}
+            </span>
+        </div>
+        {% for gate_id, gate in gates.items() %}
+        <div class="gate-row">
+            <div class="gate-icon">
+                {% if gate.pasado %}<span style="color:#4caf7d">✓</span>
+                {% elif gate.bloqueado %}<span style="color:#333">◌</span>
+                {% else %}<span style="color:#e6a817">○</span>{% endif %}
+            </div>
+            <div class="gate-info">
+                <div class="gate-label">{{ gate.label }}</div>
+                <div class="gate-area" style="color:{{ gate.area_color }}">{{ gate.area }}</div>
+                {% if gate.valor %}<div class="gate-valor">{{ gate.valor }}</div>{% endif %}
+            </div>
+            <div class="gate-estado {{ 'pass' if gate.pasado else ('blocked' if gate.bloqueado else 'fail') }}">
+                {{ '✓ OK' if gate.pasado else ('Bloqueado' if gate.bloqueado else 'Pendiente') }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- DOCUMENTOS — vista por gate con permisos por rol -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">{% if es_rol_doc %}Mis documentos{% else %}Cadena documental{% endif %}</span>
+            {% if not es_rol_doc %}
+            <span style="font-size:11px;color:{% if of.estado_docs.value == 'COMPLETA' %}#4caf7d{% elif of.estado_docs.value == 'EN_DOCUMENTACION' %}#e6a817{% else %}#555{% endif %}">
+                {{ of.estado_docs.value.replace('_',' ') }}
+            </span>
+            {% endif %}
+        </div>
+
+        {# Construir lookup de docs subidos por tipo #}
+        {% set docs_map = {} %}
+        {% for doc in of.documentos %}
+        {% set _ = docs_map.update({doc.tipo: doc}) %}
+        {% endfor %}
+
+        {% set gate_defs = [
+            ('FICHA_TECNICA',      'Ficha Técnica',        'doc',    'FICHA_TECNICA'),
+            ('HOJA_COSTOS',        'Hoja de Costos',       'doc',    'HOJA_COSTOS'),
+            ('SOLPED_PRENDA',      'SOLPED Prenda',        'codigo', 'solped_prenda'),
+            ('MUESTRA_APROBADA',   'Muestra Aprobada',     'doc',    'MUESTRA_APROBADA'),
+            ('REPORTE_TALLAS',     'Reporte Tallas',       'doc',    'REPORTE_TALLAS'),
+            ('MOLDES_LECTRA',      'Moldes Lectra',        'doc',    'MOLDES_LECTRA'),
+            ('SOLPED_MP',          'SOLPED MP',            'codigo', 'solped_mp'),
+            ('ORDEN_COMPRA',       'Orden de Compra',      'codigo', 'orden_compra'),
+            ('CONFIRMACION_STOCK', 'Confirmación Stock',   'doc',    'CONFIRMACION_STOCK'),
+        ] %}
+
+        {# Para roles doc: contar cuántos gates les pertenecen #}
+        {% set ns = namespace(mis_gates=0) %}
+        {% for gate_id, label, gtype, key in gate_defs %}
+            {% if gate_id in gates_permitidos %}{% set ns.mis_gates = ns.mis_gates + 1 %}{% endif %}
+        {% endfor %}
+
+        {% if es_rol_doc and ns.mis_gates == 0 %}
+        <div style="padding:20px;text-align:center;color:#555;font-size:12px">
+            No tienes documentos asignados en esta OF (tipo cliente: <strong>{{ tipo_cliente }}</strong>)
+        </div>
+        {% else %}
+
+        {% for gate_id, label, gtype, key in gate_defs %}
+        {% set gate = gates[gate_id] %}
+        {% set puede = gate_id in gates_permitidos %}
+
+        {# Roles doc solo ven sus propios gates; otros ven todos #}
+        {% if not es_rol_doc or puede %}
+        <div class="doc-row" style="flex-wrap:wrap;gap:6px">
+            <div style="width:20px;flex-shrink:0;text-align:center">
+                {% if gate.pasado %}<span style="color:#4caf7d">✓</span>
+                {% elif gate.bloqueado %}<span style="color:#333">◌</span>
+                {% else %}<span style="color:#e6a817">○</span>{% endif %}
+            </div>
+            <div class="doc-tipo">{{ label }}</div>
+
+            {% if gtype == 'doc' %}
+                {% if docs_map.get(key) %}
+                    <div class="doc-nombre">📄 {{ docs_map[key].nombre_archivo }}</div>
+                    <div class="doc-fecha">{{ docs_map[key].uploaded_at.strftime('%d/%m %H:%M') if docs_map[key].uploaded_at else '' }}</div>
+                    <a href="/of/api/documentos/{{ docs_map[key].id }}/descargar" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;text-decoration:none" download>⬇ Descargar</a>
+                    {% if puede and of.estado.value == 'BORRADOR' %}
+                    <label class="btn btn-secondary btn-sm" for="file-{{ gate_id }}" style="font-size:10px;cursor:pointer;padding:2px 8px">↑ Reemplazar</label>
+                    <input type="file" id="file-{{ gate_id }}" style="display:none" onchange="subirDoc('{{ gate_id }}', this)">
+                    {% endif %}
+                {% elif puede and of.estado.value == 'BORRADOR' %}
+                    <label class="btn btn-primary btn-sm" for="file-{{ gate_id }}" style="font-size:10px;cursor:pointer;padding:2px 8px">📎 Subir</label>
+                    <input type="file" id="file-{{ gate_id }}" style="display:none" onchange="subirDoc('{{ gate_id }}', this)">
+                    <span style="font-size:11px;color:#555" id="fn-{{ gate_id }}">Sin archivo</span>
+                {% elif not puede and not es_rol_doc %}
+                    <span style="font-size:11px;color:#444">Sin archivo</span>
+                {% endif %}
+
+            {% else %}{# codigo #}
+                {% if key == 'solped_prenda' %}{% set valor_actual = of.solped_prenda %}
+                {% elif key == 'solped_mp' %}{% set valor_actual = of.solped_mp %}
+                {% elif key == 'orden_compra' %}{% set valor_actual = of.orden_compra %}
+                {% else %}{% set valor_actual = '' %}{% endif %}
+
+                {% if valor_actual %}
+                    <div class="doc-nombre" style="color:#4caf7d">🔢 {{ valor_actual }}</div>
+                    {% if puede and of.estado.value == 'BORRADOR' %}
+                    <input id="inp-{{ gate_id }}" value="{{ valor_actual }}"
+                           style="background:#0f0f0f;border:1px solid #2a2a2a;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px">
+                    <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 7px" onclick="guardarCodigo('{{ key }}','{{ gate_id }}')">Guardar</button>
+                    {% endif %}
+                {% elif puede and of.estado.value == 'BORRADOR' %}
+                    <input id="inp-{{ gate_id }}" placeholder="Ej: 4500001234"
+                           style="background:#0f0f0f;border:1px solid #2a2a2a;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px">
+                    <button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 7px" onclick="guardarCodigo('{{ key }}','{{ gate_id }}')">Guardar</button>
+                {% elif not puede and not es_rol_doc %}
+                    <span style="font-size:11px;color:#444">Pendiente</span>
+                {% endif %}
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        {% endif %}{# fin check mis_gates #}
+
+        {% if of.estado.value not in ('BORRADOR',) and not es_rol_doc %}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a1a1a;font-size:11px;color:#444">
+            🔒 Documentos bloqueados — OF en estado <strong style="color:#555">{{ of.estado.value }}</strong>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- PIEZAS Y FASES -->
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+        <span class="card-title">Piezas y avance de fases</span>
+        <div style="display:flex;gap:10px;align-items:center">
+            {% if of.estado.value == 'BORRADOR' and current_user and current_user.rol.value in ('ADMIN', 'PLANEADOR') %}
+            <a href="/of/{{ of.id }}/editar-piezas" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px">✏ Editar piezas</a>
+            {% endif %}
+            <div style="font-size:11px;color:#888;display:flex;gap:8px;align-items:center">
+                <span class="fase-mini fase-ok">✓</span> Completa
+                <span class="fase-mini fase-parcial">%</span> Parcial
+                <span class="fase-mini fase-pend">·</span> Pendiente
+            </div>
+        </div>
+    </div>
+    {% set fases_labels = {'F1':'TIZ','F2':'TEN','F3':'COR','F4':'NUM','F5':'FUS','F6':'HAB','F7':'HAB2','F8':'EST','F9':'BOR'} %}
+    <table>
+        <thead>
+            <tr>
+                <th>Pieza</th><th>SAP</th><th>Mat.</th>
+                {% for fid in ORDEN_FASES %}
+                <th style="text-align:center">{{ fases_labels.get(fid, fid) }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for pieza in of.piezas %}
+        <tr>
+            <td><strong>{{ pieza.nombre }}</strong></td>
+            <td style="font-size:11px;color:#888">{{ pieza.codigo_sap or '—' }}</td>
+            <td style="font-size:11px;color:#888">{{ pieza.material }}</td>
+            {% for fid in ORDEN_FASES %}
+            {% set es_estampado = fid in ('F8', 'F9') and not of.estampado_activo %}
+            {% set es_fusion = fid == 'F5' and not pieza.fusionado %}
+            {% if es_estampado or es_fusion %}
+            <td style="text-align:center"><span class="fase-mini fase-na">—</span></td>
+            {% else %}
+            {% set fase_estado = pieza.fases_estado | selectattr('fase_id', 'equalto', fid) | first | default(None) %}
+            <td style="text-align:center">
+                {% if fase_estado %}
+                    {% if fase_estado.completada %}
+                    <span class="fase-mini fase-ok" title="{{ fase_estado.cantidad_actual }}/{{ fase_estado.max_cantidad }}">✓</span>
+                    {% elif fase_estado.cantidad_actual > 0 %}
+                    <span class="fase-mini fase-parcial" title="{{ fase_estado.cantidad_actual }}/{{ fase_estado.max_cantidad }}">{{ (fase_estado.cantidad_actual / fase_estado.max_cantidad * 100) | int }}%</span>
+                    {% else %}
+                    <span class="fase-mini fase-pend">·</span>
+                    {% endif %}
+                {% else %}
+                    <span class="fase-mini fase-pend">·</span>
+                {% endif %}
+            </td>
+            {% endif %}
+            {% endfor %}
+        </tr>
+        {% else %}
+        <tr><td colspan="12" style="text-align:center;color:#555;padding:20px">Sin piezas registradas</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- HISTORIAL DE AVANCES -->
+{% if of.fase_tiempos is defined and of.fase_tiempos %}
+<!-- Sección Plan vs Real -->
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+        <span class="card-title">Plan vs Real — Tiempos por Fase</span>
+    </div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+            <tr style="background:#0e0e0e">
+                <th style="padding:8px 12px;text-align:left;color:#555;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fase</th>
+                <th style="padding:8px 12px;text-align:left;color:#4a7faf;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Inicio Plan</th>
+                <th style="padding:8px 12px;text-align:left;color:#4a7faf;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fin Plan</th>
+                <th style="padding:8px 12px;text-align:left;color:#4caf7d;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Inicio Real</th>
+                <th style="padding:8px 12px;text-align:left;color:#4caf7d;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fin Real</th>
+                <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a;color:#888">Variación inicio</th>
+                <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a;color:#888">Variación fin</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% set fases_nombres = {'F1':'Tizado','F2':'Tendido','F3':'Corte','F4':'Numerado','F5':'Fusionado','F6':'Calidad','F7':'Habilitado','F8':'Estampado','F9':'Auditoría'} %}
+        {% for t in of.fase_tiempos | sort(attribute='fase_id') %}
+        <tr style="border-bottom:1px solid #111">
+            <td style="padding:9px 12px">
+                <strong style="color:#e0e0e0">{{ t.fase_id }}</strong>
+                <span style="color:#888;margin-left:4px">{{ fases_nombres.get(t.fase_id, t.fase_id) }}</span>
+            </td>
+            <td style="padding:9px 12px;color:#4a7faf">
+                {{ t.inicio_programado.strftime('%d/%m %H:%M') if t.inicio_programado else '—' }}
+            </td>
+            <td style="padding:9px 12px;color:#4a7faf">
+                {{ t.fin_programado.strftime('%d/%m %H:%M') if t.fin_programado else '—' }}
+            </td>
+            <td style="padding:9px 12px;color:#4caf7d">
+                {{ t.inicio_real.strftime('%d/%m %H:%M') if t.inicio_real else '—' }}
+            </td>
+            <td style="padding:9px 12px;color:#4caf7d">
+                {{ t.fin_real.strftime('%d/%m %H:%M') if t.fin_real else '<span style="color:#555">En curso</span>' | safe }}
+            </td>
+            {# Variación inicio en minutos #}
+            <td style="padding:9px 12px;text-align:center">
+                {% if t.inicio_programado and t.inicio_real %}
+                    {% set diff = ((t.inicio_real - t.inicio_programado).total_seconds() / 60) | round | int %}
+                    {% if diff < 0 %}
+                        <span style="color:#4caf7d;font-weight:600">{{ diff }} min ✓</span>
+                    {% elif diff > 0 %}
+                        <span style="color:#e05030;font-weight:600">+{{ diff }} min</span>
+                    {% else %}
+                        <span style="color:#888">0 min</span>
+                    {% endif %}
+                {% else %}
+                    <span style="color:#333">—</span>
+                {% endif %}
+            </td>
+            {# Variación fin en minutos #}
+            <td style="padding:9px 12px;text-align:center">
+                {% if t.fin_programado and t.fin_real %}
+                    {% set diff = ((t.fin_real - t.fin_programado).total_seconds() / 60) | round | int %}
+                    {% if diff < 0 %}
+                        <span style="color:#4caf7d;font-weight:600">{{ diff }} min ✓</span>
+                    {% elif diff > 0 %}
+                        <span style="color:#e05030;font-weight:600">+{{ diff }} min</span>
+                    {% else %}
+                        <span style="color:#888">0 min</span>
+                    {% endif %}
+                {% else %}
+                    <span style="color:#333">—</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div style="padding:8px 12px;font-size:11px;color:#444">
+        <span style="color:#4caf7d">Verde</span> = adelanto · 
+        <span style="color:#e05030">Rojo</span> = retraso · 
+        <span style="color:#4a7faf">Azul</span> = tiempos programados por el supervisor
+    </div>
+</div>
+{% endif %}
+
+{% if historial %}
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+        <span class="card-title">Historial de avances</span>
+        <span style="font-size:11px;color:#555">Últimos 50</span>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Fecha</th><th>Usuario</th><th>Fase</th><th>Pieza</th><th>Cant.</th><th>Acción</th></tr>
+        </thead>
+        <tbody>
+        {% for reg in historial %}
+        <tr>
+            <td style="font-size:11px;color:#888">{{ reg.created_at.strftime('%d/%m %H:%M') if reg.created_at else '—' }}</td>
+            <td style="font-size:11px">{{ reg.usuario.nombre if reg.usuario else '—' }}</td>
+            <td><span class="badge" style="background:#1a2a3a;color:#60a5fa;font-size:10px">{{ reg.fase_id }}</span></td>
+            <td style="font-size:11px;color:#aaa">{{ reg.pieza.nombre if reg.pieza else '—' }}</td>
+            <td style="font-size:12px">{{ reg.cantidad }}</td>
+            <td>
+                {% if not reg.revertido %}<span style="color:#4caf7d;font-size:11px">▲ Avance</span>
+                {% else %}<span style="color:#e85656;font-size:11px">▼ Reversión</span>{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if of.tercerizado %}
+<!-- HISTORIAL RECEPCIONES PARCIALES -->
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+        <span class="card-title">Recepciones de tercerización</span>
+        <span style="font-size:12px;color:#a78bfa">{{ of.juegos_recibidos }}/{{ of.total_juegos }} juegos recibidos</span>
+    </div>
+    {% if of.recepciones_terc %}
+    <table>
+        <thead>
+            <tr><th>Fecha</th><th>Juegos</th><th>Observación</th><th>Usuario</th></tr>
+        </thead>
+        <tbody>
+        {% for rec in of.recepciones_terc | sort(attribute='created_at', reverse=True) %}
+        <tr>
+            <td style="font-size:11px;color:#888">{{ rec.fecha_recepcion }}</td>
+            <td><strong style="color:#a78bfa">{{ rec.juegos_recibidos }}</strong></td>
+            <td style="font-size:11px;color:#aaa">{{ rec.observacion or '—' }}</td>
+            <td style="font-size:11px">{{ rec.usuario.nombre if rec.usuario else '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="padding:16px;text-align:center;color:#555;font-size:12px">Sin recepciones registradas aún</div>
+    {% endif %}
+
+    {% if of.historial_fechas_terc %}
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a1a1a">
+        <div style="font-size:11px;color:#888;margin-bottom:8px;padding:0 12px">Historial cambios de fecha estimada:</div>
+        {% for h in of.historial_fechas_terc | sort(attribute='created_at', reverse=True) %}
+        <div style="font-size:11px;padding:4px 12px;display:flex;gap:12px;color:#888">
+            <span style="color:#555">{{ h.created_at.strftime('%d/%m/%Y') if h.created_at else '—' }}</span>
+            <span><s>{{ h.fecha_anterior or '—' }}</s> → <strong style="color:#a78bfa">{{ h.fecha_nueva }}</strong></span>
+            {% if h.motivo %}<span style="color:#666">{{ h.motivo }}</span>{% endif %}
+            <span style="color:#444">{{ h.usuario.nombre if h.usuario else '' }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- MODAL TERCERIZACIÓN -->
+<div class="modal-overlay" id="modal-terc" style="display:none">
+    <div class="modal-box" style="width:480px">
+        <div class="modal-title" style="color:#a78bfa">⬆ Tercerizar OF</div>
+        <div style="font-size:12px;color:#888;margin-bottom:16px">
+            La OF se enviará a una planta externa. Solo se puede hacer antes de iniciar avance.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+            <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Planta externa *</label>
+                <select id="terc-planta-id" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                    <option value="">Cargando plantas...</option>
+                </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de envío</label>
+                    <input type="date" id="terc-fecha-envio" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Recepción estimada</label>
+                    <input type="date" id="terc-fecha-recep"
+                           {% if of.fecha_apt %}max="{{ of.fecha_apt.isoformat() }}"{% endif %}
+                           style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                    {% if of.fecha_apt %}<div style="font-size:10px;color:#555;margin-top:3px">Máx: APT {{ of.fecha_apt }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="cerrarModalTercerizar()">Cancelar</button>
+            <button class="btn btn-sm" style="background:#5b21b6;border:1px solid #7c3aed;color:#e9d5ff" onclick="tercerizar()">Confirmar tercerización</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ACTUALIZAR FECHA RECEPCIÓN -->
+<div class="modal-overlay" id="modal-fecha-terc" style="display:none">
+    <div class="modal-box" style="width:400px">
+        <div class="modal-title" style="color:#a78bfa">📅 Actualizar fecha estimada</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+            <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Nueva fecha de recepción *</label>
+                <input type="date" id="nueva-fecha-recep"
+                       {% if of.fecha_apt %}max="{{ of.fecha_apt.isoformat() }}"{% endif %}
+                       style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                {% if of.fecha_apt %}<div style="font-size:10px;color:#555;margin-top:3px">No puede superar APT: {{ of.fecha_apt }}</div>{% endif %}
+            </div>
+            <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Motivo del cambio</label>
+                <input type="text" id="motivo-fecha" placeholder="Ej: Planta solicitó más tiempo" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-fecha-terc').style.display='none'">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="actualizarFechaTerc()">Guardar cambio</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL RECEPCIÓN PARCIAL -->
+<div class="modal-overlay" id="modal-recepcion" style="display:none">
+    <div class="modal-box" style="width:400px">
+        <div class="modal-title" style="color:#a78bfa">📦 Registrar recepción</div>
+        <div style="font-size:12px;color:#888;margin-bottom:12px">
+            Recibidos hasta ahora: <strong style="color:#a78bfa" id="juegos-acumulado">{{ of.juegos_recibidos }}</strong> / {{ of.total_juegos }} juegos
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+            <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Juegos recibidos en esta entrega *</label>
+                <input type="number" id="inp-juegos-recibidos" min="1" placeholder="Ej: 50" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+            </div>
+            <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de recepción *</label>
+                <input type="date" id="inp-fecha-recepcion" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+            </div>
+            <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Observación</label>
+                <input type="text" id="inp-obs-recepcion" placeholder="Opcional" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-recepcion').style.display='none'">Cancelar</button>
+            <button class="btn btn-success btn-sm" onclick="registrarRecepcion()">Registrar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const OF_ID = {{ of.id }};
+
+async function activarOF() {
+    showConfirm('¿Activar esta OF?', async () => {
+        const r = await fetch(`/of/api/${OF_ID}/activar`, {method:'POST'});
+        const d = await r.json();
+        if (r.ok) location.reload();
+        else showToast(d.detail || 'Error al activar');
+    });
+}
+
+async function completarOF() {
+    showConfirm('¿Marcar esta OF como completada?', async () => {
+        const r = await fetch(`/of/api/${OF_ID}/completar`, {method:'POST'});
+        const d = await r.json();
+        if (r.ok) location.reload();
+        else showToast(d.detail || 'Error al completar');
+    });
+}
+
+async function guardarCodigo(campo, gateId) {
+    const val = document.getElementById('inp-' + gateId)?.value?.trim();
+    if (!val) return showToast('Ingresa un valor', 'warning');
+    var body = {};
+    body[campo] = val;
+    const r = await fetch('/of/api/' + OF_ID + '/codigos', {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (r.ok) location.reload();
+    else showToast(d.detail || 'Error al guardar');
+}
+
+function subirDoc(tipo) {
+    const input = document.getElementById('file-' + tipo);
+    if (!input || !input.files[0]) return showToast('Selecciona un archivo', 'warning');
+    const fd = new FormData();
+    fd.append('tipo', tipo);
+    fd.append('archivo', input.files[0]);
+    fetch('/of/api/' + OF_ID + '/documentos', {method:'POST', body: fd})
+        .then(function(r) {
+            if (!r.ok) return r.json().then(function(d) { showToast(d.detail || 'Error'); });
+            if (tipo === 'FICHA_TECNICA') {
+                abrirModalSAP();
+            } else {
+                location.reload();
+            }
+        });
+}
+
+async function abrirModalSAP() {
+    const r = await fetch('/of/api/' + OF_ID + '/piezas');
+    if (!r.ok) { location.reload(); return; }
+    const piezas = await r.json();
+    var html = '<table style="width:100%;border-collapse:collapse;">';
+    html += '<thead><tr><th style="text-align:left;padding:6px 8px;font-size:11px;color:#666;border-bottom:1px solid #2a2a2a;">Pieza</th>';
+    html += '<th style="text-align:left;padding:6px 8px;font-size:11px;color:#666;border-bottom:1px solid #2a2a2a;">Código SAP</th></tr></thead><tbody>';
+    piezas.forEach(function(p) {
+        html += '<tr>';
+        html += '<td style="padding:6px 8px;font-size:13px;color:#ccc;">' + p.nombre + '</td>';
+        html += '<td style="padding:4px 8px;">';
+        html += '<input type="text" data-id="' + p.id + '"';
+        html += ' value="' + (p.codigo_sap||'') + '"';
+        html += ' placeholder="Ej: 1000123"';
+        html += ' style="background:#111;border:1px solid #333;border-radius:5px;padding:6px 10px;color:#e0e0e0;font-size:12px;width:100%;outline:none;"';
+        html += ' onfocus="this.style.borderColor=\'#1a6fbe\'"';
+        html += ' onblur="this.style.borderColor=\'#333\'">';
+        html += '</td></tr>';
+    });;
+    html += '</tbody></table>';
+    document.getElementById('sap-piezas-list').innerHTML = html;
+    document.getElementById('modal-sap').style.display = 'flex';
+}
+
+function cerrarModalSAP() {
+    document.getElementById('modal-sap').style.display = 'none';
+    location.reload();
+}
+
+async function guardarSAP() {
+    var inputs = document.querySelectorAll('#sap-piezas-list input[data-id]');
+    var piezas = [];
+    inputs.forEach(function(inp) {
+        piezas.push({id: parseInt(inp.dataset.id), codigo_sap: inp.value.trim()});
+    });
+    const r = await fetch('/of/api/' + OF_ID + '/piezas-sap', {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({piezas: piezas}),
+    });
+    if (r.ok) {
+        showToast('Códigos SAP guardados', 'success');
+        cerrarModalSAP();
+    } else {
+        const d = await r.json();
+        showToast(d.detail || 'Error al guardar', 'error');
+    }
+}
+
+</script>
+
+<!-- Modal SAP tras subir Ficha Técnica -->
+<div id="modal-sap" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:3000;align-items:center;justify-content:center;">
+    <div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:28px 32px;width:560px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div>
+                <div style="font-size:15px;font-weight:700;color:#fff;">Códigos SAP de Piezas</div>
+                <div style="font-size:12px;color:#666;margin-top:2px;">Asigna el código SAP a cada pieza creada</div>
+            </div>
+            <button onclick="cerrarModalSAP()" style="background:none;border:none;color:#555;font-size:20px;cursor:pointer;">✕</button>
+        </div>
+        <div id="sap-piezas-list"></div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+            <button onclick="cerrarModalSAP()" style="background:#2a2a2a;border:1px solid #444;color:#ccc;padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer;">Omitir</button>
+            <button onclick="guardarSAP()" style="background:#1a6fbe;border:none;color:#fff;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Guardar códigos</button>
+        </div>
+    </div>
+</div>
+
+<script>
+async function abrirModalTercerizar() {
+    const hoy = new Date().toISOString().split('T')[0];
+    const inpEnvio = document.getElementById('terc-fecha-envio');
+    inpEnvio.value = hoy;
+    inpEnvio.min = hoy;
+    const inpRecep = document.getElementById('terc-fecha-recep');
+    inpRecep.value = '';
+    inpRecep.min = hoy;
+    const sel = document.getElementById('terc-planta-id');
+    sel.innerHTML = '<option value="">Cargando...</option>';
+    const r = await fetch('/plantas/api/');
+    if (r.ok) {
+        const plantas = await r.json();
+        sel.innerHTML = '<option value="">— Selecciona planta —</option>';
+        plantas.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `${p.nombre} (${p.ruc})`;
+            sel.appendChild(opt);
+        });
+    } else {
+        sel.innerHTML = '<option value="">Error cargando plantas</option>';
+    }
+    document.getElementById('modal-terc').style.display = 'flex';
+}
+
+function cerrarModalTercerizar() {
+    document.getElementById('modal-terc').style.display = 'none';
+}
+
+async function tercerizar() {
+    const planta_id = parseInt(document.getElementById('terc-planta-id').value);
+    if (!planta_id) return showToast('Selecciona una planta externa', 'warning');
+    const fecha_envio = document.getElementById('terc-fecha-envio').value || null;
+    const fecha_recepcion_est = document.getElementById('terc-fecha-recep').value || null;
+    const r = await fetch(`/of/api/${OF_ID}/tercerizar`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({planta_id, fecha_envio, fecha_recepcion_est}),
+    });
+    const d = await r.json();
+    if (r.ok) location.reload();
+    else { cerrarModalTercerizar(); showToast(d.detail || 'Error al tercerizar'); }
+}
+
+async function marcarEnviada() {
+    showConfirm('¿Confirmar envío a planta externa?', async () => {
+        const r = await fetch(`/of/api/${OF_ID}/tercerizar/enviar`, {method:'POST'});
+        const d = await r.json();
+        if (r.ok) location.reload();
+        else showToast(d.detail || 'Error');
+    });
+}
+
+function abrirModalRecepcion() {
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('inp-fecha-recepcion').value = hoy;
+    document.getElementById('inp-juegos-recibidos').value = '';
+    document.getElementById('inp-obs-recepcion').value = '';
+    document.getElementById('modal-recepcion').style.display = 'flex';
+}
+
+async function registrarRecepcion() {
+    const juegos = parseInt(document.getElementById('inp-juegos-recibidos').value);
+    const fecha = document.getElementById('inp-fecha-recepcion').value;
+    const obs = document.getElementById('inp-obs-recepcion').value || null;
+    if (!juegos || juegos < 1) return showToast('Ingresa la cantidad de juegos recibidos', 'warning');
+    if (!fecha) return showToast('Ingresa la fecha de recepción', 'warning');
+    const r = await fetch(`/of/api/${OF_ID}/tercerizar/recepcion`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({juegos_recibidos: juegos, fecha_recepcion: fecha, observacion: obs}),
+    });
+    const d = await r.json();
+    if (r.ok) location.reload();
+    else { document.getElementById('modal-recepcion').style.display='none'; showToast(d.detail || 'Error'); }
+}
+
+function abrirModalFechaTerc() {
+    document.getElementById('modal-fecha-terc').style.display = 'flex';
+    document.getElementById('motivo-fecha').value = '';
+}
+
+async function actualizarFechaTerc() {
+    const fecha = document.getElementById('nueva-fecha-recep').value;
+    const motivo = document.getElementById('motivo-fecha').value || null;
+    if (!fecha) return showToast('Selecciona la nueva fecha', 'warning');
+    const r = await fetch(`/of/api/${OF_ID}/tercerizar/fecha`, {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({fecha_recepcion_est: fecha, motivo}),
+    });
+    if (r.ok) location.reload();
+    else {
+        document.getElementById('modal-fecha-terc').style.display = 'none';
+        const d = await r.json();
+        showToast(d.detail || 'Error');
+    }
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.getElementById('modal-terc').style.display = 'none';
+        document.getElementById('modal-fecha-terc').style.display = 'none';
+        document.getElementById('modal-recepcion').style.display = 'none';
+    }
+});
+</script>
+
+{% endblock %}
