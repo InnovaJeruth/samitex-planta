@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-
 from app.models.usuario import Usuario
 from app.core.auth import get_current_user
+from app.core.templates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 ROLES_COMERCIAL = {"ADMIN", "PLANEADOR", "COMERCIAL", "COMERCIAL_MARCA",
                    "PLANEAMIENTO_MARCA", "GERENTE_PLANTA", "GERENCIA"}

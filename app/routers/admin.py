@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from pydantic import BaseModel as PydanticBase
 from typing import Optional
@@ -8,9 +7,9 @@ from typing import Optional
 from app.database.connection import get_db
 from app.models.usuario import Usuario, RolEnum
 from app.core.auth import get_current_user, hash_password
+from app.core.templates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 
 def _solo_admin(user: Usuario):

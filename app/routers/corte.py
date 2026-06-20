@@ -1,7 +1,6 @@
 from pydantic import BaseModel as PydanticBase
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
@@ -13,9 +12,9 @@ from app.schemas.fase import AvanceCreate, CompletarRequest
 from app.services.corte_service import registrar_avance, completar_fase, iniciar_fase, get_fases_strip, registrar_avance_bulk, completar_fase_bulk, ORDEN_FASES
 from app.services.semaforo_service import calcular_semaforo
 from app.core.auth import get_current_user, get_rol
+from app.core.templates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 ROLES_CORTE = {"ADMIN", "PLANEADOR", "SUPERVISOR_CORTE"}
 ROLES_DOCS = {
@@ -176,134 +175,4 @@ def completar_bulk(of_id: int, body: CompletarBulkRequest, db: Session = Depends
     of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
-    estados = completar_fase_bulk(of, body.fase_id, body.pieza_ids, current_user.id, db)
-    return {"completadas": len(estados), "fase_id": body.fase_id, "of_estado": of.estado}
-
-
-# ── Paradas de fase ───────────────────────────────────────────
-
-MOTIVOS_VALIDOS = {"EMERGENCIA_OF", "MATERIAL", "MAQUINA", "ADMIN", "OTRO"}
-
-
-class PausarRequest(PydanticBase):
-    fase_id:          str
-    motivo:           str             # EMERGENCIA_OF | MATERIAL | MAQUINA | ADMIN | OTRO
-    of_emergencia_id: int | None = None
-    observacion:      str | None = None
-
-
-class ReanudarRequest(PydanticBase):
-    parada_id: int
-
-
-@router.post("/api/{of_id}/pausar")
-def pausar_of(
-    of_id: int,
-    body: PausarRequest,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
-):
-    _check_corte(current_user)
-
-    if body.motivo not in MOTIVOS_VALIDOS:
-        raise HTTPException(400, f"Motivo inválido. Opciones: {', '.join(MOTIVOS_VALIDOS)}")
-
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
-
-    # Validar OF de emergencia si se proporcionó
-    if body.of_emergencia_id:
-        of_emerg = db.query(OrdenFabricacion).filter_by(id=body.of_emergencia_id).first()
-        if not of_emerg:
-            raise HTTPException(404, "OF de emergencia no encontrada")
-        if body.of_emergencia_id == of_id:
-            raise HTTPException(400, "La OF de emergencia no puede ser la misma OF")
-
-    # Verificar que no haya ya una parada activa para esta OF+fase
-    parada_activa = db.query(OFFaseParada).filter(
-        OFFaseParada.of_id == of_id,
-        OFFaseParada.fase_id == body.fase_id,
-        OFFaseParada.fin_parada.is_(None),
-    ).first()
-    if parada_activa:
-        raise HTTPException(409, f"Ya existe una parada activa para la fase {body.fase_id} (id={parada_activa.id})")
-
-    from datetime import datetime
-    parada = OFFaseParada(
-        of_id=of_id,
-        fase_id=body.fase_id,
-        inicio_parada=datetime.now(),
-        motivo=body.motivo,
-        of_emergencia_id=body.of_emergencia_id,
-        observacion=body.observacion,
-        usuario_id=current_user.id,
-    )
-    db.add(parada)
-    db.commit()
-    db.refresh(parada)
-
-    return {
-        "parada_id": parada.id,
-        "of_id": of_id,
-        "fase_id": body.fase_id,
-        "motivo": body.motivo,
-        "inicio_parada": parada.inicio_parada.strftime("%d/%m/%Y %H:%M"),
-        "mensaje": "Parada registrada. Presiona Reanudar cuando vuelvas a esta OF.",
-    }
-
-
-@router.post("/api/{of_id}/reanudar")
-def reanudar_of(
-    of_id: int,
-    body: ReanudarRequest,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
-):
-    _check_corte(current_user)
-
-    parada = db.query(OFFaseParada).filter_by(id=body.parada_id, of_id=of_id).first()
-    if not parada:
-        raise HTTPException(404, "Parada no encontrada")
-    if parada.fin_parada is not None:
-        raise HTTPException(409, "Esta parada ya fue cerrada")
-
-    from datetime import datetime
-    parada.fin_parada = datetime.now()
-    db.commit()
-
-    return {
-        "parada_id": parada.id,
-        "duracion_minutos": parada.duracion_minutos,
-        "mensaje": f"Reanudado. Parada de {parada.duracion_minutos} min registrada.",
-    }
-
-
-@router.get("/api/{of_id}/paradas")
-def listar_paradas(
-    of_id: int,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
-):
-    paradas = (
-        db.query(OFFaseParada)
-        .filter_by(of_id=of_id)
-        .order_by(OFFaseParada.inicio_parada.desc())
-        .all()
-    )
-    return [
-        {
-            "id": p.id,
-            "fase_id": p.fase_id,
-            "motivo": p.motivo,
-            "inicio_parada": p.inicio_parada.strftime("%d/%m/%Y %H:%M") if p.inicio_parada else None,
-            "fin_parada":    p.fin_parada.strftime("%d/%m/%Y %H:%M")    if p.fin_parada    else None,
-            "duracion_minutos": p.duracion_minutos,
-            "activa": p.fin_parada is None,
-            "of_emergencia_id": p.of_emergencia_id,
-            "of_emergencia_numero": p.of_emergencia.numero_of if p.of_emergencia else None,
-            "observacion": p.observacion,
-            "usuario": p.usuario.nombre if p.usuario else None,
-        }
-        for p in paradas
-    ]
+    estados = completar_fase_bulk

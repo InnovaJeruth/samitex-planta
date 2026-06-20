@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from pydantic import BaseModel as PydanticBase
 from typing import Optional
@@ -11,9 +10,9 @@ from app.models.planta import PlantaExterna, TercRecepcion, TercHistorialFecha
 from app.models.of import OrdenFabricacion, EstadoOF
 from app.models.usuario import Usuario
 from app.core.auth import get_current_user, get_rol
+from app.core.templates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 ROLES_PLANTAS = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "GERENCIA"}
 
@@ -131,60 +130,4 @@ def api_plantas(
     return [{"id": p.id, "nombre": p.nombre, "ruc": p.ruc, "encargado": p.encargado} for p in plantas]
 
 
-# ── API: crear planta ──────────────────────────────────────────
-class PlantaBody(PydanticBase):
-    nombre:    str
-    ruc:       str
-    encargado: str
-    direccion: str
-
-
-@router.post("/api/crear")
-def crear_planta(
-    body: PlantaBody,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
-):
-    _check_rol(current_user)
-    existe = db.query(PlantaExterna).filter_by(ruc=body.ruc.strip()).first()
-    if existe:
-        raise HTTPException(400, f"Ya existe una planta con RUC {body.ruc}")
-    planta = PlantaExterna(
-        nombre=body.nombre.strip(),
-        ruc=body.ruc.strip(),
-        encargado=body.encargado.strip(),
-        direccion=body.direccion.strip(),
-    )
-    db.add(planta)
-    db.commit()
-    db.refresh(planta)
-    return {"id": planta.id, "nombre": planta.nombre}
-
-
-# ── API: editar planta ─────────────────────────────────────────
-class PlantaEditBody(PydanticBase):
-    nombre:    Optional[str] = None
-    ruc:       Optional[str] = None
-    encargado: Optional[str] = None
-    direccion: Optional[str] = None
-    activo:    Optional[bool] = None
-
-
-@router.patch("/api/{planta_id}")
-def editar_planta(
-    planta_id: int,
-    body: PlantaEditBody,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
-):
-    _check_rol(current_user)
-    planta = db.query(PlantaExterna).filter_by(id=planta_id).first()
-    if not planta:
-        raise HTTPException(404, "Planta no encontrada")
-    if body.nombre    is not None: planta.nombre    = body.nombre.strip()
-    if body.ruc       is not None: planta.ruc        = body.ruc.strip()
-    if body.encargado is not None: planta.encargado  = body.encargado.strip()
-    if body.direccion is not None: planta.direccion  = body.direccion.strip()
-    if body.activo    is not None: planta.activo     = body.activo
-    db.commit()
-    return {"ok": True}
+# ── API: crea

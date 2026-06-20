@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, selectinload
 from collections import defaultdict
 import json
@@ -11,9 +10,9 @@ from app.models.pieza import OFPieza
 from app.models.usuario import Usuario
 from app.services.semaforo_service import calcular_semaforo
 from app.core.auth import get_current_user
+from app.core.templates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 FASES_DASH = ["F1", "F2", "F3", "F4", "F5", "F6", "F7"]
 FASES_DASH_LBL = {
@@ -263,8 +262,4 @@ def ofs_resumen(
             "tipo_prenda": of.tipo_prenda,
             "total_juegos": of.total_juegos,
             "estado": of.estado,
-            "fecha_apt": str(of.fecha_apt) if of.fecha_apt else None,
-            "semaforo": calcular_semaforo(of.fecha_apt, of.estado == EstadoOF.COMPLETADA),
-        }
-        for of in ofs
-    ]
+      

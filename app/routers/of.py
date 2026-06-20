@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, selectinload
 from datetime import date, timedelta
 
@@ -21,15 +20,16 @@ from app.models.of import OrdenFabricacion, EstadoOF, TipoPrendaEnum, TipoDocume
 from app.models.pieza import OFPieza, PlantillaPieza
 from app.models.fase import OFFaseEstado, FaseCatalogo
 from app.core.auth import get_current_user
+from app.core.templates import templates
 from app.models.usuario import Usuario
 from app.config import settings
 from app.services.gate_service import calcular_gates, puede_activar, gates_to_dict, puede_subir_gate, GATES, GATES_REQUERIDOS
+from app.services.of_service import actualizar_estado_docs
 from app.services.semaforo_service import calcular_semaforo
 from app.models.fase import AvanceRegistro
 from app.constants import ORDEN_FASES, NOMBRES_FASE, FASES_GANTT, FASES_GANTT_LBL
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 
 # ── Listar OFs ────────────────────────────────────────────────
@@ -553,20 +553,8 @@ def actualizar_codigos(
 
 # ── Helper: auto-transición estado_docs y OF ──────────────────
 def _actualizar_estado_docs(of: OrdenFabricacion, db: Session):
-    """Recalcula estado_docs y activa la OF automáticamente si está completa."""
-    ok, faltantes = puede_activar(of, db)
-
-    if of.documentos:
-        if of.estado_docs == EstadoDocsEnum.PENDIENTE:
-            of.estado_docs = EstadoDocsEnum.EN_DOCUMENTACION
-
-    if ok and of.estado == EstadoOF.BORRADOR:
-        of.estado_docs = EstadoDocsEnum.COMPLETA
-        piezas_sin_sap = [p for p in of.piezas if not p.codigo_sap]
-        if not piezas_sin_sap:
-            of.estado = EstadoOF.ACTIVA
-
-    db.commit()
+    """Delegado a of_service.actualizar_estado_docs (compatibilidad interna)."""
+    actualizar_estado_docs(of, db)
 
 
 # ── API: estado de gates de la OF ────────────────────────────
@@ -853,83 +841,4 @@ def actualizar_fecha_recepcion(
     if rol not in ("ADMIN", "PLANEADOR"):
         raise HTTPException(403, "Sin permiso")
 
-    nueva_fecha = _safe_date(body.fecha_recepcion_est)
-    if of.fecha_apt and nueva_fecha > of.fecha_apt:
-        raise HTTPException(400, f"La fecha de recepción estimada ({nueva_fecha}) no puede superar el APT de la OF ({of.fecha_apt})")
-    historial = TercHistorialFecha(
-        of_id=of_id,
-        planta_id=of.planta_id,
-        fecha_anterior=of.fecha_recepcion_est,
-        fecha_nueva=nueva_fecha,
-        motivo=body.motivo,
-        usuario_id=current_user.id,
-    )
-    db.add(historial)
-    of.fecha_recepcion_est = nueva_fecha
-    db.commit()
-    return {"ok": True, "fecha_nueva": str(nueva_fecha)}
-
-
-@router.post("/api/{of_id}/tercerizar/recepcion")
-def registrar_recepcion_parcial(
-    of_id: int,
-    body: RecepcionParcialBody,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
-):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of or not of.tercerizado:
-        raise HTTPException(404, "OF no encontrada o no esta tercerizada")
-    rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
-    if rol not in ("ADMIN", "PLANEADOR"):
-        raise HTTPException(403, "Sin permiso")
-    if body.juegos_recibidos <= 0:
-        raise HTTPException(400, "La cantidad de juegos debe ser mayor a 0")
-
-    acumulado = (of.juegos_recibidos or 0) + body.juegos_recibidos
-    if acumulado > of.total_juegos:
-        raise HTTPException(400, f"No puedes registrar {body.juegos_recibidos} juegos — excede el total ({of.total_juegos})")
-
-    recepcion = TercRecepcion(
-        of_id=of_id,
-        planta_id=of.planta_id,
-        juegos_recibidos=body.juegos_recibidos,
-        fecha_recepcion=_safe_date(body.fecha_recepcion),
-        observacion=body.observacion,
-        usuario_id=current_user.id,
-    )
-    db.add(recepcion)
-    of.juegos_recibidos = acumulado
-    of.estado_tercerizado = "ENVIADA" if of.estado_tercerizado == "PENDIENTE_ENVIO" else of.estado_tercerizado
-
-    if acumulado >= of.total_juegos:
-        from datetime import datetime
-        of.estado_tercerizado = "RECIBIDA"
-        of.fecha_recepcion_real = _safe_date(body.fecha_recepcion)
-        of.estado = EstadoOF.COMPLETADA
-
-    db.commit()
-    return {
-        "ok": True,
-        "juegos_recibidos": acumulado,
-        "total_juegos": of.total_juegos,
-        "completada": acumulado >= of.total_juegos,
-    }
-
-# ── Helpers ───────────────────────────────────────────────────
-def _crear_fases_pieza(pieza: OFPieza, of: OrdenFabricacion, db: Session):
-    """Crea los registros OFFaseEstado para cada fase aplicable a esta pieza."""
-    for fid in ORDEN_FASES:
-        if fid in ("F8", "F9") and not of.estampado_activo:
-            continue
-        if fid == "F5" and not pieza.fusionado:
-            continue
-        max_cant = pieza.cantidad_x_prenda * of.total_juegos
-        estado = OFFaseEstado(
-            of_id=of.id,
-            pieza_id=pieza.id,
-            fase_id=fid,
-            cantidad_actual=0,
-            max_cantidad=max_cant,
-        )
-        db.add(estado)
+    nueva_fecha = _safe_date(body.fec
