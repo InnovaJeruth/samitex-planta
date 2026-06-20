@@ -135,6 +135,22 @@
 .toast.show { opacity:1; transform:translateY(0); }
 .toast-success { background:#0d3320; border:1px solid #1d5f40; color:#4caf7d; }
 .toast-error   { background:#3a0a0a; border:1px solid #6a1a1a; color:#f88; }
+
+/* Paradas */
+.btn-pausar    { padding:3px 10px; font-size:11px; background:#2a1000; color:#e6a817;
+                 border:1px solid #6a3000; border-radius:4px; cursor:pointer; }
+.btn-pausar:hover { background:#3a1800; }
+.btn-reanudar  { padding:3px 10px; font-size:11px; background:#0d3320; color:#4caf7d;
+                 border:1px solid #1d5f40; border-radius:4px; cursor:pointer; }
+.btn-reanudar:hover { background:#0f4a2a; }
+.paradas-panel { background:#1a0e00; border:1px solid #6a3000; border-radius:8px;
+                 padding:12px 16px; margin-bottom:16px; }
+.parada-row    { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+                 padding:6px 0; border-bottom:1px solid #2a1800; font-size:12px; }
+.parada-row:last-child { border-bottom:none; }
+.parada-badge  { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700;
+                 background:#3a1800; color:#e6a817; border:1px solid #6a3000; }
+.parada-activa { background:#e6a817; color:#1a0e00; }
 </style>
 {% endblock %}
 
@@ -151,7 +167,19 @@
     <span style="font-size:12px;color:#888">{{ semaforo.dias_restantes }} días restantes</span>
     {% endif %}
     <div style="flex:1"></div>
+    {% if puede_registrar and not tercerizado %}
+    <button class="btn-pausar" onclick="abrirModalPausar()" id="btn-pausar-global">⏸ Pausar OF</button>
+    {% endif %}
     <a href="/" class="btn btn-secondary btn-sm">← Dashboard</a>
+</div>
+
+<!-- Panel paradas activas -->
+<div id="paradas-panel" style="display:none" class="paradas-panel">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:700;color:#e6a817">⏸ Paradas activas</span>
+        <span id="paradas-count" style="font-size:11px;color:#888"></span>
+    </div>
+    <div id="paradas-lista"></div>
 </div>
 
 {% if tercerizado %}
@@ -249,6 +277,59 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Modal: registrar parada -->
+<div class="modal-overlay" id="modal-pausar">
+    <div class="modal-box" style="width:440px">
+        <div class="modal-titulo">⏸ Registrar Parada</div>
+        <div class="modal-sub">Indica el motivo por el que se detiene esta OF</div>
+
+        <div class="modal-field">
+            <label>Fase activa *</label>
+            <select id="pausar-fase" style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;outline:none">
+                <option value="">— Seleccionar fase —</option>
+                <option value="F1">F1 Tizado</option>
+                <option value="F2">F2 Tendido</option>
+                <option value="F3">F3 Corte</option>
+                <option value="F4">F4 Numerado</option>
+                <option value="F5">F5 Fusionado</option>
+                <option value="F6">F6 Calidad</option>
+                <option value="F7">F7 Habilitado</option>
+                <option value="F8">F8 Estampado</option>
+                <option value="F9">F9 Auditoría</option>
+            </select>
+        </div>
+
+        <div class="modal-field">
+            <label>Motivo *</label>
+            <select id="pausar-motivo" onchange="toggleCampoEmergencia()" style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;outline:none">
+                <option value="">— Seleccionar motivo —</option>
+                <option value="EMERGENCIA_OF">🚨 OF de emergencia</option>
+                <option value="MATERIAL">📦 Falta de material</option>
+                <option value="MAQUINA">🔧 Mantenimiento de máquina</option>
+                <option value="ADMIN">📋 Parada administrativa</option>
+                <option value="OTRO">Otro</option>
+            </select>
+        </div>
+
+        <div class="modal-field" id="campo-emergencia" style="display:none">
+            <label>N° OF de emergencia (opcional)</label>
+            <input type="text" id="pausar-of-emergencia" placeholder="Ej: OF-2024-089" list="of-sugerencias">
+            <datalist id="of-sugerencias"></datalist>
+            <div style="font-size:11px;color:#666;margin-top:4px">Escribe el número de OF que entró como emergencia</div>
+        </div>
+
+        <div class="modal-field">
+            <label>Observación (opcional)</label>
+            <textarea id="pausar-obs" rows="2" placeholder="Detalles adicionales..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="cerrarModalPausar()">Cancelar</button>
+            <button class="btn-pausar" style="padding:6px 16px;font-size:12px" onclick="confirmarPausa()">⏸ Registrar parada</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -749,8 +830,140 @@ async function iniciarFase(faseId) {
     }
 }
 
+// ── Paradas ───────────────────────────────────────────────────
+const MOTIVOS_LABELS = {
+    EMERGENCIA_OF: '🚨 OF Emergencia',
+    MATERIAL:      '📦 Falta material',
+    MAQUINA:       '🔧 Mantenimiento',
+    ADMIN:         '📋 Administrativo',
+    OTRO:          'Otro',
+};
+
+async function cargarParadas() {
+    try {
+        const res = await fetch(`/corte/api/${OF_ID}/paradas`);
+        if (!res.ok) return;
+        const paradas = await res.json();
+        renderParadas(paradas);
+    } catch(e) { console.warn('paradas error', e); }
+}
+
+function renderParadas(paradas) {
+    const activas = paradas.filter(p => p.activa);
+    const panel   = document.getElementById('paradas-panel');
+    const lista   = document.getElementById('paradas-lista');
+    const count   = document.getElementById('paradas-count');
+
+    if (!activas.length) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    panel.style.display = 'block';
+    count.textContent = `${activas.length} parada${activas.length > 1 ? 's' : ''} activa${activas.length > 1 ? 's' : ''}`;
+
+    lista.innerHTML = activas.map(p => `
+        <div class="parada-row">
+            <span class="parada-badge parada-activa">PARADA</span>
+            <span style="color:#e0e0e0;font-weight:600">${FASES_NOMBRES[p.fase_id]||p.fase_id}</span>
+            <span style="color:#888">${MOTIVOS_LABELS[p.motivo]||p.motivo}</span>
+            ${p.of_emergencia_numero ? `<span style="color:#c084fc">→ OF ${p.of_emergencia_numero}</span>` : ''}
+            <span style="color:#555;font-size:11px">desde ${p.inicio_parada}</span>
+            ${p.observacion ? `<span style="color:#666;font-size:11px">${p.observacion}</span>` : ''}
+            <button class="btn-reanudar" onclick="reanudarParada(${p.id})">▶ Reanudar</button>
+        </div>
+    `).join('');
+}
+
+function abrirModalPausar() {
+    // Pre-seleccionar la fase que más piezas tienen activas
+    if (estadoActual && estadoActual.piezas) {
+        const conteo = {};
+        estadoActual.piezas.forEach(p => {
+            const fa = getFaseActual(p);
+            if (fa) conteo[fa] = (conteo[fa]||0) + 1;
+        });
+        const mayorFase = Object.entries(conteo).sort((a,b) => b[1]-a[1])[0];
+        if (mayorFase) document.getElementById('pausar-fase').value = mayorFase[0];
+    }
+    document.getElementById('pausar-motivo').value = '';
+    document.getElementById('pausar-of-emergencia').value = '';
+    document.getElementById('pausar-obs').value = '';
+    document.getElementById('campo-emergencia').style.display = 'none';
+    document.getElementById('modal-pausar').classList.add('show');
+}
+
+function cerrarModalPausar() {
+    document.getElementById('modal-pausar').classList.remove('show');
+}
+
+function toggleCampoEmergencia() {
+    const motivo = document.getElementById('pausar-motivo').value;
+    document.getElementById('campo-emergencia').style.display =
+        motivo === 'EMERGENCIA_OF' ? 'block' : 'none';
+}
+
+async function confirmarPausa() {
+    const faseId = document.getElementById('pausar-fase').value;
+    const motivo = document.getElementById('pausar-motivo').value;
+    if (!faseId) { mostrarToast('Selecciona la fase', 'error'); return; }
+    if (!motivo) { mostrarToast('Selecciona un motivo', 'error'); return; }
+
+    // Buscar ID de OF emergencia si ingresaron número
+    let ofEmergenciaId = null;
+    const ofEmergenciaNum = document.getElementById('pausar-of-emergencia').value.trim();
+    if (ofEmergenciaNum && motivo === 'EMERGENCIA_OF' && estadoActual) {
+        // Intentar resolver vía API
+        const resOfs = await fetch('/of/api/buscar?q=' + encodeURIComponent(ofEmergenciaNum));
+        if (resOfs.ok) {
+            const ofs = await resOfs.json();
+            const match = ofs.find(o => o.numero_of === ofEmergenciaNum);
+            if (match) ofEmergenciaId = match.id;
+        }
+    }
+
+    const body = {
+        fase_id: faseId,
+        motivo,
+        of_emergencia_id: ofEmergenciaId,
+        observacion: document.getElementById('pausar-obs').value.trim() || null,
+    };
+
+    const res = await fetch(`/corte/api/${OF_ID}/pausar`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+        cerrarModalPausar();
+        mostrarToast(`Parada registrada en ${FASES_NOMBRES[faseId]||faseId}`, 'success');
+        await cargarParadas();
+    } else {
+        const d = await res.json();
+        mostrarToast(d.detail || 'Error al registrar parada', 'error');
+    }
+}
+
+async function reanudarParada(paradaId) {
+    const res = await fetch(`/corte/api/${OF_ID}/reanudar`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ parada_id: paradaId }),
+    });
+    if (res.ok) {
+        const d = await res.json();
+        mostrarToast(d.mensaje || 'Reanudado', 'success');
+        await cargarParadas();
+    } else {
+        const d = await res.json();
+        mostrarToast(d.detail || 'Error al reanudar', 'error');
+    }
+}
+
 // ── Init ──────────────────────────────────────────────────────
 cargarEstado();
 cargarStrip();
+cargarParadas();
 </script>
 {% endblock %}

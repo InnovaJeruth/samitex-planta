@@ -58,6 +58,42 @@ class OFFaseTiempos(Base):
     of = relationship("OrdenFabricacion", back_populates="fase_tiempos")
 
 
+class OFFaseParada(Base):
+    """Registra interrupciones/paradas durante una fase activa de una OF.
+
+    Ciclo de vida:
+      - Se crea con fin_parada=NULL (parada activa).
+      - Se cierra con fin_parada=ahora al reanudar.
+    """
+    __tablename__ = "of_fase_paradas"
+
+    id                = Column(Integer,   primary_key=True, index=True)
+    of_id             = Column(Integer,   ForeignKey("ordenes_fabricacion.id"), nullable=False)
+    fase_id           = Column(String(5), nullable=False)          # F1..F9
+    inicio_parada     = Column(DateTime,  nullable=False, server_default=func.now())
+    fin_parada        = Column(DateTime,  nullable=True)           # NULL = parada activa
+    # EMERGENCIA_OF | MATERIAL | MAQUINA | ADMIN | OTRO
+    motivo            = Column(String(30), nullable=False)
+    of_emergencia_id  = Column(Integer,   ForeignKey("ordenes_fabricacion.id"), nullable=True)
+    observacion       = Column(Text,      nullable=True)
+    usuario_id        = Column(Integer,   ForeignKey("usuarios.id"), nullable=True)
+    created_at        = Column(DateTime,  server_default=func.now())
+
+    # Relaciones
+    of            = relationship("OrdenFabricacion", back_populates="fase_paradas",
+                                 foreign_keys=[of_id])
+    of_emergencia = relationship("OrdenFabricacion",
+                                 foreign_keys=[of_emergencia_id])
+    usuario       = relationship("Usuario")
+
+    @property
+    def duracion_minutos(self) -> int | None:
+        """Minutos de parada. None si aún está activa."""
+        if self.fin_parada and self.inicio_parada:
+            return int((self.fin_parada - self.inicio_parada).total_seconds() // 60)
+        return None
+
+
 class AvanceRegistro(Base):
     """Log inmutable de cada registro de avance (trazabilidad completa)."""
     __tablename__ = "avance_registros"

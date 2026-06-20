@@ -84,6 +84,8 @@ class OrdenFabricacion(Base):
     fases_estado          = relationship("OFFaseEstado",        back_populates="of", cascade="all, delete-orphan")
     fase_tiempos          = relationship("OFFaseTiempos",       back_populates="of", cascade="all, delete-orphan")
     avance_registros      = relationship("AvanceRegistro",      back_populates="of", cascade="all, delete-orphan")
+    fase_paradas          = relationship("OFFaseParada",        back_populates="of", cascade="all, delete-orphan",
+                                         foreign_keys="OFFaseParada.of_id")
     historial_fechas_terc = relationship("TercHistorialFecha",  back_populates="of", cascade="all, delete-orphan")
     recepciones_terc      = relationship("TercRecepcion",       back_populates="of", cascade="all, delete-orphan")
 
