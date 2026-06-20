@@ -38,5 +38,6 @@ class Usuario(Base):
     updated_at    = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relaciones
-    of_creadas        = relationship("OrdenFabricacion", back_populates="responsable")
-    registros_avance  = relationship("AvanceRegistro",   back_populates="usuario")
+    of_creadas         = relationship("OrdenFabricacion", back_populates="responsable")
+    registros_avance   = relationship("AvanceRegistro",   back_populates="usuario")
+    documentos_subidos = relationship("DocumentoOF",      back_populates="usuario")

@@ -108,9 +108,12 @@ def get_rol(user: Usuario) -> str:
 
 
 def require_roles(*roles: RolEnum):
-    """Dependency factory para restringir endpoints por rol."""
-    def checker(current_user: Usuario = Depends(get_current_user)):
+    """Dependendencia FastAPI que lanza 403 si el usuario no tiene alguno de los roles."""
+    def _check(current_user: Usuario = Depends(get_current_user)):
         if current_user.rol not in roles:
-            raise HTTPException(status_code=403, detail="Sin permisos para esta acción")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Rol '{current_user.rol}' no tiene acceso a este recurso.",
+            )
         return current_user
-    return checker
+    return _check

@@ -18,20 +18,16 @@ from app.core.templates import templates
 
 router = APIRouter()
 
-COOKIE_MAX_AGE = settings.JWT_EXPIRE_MINUTES * 60  # segundos
+COOKIE_MAX_AGE = settings.JWT_EXPIRE_MINUTES * 60
 
-# ── Rate limiting para login ───────────────────────────────────
-# Máx. 5 intentos fallidos por IP en ventana de 5 minutos
 _LOGIN_MAX_INTENTOS = 5
-_LOGIN_VENTANA_SEG  = 300   # 5 min
+_LOGIN_VENTANA_SEG  = 300
 
 _login_lock = threading.Lock()
-# {ip: [timestamp, ...]}  — solo timestamps de intentos FALLIDOS
 _login_intentos: dict[str, list[float]] = defaultdict(list)
 
 
 def _get_ip(request: Request) -> str:
-    """Extrae IP real respetando X-Forwarded-For (proxy/ngrok)."""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -41,7 +37,6 @@ def _get_ip(request: Request) -> str:
 def _check_rate_limit(ip: str) -> None:
     now = time.time()
     with _login_lock:
-        # Limpiar intentos fuera de la ventana
         _login_intentos[ip] = [t for t in _login_intentos[ip] if now - t < _LOGIN_VENTANA_SEG]
         if len(_login_intentos[ip]) >= _LOGIN_MAX_INTENTOS:
             segundos_restantes = int(_LOGIN_VENTANA_SEG - (now - _login_intentos[ip][0]))
@@ -61,7 +56,6 @@ def _limpiar_intentos(ip: str) -> None:
         _login_intentos.pop(ip, None)
 
 
-# ── Login página ──────────────────────────────────────────────
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, user=Depends(get_current_user_optional)):
     if user:
@@ -69,7 +63,6 @@ def login_page(request: Request, user=Depends(get_current_user_optional)):
     return templates.TemplateResponse("auth/login.html", {"request": request})
 
 
-# ── Login POST (form + JSON) ──────────────────────────────────
 @router.post("/login")
 def login(
     request: Request,
@@ -77,20 +70,20 @@ def login(
     db: Session = Depends(get_db),
 ):
     ip = _get_ip(request)
-    _check_rate_limit(ip)   # bloquea si superó el límite
+    _check_rate_limit(ip)
 
     user = db.query(Usuario).filter(
         Usuario.username == form_data.username,
         Usuario.activo == True,
     ).first()
     if not user or not verify_password(form_data.password, user.password_hash):
-        _registrar_fallo(ip)   # contabilizar intento fallido
+        _registrar_fallo(ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario o contraseña incorrectos",
+            detail="Usuario o contrasena incorrectos",
         )
 
-    _limpiar_intentos(ip)   # login exitoso: resetear contador
+    _limpiar_intentos(ip)
     token = create_access_token({"sub": user.username, "rol": user.rol})
 
     response = JSONResponse(content={
@@ -101,7 +94,6 @@ def login(
         "username": user.username,
     })
 
-    # Setear cookie HttpOnly para el browser
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
@@ -113,16 +105,14 @@ def login(
     return response
 
 
-# ── Usuario actual ────────────────────────────────────────────
 @router.get("/me", response_model=UsuarioResponse)
 def me(current_user: Usuario = Depends(get_current_user)):
     return current_user
 
 
-# ── Logout ────────────────────────────────────────────────────
 @router.post("/logout")
 def logout():
-    response = JSONResponse(content={"mensaje": "Sesión cerrada"})
+    response = JSONResponse(content={"mensaje": "Sesion cerrada"})
     response.delete_cookie(COOKIE_NAME)
     return response
 

@@ -490,29 +490,30 @@ def completar_fase_bulk(
                 ).first()
                 disponible_pieza = est_prev.cantidad_actual if est_prev else 0
                 if estado.cantidad_actual + restante > disponible_pieza:
-                    restante = max(disponible_pieza - estado.cantidad_actual, 0)
-                    if restante <= 0:
-                        continue
+                    restante = max(0, disponible_pieza - estado.cantidad_actual)
+
+            if restante <= 0:
+                continue
+
+            if estado.fecha_inicio is None:
+                estado.fecha_inicio = ahora
+
+            estado.cantidad_actual += restante
+            estado.completada = True
+            estado.fecha_completado = ahora
 
             registro = AvanceRegistro(
                 of_id=of.id, pieza_id=pieza_id, fase_id=fase_id,
-                cantidad=restante, usuario_id=usuario_id, observacion="Completado bulk",
+                cantidad=restante, usuario_id=usuario_id,
+                observacion=f"Completar bulk {len(pieza_ids)} piezas",
             )
             db.add(registro)
-
-        if estado.fecha_inicio is None:
-            estado.fecha_inicio = ahora
-
-        estado.cantidad_actual = estado.max_cantidad
-        estado.completada = True
-        estado.fecha_completado = ahora
-        estados.append(estado)
-
-    if estados:
-        _verificar_fase_completa(of, fase_id, db)
-        _verificar_of_completada(of, db)
+            estados.append(estado)
 
     db.commit()
     for e in estados:
         db.refresh(e)
+
+    _verificar_fase_completa(fase_id, of, db)
+    _verificar_of_completada(of, db)
     return estados

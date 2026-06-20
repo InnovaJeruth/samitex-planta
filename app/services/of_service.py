@@ -1,6 +1,4 @@
-"""
-Servicio de lógica de negocio para Órdenes de Fabricación.
-"""
+# Servicio de logica de negocio para Ordenes de Fabricacion.
 from sqlalchemy.orm import Session
 
 from app.models.of import OrdenFabricacion, EstadoOF, EstadoDocsEnum
@@ -8,12 +6,6 @@ from app.services.gate_service import puede_activar
 
 
 def actualizar_estado_docs(of: OrdenFabricacion, db: Session) -> None:
-    """Recalcula estado_docs y activa la OF automáticamente si está completa.
-
-    Reglas:
-    - Si hay al menos 1 documento → pasa de PENDIENTE a EN_DOCUMENTACION.
-    - Si todos los gates OK y OF en BORRADOR con piezas con codigo_sap → ACTIVA.
-    """
     ok, _ = puede_activar(of, db)
 
     if of.documentos:

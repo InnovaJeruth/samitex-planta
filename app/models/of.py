@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+import datetime as _dt
 import enum
 
 from app.database.connection import Base
@@ -49,34 +50,29 @@ class OrdenFabricacion(Base):
     cliente              = Column(String(200), nullable=False)
     tipo_prenda          = Column(Enum(TipoPrendaEnum), nullable=False)
     total_juegos         = Column(Integer, nullable=False)
-    fecha_creacion       = Column(Date, nullable=False)
+    fecha_creacion       = Column(Date, nullable=False, default=_dt.date.today)
     fecha_apt            = Column(Date, nullable=True)
     estado               = Column(Enum(EstadoOF), default=EstadoOF.BORRADOR)
     tipo_cliente         = Column(Enum(TipoClienteEnum), default=TipoClienteEnum.INSTITUCION, nullable=False)
     estado_docs          = Column(Enum(EstadoDocsEnum), default=EstadoDocsEnum.PENDIENTE, nullable=False)
     estampado_activo     = Column(Boolean, default=False)
-    # Códigos de documentos
     solped_prenda        = Column(String(50), nullable=True)
     orden_compra         = Column(String(50), nullable=True)
     solped_mp            = Column(String(50), nullable=True)
-    # Planificación Gantt
     fecha_inicio_plan    = Column(Date, nullable=True)
     orden_plan           = Column(Integer, nullable=True)
-    # Tercerización
     tercerizado          = Column(Boolean, default=False, nullable=False)
     planta_id            = Column(Integer, ForeignKey("plantas_externas.id"), nullable=True)
-    planta_externa       = Column(String(120), nullable=True)   # texto libre legacy
+    planta_externa       = Column(String(120), nullable=True)
     fecha_envio          = Column(Date, nullable=True)
     fecha_recepcion_est  = Column(Date, nullable=True)
     fecha_recepcion_real = Column(Date, nullable=True)
     estado_tercerizado   = Column(String(20), nullable=True)
     juegos_recibidos     = Column(Integer, default=0, nullable=False)
-    # Metadata
     responsable_id       = Column(Integer, ForeignKey("usuarios.id"))
     created_at           = Column(DateTime, server_default=func.now())
     updated_at           = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    # Relaciones
     responsable           = relationship("Usuario",             back_populates="of_creadas")
     planta                = relationship("PlantaExterna",       back_populates="ofs_tercerizadas", foreign_keys=[planta_id])
     documentos            = relationship("DocumentoOF",         back_populates="of", cascade="all, delete-orphan")
@@ -103,4 +99,4 @@ class DocumentoOF(Base):
     uploaded_at    = Column(DateTime, server_default=func.now())
 
     of      = relationship("OrdenFabricacion", back_populates="documentos")
-    usuario = relationship("Usuario")
+    usuario = relationship("Usuario",          back_populates="documentos_subidos")

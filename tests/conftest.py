@@ -18,6 +18,7 @@ Settings.DATABASE_URL = property(lambda self: "sqlite:///:memory:")
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, configure_mappers
+from sqlalchemy.pool import StaticPool
 from app.database.connection import Base
 
 # Register all models so SQLAlchemy knows all relationships
@@ -31,7 +32,11 @@ import app.models.planta
 # instantiate model objects without triggering mapper init errors
 configure_mappers()
 
-_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+_engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 _SessionLocal = sessionmaker(bind=_engine, autoflush=False)
 
 

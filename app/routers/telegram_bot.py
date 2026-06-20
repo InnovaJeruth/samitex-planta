@@ -5,7 +5,6 @@ Recibe mensajes, consulta la BD via endpoints internos y responde con Gemini.
 import os, json, httpx, logging
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
-from google import genai as genai_sdk
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -135,6 +134,7 @@ PREGUNTA DEL USUARIO:
 
 Responde de forma clara y útil para un gerente o comercial."""
 
+        from google import genai as genai_sdk
         client = genai_sdk.Client(api_key=GEMINI_API_KEY)
         response = client.models.generate_content(
             model="gemini-2.0-flash-lite",
@@ -274,122 +274,19 @@ def bot_of_detalle(numero_of: str, x_bot_key: str = Header(None)):
             {
                 "fase": a.fase_id,
                 "cantidad": a.cantidad,
-                "fecha": _of_to_str(a.created_at),
+                "pieza_id": a.pieza_id,
                 "observacion": a.observacion,
+                "fecha": _of_to_str(a.created_at),
             }
             for a in avances
         ]
 
         return {
-            "of_info": of_info,
+            "of": of_info,
             "documentos": docs_data,
-            "estado": {"piezas": piezas_data},
-            "tiempos_fase": tiempos_data,
-            "ultimos_avances": avances_data,
+            "piezas": piezas_data,
+            "tiempos": tiempos_data,
+            "avances_recientes": avances_data,
         }
     finally:
         db.close()
-
-
-# ── Webhook principal ─────────────────────────────────────────
-@router.post("/telegram/webhook")
-async def telegram_webhook(request: Request):
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"ok": True})
-
-    message = body.get("message", {})
-    if not message:
-        return JSONResponse({"ok": True})
-
-    chat_id  = message.get("chat", {}).get("id")
-    text     = message.get("text", "").strip()
-    username = message.get("from", {}).get("first_name", "Usuario")
-
-    if not chat_id or not text:
-        return JSONResponse({"ok": True})
-
-    # Comando /start — siempre responde y muestra Chat ID
-    if text.startswith("/start"):
-        msg = (
-            f"👋 Hola *{username}*\\! Soy el asistente de *Samitex Planta*.\n\n"
-            f"Tu Chat ID es: `{chat_id}`\n\n"
-            "Puedes preguntarme:\n"
-            "• _¿Cómo va la OF 343?_\n"
-            "• _¿Cuántas OFs están activas?_\n"
-            "• _Estado de la OF 411444_\n"
-        )
-        await send_message(chat_id, msg)
-        return JSONResponse({"ok": True})
-
-    # Verificar autorización
-    if ALLOWED_IDS and chat_id not in ALLOWED_IDS:
-        await send_message(chat_id, f"⛔ No tienes acceso. Tu ID es `{chat_id}`. Contacta al administrador.")
-        return JSONResponse({"ok": True})
-
-    # Procesar pregunta
-    await send_message(chat_id, "⏳ Consultando...")
-
-    text_lower = text.lower()
-    context_data = ""
-    respuesta = ""
-
-    # Detectar si hay número de OF en el mensaje
-    import re
-    match = re.search(r'\b(\d{4,7})\b', text)
-
-    if match:
-        numero_of = match.group(1)
-        data = await buscar_of_por_numero(numero_of)
-        if "error" in data:
-            respuesta = f"❌ No encontré la OF *{numero_of}*. Verifica el número."
-        else:
-            palabras_estado = ["estado", "avance", "progreso", "cómo va", "como va", "fases"]
-            es_pregunta_simple = any(w in text_lower for w in palabras_estado) and len(text.split()) <= 8
-            if es_pregunta_simple:
-                respuesta = formatear_estado_of(numero_of, data)
-            else:
-                context_data = json.dumps(data, ensure_ascii=False, indent=2)
-                respuesta = await get_gemini_response(text, context_data)
-
-    elif any(w in text_lower for w in ["activas", "en proceso", "resumen", "cuántas", "cuantas", "dashboard", "general", "todas", "listado"]):
-        data = await listar_ofs_activas()
-        ofs = data.get("ofs", [])
-        if isinstance(ofs, list):
-            activas = [o for o in ofs if str(o.get("estado","")).upper() in ["ACTIVA","EN_PROCESO"]]
-            context_data = f"OFs registradas ({len(ofs)} total, {len(activas)} activas/en proceso):\n"
-            for o in ofs[:20]:
-                context_data += f"- OF {o.get('numero_of')} | {o.get('cliente')} | {o.get('tipo_prenda')} | {o.get('total_juegos')} juegos | {o.get('estado')} | creada: {o.get('fecha_creacion')} | APT: {o.get('fecha_apt')}\n"
-            respuesta = await get_gemini_response(text, context_data)
-        else:
-            respuesta = "No pude obtener el listado de OFs."
-
-    else:
-        data = await listar_ofs_activas()
-        ofs = data.get("ofs", [])
-        context_data = f"Sistema Samitex Planta — {len(ofs) if isinstance(ofs, list) else 0} OFs registradas.\n"
-        if isinstance(ofs, list):
-            for o in ofs[:15]:
-                context_data += f"- OF {o.get('numero_of')} | {o.get('cliente')} | {o.get('estado')}\n"
-        respuesta = await get_gemini_response(text, context_data)
-
-    await send_message(chat_id, respuesta)
-    return JSONResponse({"ok": True})
-
-
-# ── Endpoint para registrar webhook con Telegram ─────────────
-@router.get("/telegram/setup")
-async def setup_webhook(request: Request):
-    """Llama a este endpoint una vez para registrar el webhook con Telegram."""
-    ngrok_url = settings.NGROK_URL.rstrip("/")
-    if not ngrok_url:
-        return {"error": "Configura NGROK_URL en .env"}
-
-    webhook_url = f"{ngrok_url}/telegram/webhook"
-    async with httpx.AsyncClient() as client:
-        r = await client.post(
-            f"{TELEGRAM_API}/setWebhook",
-            json={"url": webhook_url}
-        )
-    return {"webhook_url": webhook_url, "telegram_response": r.json()}
