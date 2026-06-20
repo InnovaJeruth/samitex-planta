@@ -10,7 +10,7 @@ from app.database.connection import get_db
 from app.models.planta import PlantaExterna, TercRecepcion, TercHistorialFecha
 from app.models.of import OrdenFabricacion, EstadoOF
 from app.models.usuario import Usuario
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_rol
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -18,12 +18,8 @@ templates = Jinja2Templates(directory="app/templates")
 ROLES_PLANTAS = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "GERENCIA"}
 
 
-def _rol(user: Usuario) -> str:
-    return user.rol.value if hasattr(user.rol, "value") else str(user.rol)
-
-
 def _check_rol(user: Usuario):
-    if _rol(user) not in ROLES_PLANTAS:
+    if get_rol(user) not in ROLES_PLANTAS:
         raise HTTPException(403, "Sin permiso para acceder a plantas externas")
 
 

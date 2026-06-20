@@ -16,26 +16,18 @@ from app.database.connection import get_db
 from app.models.of import OrdenFabricacion, EstadoOF
 from app.models.fase import OFFaseTiempos
 from app.models.usuario import Usuario
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_rol
 from app.services.corte_service import _orden_fases_activo
+from app.constants import NOMBRES_FASE
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 ROLES_SUPERVISOR = {"ADMIN", "SUPERVISOR_CORTE", "GERENTE_PLANTA", "PLANEADOR", "GERENCIA"}
-NOMBRES_FASE = {
-    "F1": "Tizado", "F2": "Tendido", "F3": "Corte",
-    "F4": "Numerado", "F5": "Fusionado", "F6": "Calidad",
-    "F7": "Habilitado", "F8": "Estampado", "F9": "Auditoría",
-}
-
-
-def _rol(user: Usuario) -> str:
-    return user.rol.value if hasattr(user.rol, "value") else str(user.rol)
 
 
 def _check_acceso(user: Usuario):
-    if _rol(user) not in ROLES_SUPERVISOR:
+    if get_rol(user) not in ROLES_SUPERVISOR:
         raise HTTPException(403, "Sin permiso para acceder a Programación")
 
 

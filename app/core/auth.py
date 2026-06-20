@@ -102,6 +102,11 @@ def get_current_user_optional(
         return None
 
 
+def get_rol(user: Usuario) -> str:
+    """Retorna el rol del usuario como string (compatible con Enum y str)."""
+    return user.rol.value if hasattr(user.rol, "value") else str(user.rol)
+
+
 def require_roles(*roles: RolEnum):
     """Dependency factory para restringir endpoints por rol."""
     def checker(current_user: Usuario = Depends(get_current_user)):

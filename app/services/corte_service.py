@@ -276,8 +276,13 @@ def get_fases_strip(of: OrdenFabricacion, db: Session) -> list[dict]:
     """
     Retorna datos para la franja de tarjetas de fase en seguimiento.html.
     Incluye tiempos programados, reales, estado y si el botón Iniciar está habilitado.
+
+    Optimización: carga todos los OFFaseEstado y OFFaseTiempos en 2 queries
+    y construye índices en memoria — evita N+1 (antes: hasta 9 queries por fase).
     """
     orden = _orden_fases_activo(of)
+
+    # ── 1 query: todos los tiempos de esta OF ────────────────────
     try:
         tiempos_map = {
             t.fase_id: t
@@ -288,18 +293,28 @@ def get_fases_strip(of: OrdenFabricacion, db: Session) -> list[dict]:
         db.rollback()
         tiempos_map = {}
 
+    # ── 1 query: todos los estados de todas las fases de esta OF ─
+    # Agrupa por fase_id en Python — evita N queries dentro del loop
+    todos_estados = db.query(OFFaseEstado).filter_by(of_id=of.id).all()
+    estados_por_fase: dict[str, list[OFFaseEstado]] = {}
+    for fe in todos_estados:
+        estados_por_fase.setdefault(fe.fase_id, []).append(fe)
+
+    # Precalcular cantidad_actual por fase para el check de cascada (puede_iniciar)
+    cant_actual_por_fase: dict[str, int] = {
+        fid: sum(fe.cantidad_actual for fe in fes)
+        for fid, fes in estados_por_fase.items()
+    }
+
     result = []
     for idx, fid in enumerate(orden):
         t = tiempos_map.get(fid)
+        fases_estado = estados_por_fase.get(fid, [])
 
-        # Estado de la fase
-        fases_estado = db.query(OFFaseEstado).filter_by(
-            of_id=of.id, fase_id=fid
-        ).all()
         total_piezas = len(fases_estado)
-        completadas = sum(1 for fe in fases_estado if fe.completada)
-        cant_actual = sum(fe.cantidad_actual for fe in fases_estado)
-        cant_max = sum(fe.max_cantidad for fe in fases_estado)
+        completadas  = sum(1 for fe in fases_estado if fe.completada)
+        cant_actual  = sum(fe.cantidad_actual for fe in fases_estado)
+        cant_max     = sum(fe.max_cantidad    for fe in fases_estado)
 
         if completadas == total_piezas and total_piezas > 0:
             estado = "completada"
@@ -308,15 +323,16 @@ def get_fases_strip(of: OrdenFabricacion, db: Session) -> list[dict]:
         else:
             estado = "pendiente"
 
-        # Botón Iniciar habilitado si:
-        # - No tiene inicio_real aún
-        # - Es la primera fase O la anterior tiene avance/inicio_real
+        # Botón Iniciar: habilitado si no tiene inicio_real
+        # y la fase anterior tiene avance o inicio_real
         puede_iniciar = (t is None or t.inicio_real is None)
         if puede_iniciar and idx > 0:
             fase_prev = orden[idx - 1]
-            total_prev = _total_cantidad_fase(of.id, fase_prev, db)
-            t_prev = tiempos_map.get(fase_prev)
-            prev_ok = total_prev > 0 or (t_prev and t_prev.inicio_real is not None)
+            t_prev    = tiempos_map.get(fase_prev)
+            prev_ok   = (
+                cant_actual_por_fase.get(fase_prev, 0) > 0
+                or (t_prev and t_prev.inicio_real is not None)
+            )
             puede_iniciar = prev_ok
 
         result.append({
@@ -325,9 +341,9 @@ def get_fases_strip(of: OrdenFabricacion, db: Session) -> list[dict]:
             "estado": estado,
             "puede_iniciar": puede_iniciar,
             "inicio_programado": t.inicio_programado.strftime("%d/%m %H:%M") if t and t.inicio_programado else None,
-            "fin_programado": t.fin_programado.strftime("%d/%m %H:%M") if t and t.fin_programado else None,
-            "inicio_real": t.inicio_real.strftime("%d/%m %H:%M") if t and t.inicio_real else None,
-            "fin_real": t.fin_real.strftime("%d/%m %H:%M") if t and t.fin_real else None,
+            "fin_programado":    t.fin_programado.strftime("%d/%m %H:%M")    if t and t.fin_programado    else None,
+            "inicio_real":       t.inicio_real.strftime("%d/%m %H:%M")       if t and t.inicio_real       else None,
+            "fin_real":          t.fin_real.strftime("%d/%m %H:%M")          if t and t.fin_real          else None,
             "pct": round(cant_actual / cant_max * 100) if cant_max else 0,
         })
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Text, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -40,6 +40,13 @@ class OFFaseEstado(Base):
     # Relaciones
     of    = relationship("OrdenFabricacion", back_populates="fases_estado")
     pieza = relationship("OFPieza",          back_populates="fases_estado")
+
+    __table_args__ = (
+        # Garantiza que no existan filas duplicadas (of, pieza, fase)
+        UniqueConstraint("of_id", "pieza_id", "fase_id", name="uq_of_pieza_fase"),
+        # Índice compuesto para la query más frecuente: filter_by(of_id, fase_id)
+        Index("ix_of_fase_estado_of_fase", "of_id", "fase_id"),
+    )
 
 
 class OFFaseTiempos(Base):
@@ -112,3 +119,8 @@ class AvanceRegistro(Base):
     of      = relationship("OrdenFabricacion", back_populates="avance_registros")
     pieza   = relationship("OFPieza",          back_populates="avances")
     usuario = relationship("Usuario",          back_populates="registros_avance")
+
+    __table_args__ = (
+        # Índice compuesto para historial y reversiones: filter_by(of_id) + order_by(created_at)
+        Index("ix_avance_registros_of_fecha", "of_id", "created_at"),
+    )

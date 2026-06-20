@@ -12,7 +12,7 @@ from app.models.usuario import Usuario
 from app.schemas.fase import AvanceCreate, CompletarRequest
 from app.services.corte_service import registrar_avance, completar_fase, iniciar_fase, get_fases_strip, registrar_avance_bulk, completar_fase_bulk, ORDEN_FASES
 from app.services.semaforo_service import calcular_semaforo
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_rol
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -24,13 +24,9 @@ ROLES_DOCS = {
 }
 
 
-def _rol(user: Usuario) -> str:
-    return user.rol.value if hasattr(user.rol, "value") else str(user.rol)
-
-
 def _check_corte(user: Usuario):
-    if _rol(user) not in ROLES_CORTE:
-        raise HTTPException(403, f"Rol '{_rol(user)}' no tiene permiso para registrar avance de corte")
+    if get_rol(user) not in ROLES_CORTE:
+        raise HTTPException(403, f"Rol '{get_rol(user)}' no tiene permiso para registrar avance de corte")
 
 
 @router.get("/{of_id}", response_class=HTMLResponse)
@@ -39,7 +35,7 @@ def seguimiento(of_id: int, request: Request, db: Session = Depends(get_db), cur
     if not of:
         raise HTTPException(404, "OF no encontrada")
     semaforo = calcular_semaforo(of.fecha_apt, of.estado.value == "COMPLETADA")
-    puede_registrar = _rol(current_user) in ROLES_CORTE and not of.tercerizado
+    puede_registrar = get_rol(current_user) in ROLES_CORTE and not of.tercerizado
     return templates.TemplateResponse("corte/seguimiento.html", {
         "request": request, "of": of, "semaforo": semaforo,
         "current_user": current_user, "puede_registrar": puede_registrar, "tercerizado": of.tercerizado,
@@ -82,7 +78,7 @@ def estado_of(of_id: int, db: Session = Depends(get_db), current_user: Usuario =
     return {
         "of_id": of_id, "numero_of": of.numero_of, "cliente": of.cliente, "estado": of.estado,
         "semaforo": calcular_semaforo(of.fecha_apt, of.estado.value == "COMPLETADA"),
-        "piezas": piezas_data, "puede_registrar": _rol(current_user) in ROLES_CORTE,
+        "piezas": piezas_data, "puede_registrar": get_rol(current_user) in ROLES_CORTE,
     }
 
 
