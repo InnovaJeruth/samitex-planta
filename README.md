@@ -101,6 +101,28 @@ uvicorn app.main:app --reload --port 8000
 # 5. Abrir en navegador
 # http://localhost:8000
 # http://localhost:8000/api/docs  (Swagger, solo en DEBUG=True)
+# http://localhost:8000/health    (health check BD)
+```
+
+## Migraciones de BD (Alembic)
+
+A partir de ahora, los cambios de esquema se gestionan con Alembic:
+
+```bash
+# Ver estado actual
+alembic current
+
+# Marcar la BD como "en baseline" (solo la primera vez, BD ya existente)
+alembic stamp head
+
+# Crear nueva migración después de cambiar un modelo
+alembic revision --autogenerate -m "descripcion_del_cambio"
+
+# Aplicar migraciones pendientes
+alembic upgrade head
+
+# Revertir última migración
+alembic downgrade -1
 ```
 
 ## Roles del sistema

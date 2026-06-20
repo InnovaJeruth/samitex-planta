@@ -51,6 +51,13 @@ def estado_of(of_id: int, db: Session = Depends(get_db), current_user: Usuario =
     of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
+
+    # Una sola query para todos los estados de esta OF (evita N+1: N piezas × 9 fases)
+    todos_estados = db.query(OFFaseEstado).filter_by(of_id=of_id).all()
+    estados_idx: dict[tuple, OFFaseEstado] = {
+        (e.pieza_id, e.fase_id): e for e in todos_estados
+    }
+
     piezas_data = []
     for pieza in of.piezas:
         fases_pieza = {}
@@ -59,7 +66,7 @@ def estado_of(of_id: int, db: Session = Depends(get_db), current_user: Usuario =
                 continue
             if fid == "F5" and not pieza.fusionado:
                 continue
-            estado = db.query(OFFaseEstado).filter_by(of_id=of_id, pieza_id=pieza.id, fase_id=fid).first()
+            estado = estados_idx.get((pieza.id, fid))
             if estado:
                 fases_pieza[fid] = {
                     "cantidad_actual": estado.cantidad_actual,

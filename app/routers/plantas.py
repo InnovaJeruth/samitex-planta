@@ -91,7 +91,7 @@ def detalle_planta(
 
     ofs = planta.ofs_tercerizadas or []
     recepciones = db.query(TercRecepcion).filter_by(planta_id=planta_id).order_by(TercRecepcion.fecha_recepcion.desc()).all()
-    historial   = db.query(TercHistorialFecha).filter_by(planta_id=planta_id).order_by(TercHistorialFecha.registrado_at.desc()).all()
+    historial   = db.query(TercHistorialFecha).filter_by(planta_id=planta_id).order_by(TercHistorialFecha.created_at.desc()).all()
 
     entregas_a_tiempo = entregas_tarde = dias_retraso_total = 0
     for of in ofs:
@@ -107,17 +107,22 @@ def detalle_planta(
     pct_cumplimiento = round(entregas_a_tiempo / total_ofs * 100) if total_ofs else None
     avg_retraso = round(dias_retraso_total / entregas_tarde) if entregas_tarde else 0
 
-    return templates.TemplateResponse("plantas/detalle.html", {
-        "request": request,
-        "planta": planta,
-        "ofs": ofs,
-        "recepciones": recepciones,
-        "historial": historial,
-        "total_ofs": total_ofs,
-        "pct_cumplimiento": pct_cumplimiento,
-        "avg_retraso": avg_retraso,
-        "current_user": current_user,
-    })
+    try:
+        return templates.TemplateResponse("plantas/detalle.html", {
+            "request": request,
+            "planta": planta,
+            "ofs": ofs,
+            "recepciones": recepciones,
+            "historial": historial,
+            "total_ofs": total_ofs,
+            "pct_cumplimiento": pct_cumplimiento,
+            "avg_retraso": avg_retraso,
+            "current_user": current_user,
+        })
+    except Exception as e:
+        import traceback, logging
+        logging.getLogger(__name__).error("ERROR detalle_planta:\n%s", traceback.format_exc())
+        raise
 
 
 # ── API: JSON para dropdown ────────────────────────────────────

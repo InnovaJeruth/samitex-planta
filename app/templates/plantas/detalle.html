@@ -136,7 +136,7 @@
 <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:14px">
 {% for h in historial %}
 <div class="hist-row">
-    <span>{{ h.registrado_at.strftime('%d/%m/%Y %H:%M') if h.registrado_at else '—' }}</span>
+    <span>{{ h.created_at.strftime('%d/%m/%Y %H:%M') if h.created_at else '—' }}</span>
     <span>
         {% if h.fecha_anterior %}{{ h.fecha_anterior.strftime('%d/%m/%Y') }}{% else %}—{% endif %}
         → <strong style="color:#e0e0e0">{{ h.fecha_nueva.strftime('%d/%m/%Y') if h.fecha_nueva else '—' }}</strong>

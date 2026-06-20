@@ -403,6 +403,15 @@ def cargar_plantilla(
     return {"piezas_creadas": piezas_creadas}
 
 
+# ── Constantes de validación de uploads ───────────────────────
+_EXTENSIONES_PERMITIDAS = {
+    ".pdf", ".png", ".jpg", ".jpeg", ".webp",
+    ".xlsx", ".xls", ".docx", ".doc",
+    ".csv", ".txt",
+}
+_MAX_BYTES = 20 * 1024 * 1024   # 20 MB (coincide con MAX_UPLOAD_MB en .env)
+
+
 # ── API: subir documento ──────────────────────────────────────
 @router.post("/api/{of_id}/documentos")
 async def subir_documento(
@@ -412,6 +421,26 @@ async def subir_documento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    # Validar extensión
+    import pathlib
+    ext = pathlib.Path(archivo.filename or "").suffix.lower()
+    if ext not in _EXTENSIONES_PERMITIDAS:
+        raise HTTPException(
+            400,
+            f"Tipo de archivo no permitido ({ext or 'sin extensión'}). "
+            f"Permitidos: {', '.join(sorted(_EXTENSIONES_PERMITIDAS))}"
+        )
+
+    # Validar tamaño (leer todo en memoria para contar bytes)
+    contenido = await archivo.read()
+    if len(contenido) > _MAX_BYTES:
+        raise HTTPException(
+            400,
+            f"El archivo supera el límite de {_MAX_BYTES // 1024 // 1024} MB "
+            f"(tamaño recibido: {len(contenido) // 1024 // 1024} MB)"
+        )
+    await archivo.seek(0)   # rebobinar para que shutil pueda leerlo
+
     of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
@@ -424,11 +453,13 @@ async def subir_documento(
 
     upload_dir = os.path.join(settings.UPLOAD_DIR, str(of_id))
     os.makedirs(upload_dir, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}_{archivo.filename}"
+    # Usar solo el stem del nombre original + extensión validada (sin path traversal)
+    nombre_seguro = pathlib.Path(archivo.filename).name
+    filename = f"{uuid.uuid4().hex}_{nombre_seguro}"
     filepath = os.path.join(upload_dir, filename)
 
     with open(filepath, "wb") as f:
-        shutil.copyfileobj(archivo.file, f)
+        f.write(contenido)
 
     doc = DocumentoOF(
         of_id=of_id, tipo=tipo,

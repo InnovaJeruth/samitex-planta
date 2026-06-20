@@ -50,6 +50,23 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
 
+        # ── Headers de seguridad HTTP ─────────────────────────
+        response.headers["X-Content-Type-Options"]  = "nosniff"
+        response.headers["X-Frame-Options"]         = "DENY"
+        response.headers["Referrer-Policy"]         = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"]      = "geolocation=(), camera=(), microphone=()"
+        # CSP: permite scripts/estilos inline (Jinja2 los usa) y CDNs conocidos
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+            "cdn.jsdelivr.net cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' "
+            "cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com; "
+            "font-src 'self' fonts.gstatic.com cdnjs.cloudflare.com data:; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self' ws: wss:;"
+        )
+
         # Refrescar cookie en cada respuesta
         response.set_cookie(
             CSRF_COOKIE,
@@ -57,7 +74,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             httponly=False,      # JS necesita leerla
             samesite="lax",
             path="/",
-            secure=False,        # cambiar a True si se agrega HTTPS
+            secure=settings.APP_ENV == "production",
         )
         return response
 

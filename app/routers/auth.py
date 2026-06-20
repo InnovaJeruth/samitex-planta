@@ -1,3 +1,6 @@
+import time
+import threading
+from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -18,6 +21,46 @@ templates = Jinja2Templates(directory="app/templates")
 
 COOKIE_MAX_AGE = settings.JWT_EXPIRE_MINUTES * 60  # segundos
 
+# ── Rate limiting para login ───────────────────────────────────
+# Máx. 5 intentos fallidos por IP en ventana de 5 minutos
+_LOGIN_MAX_INTENTOS = 5
+_LOGIN_VENTANA_SEG  = 300   # 5 min
+
+_login_lock = threading.Lock()
+# {ip: [timestamp, ...]}  — solo timestamps de intentos FALLIDOS
+_login_intentos: dict[str, list[float]] = defaultdict(list)
+
+
+def _get_ip(request: Request) -> str:
+    """Extrae IP real respetando X-Forwarded-For (proxy/ngrok)."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _check_rate_limit(ip: str) -> None:
+    now = time.time()
+    with _login_lock:
+        # Limpiar intentos fuera de la ventana
+        _login_intentos[ip] = [t for t in _login_intentos[ip] if now - t < _LOGIN_VENTANA_SEG]
+        if len(_login_intentos[ip]) >= _LOGIN_MAX_INTENTOS:
+            segundos_restantes = int(_LOGIN_VENTANA_SEG - (now - _login_intentos[ip][0]))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Demasiados intentos fallidos. Intenta en {segundos_restantes // 60 + 1} min.",
+            )
+
+
+def _registrar_fallo(ip: str) -> None:
+    with _login_lock:
+        _login_intentos[ip].append(time.time())
+
+
+def _limpiar_intentos(ip: str) -> None:
+    with _login_lock:
+        _login_intentos.pop(ip, None)
+
 
 # ── Login página ──────────────────────────────────────────────
 @router.get("/login", response_class=HTMLResponse)
@@ -30,19 +73,25 @@ def login_page(request: Request, user=Depends(get_current_user_optional)):
 # ── Login POST (form + JSON) ──────────────────────────────────
 @router.post("/login")
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
+    ip = _get_ip(request)
+    _check_rate_limit(ip)   # bloquea si superó el límite
+
     user = db.query(Usuario).filter(
         Usuario.username == form_data.username,
         Usuario.activo == True,
     ).first()
     if not user or not verify_password(form_data.password, user.password_hash):
+        _registrar_fallo(ip)   # contabilizar intento fallido
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario o contraseña incorrectos",
         )
 
+    _limpiar_intentos(ip)   # login exitoso: resetear contador
     token = create_access_token({"sub": user.username, "rol": user.rol})
 
     response = JSONResponse(content={
@@ -60,7 +109,7 @@ def login(
         max_age=COOKIE_MAX_AGE,
         httponly=True,
         samesite="lax",
-        secure=False,  # True en producción con HTTPS
+        secure=settings.APP_ENV == "production",
     )
     return response
 
