@@ -73,6 +73,9 @@
         {% endif %}
     </div>
     <div class="plant-actions">
+        <a href="/plantas/{{ p.planta.id }}/detalle" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px">
+            🔍 Ver detalle
+        </a>
         <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px"
                 onclick="abrirModalEditar({{ p.planta.id }}, '{{ p.planta.nombre|e }}', '{{ p.planta.ruc }}', '{{ p.planta.encargado|e }}', '{{ p.planta.direccion|e }}')">
             ✏ Editar

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}{{ planta.nombre }} — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+.det-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+.det-title   { font-size:20px; font-weight:700; color:#fff; margin:0; }
+.det-sub     { font-size:12px; color:#888; margin-top:4px; }
+.info-grid   { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:20px; }
+.info-card   { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:14px; }
+.info-label  { font-size:10px; color:#666; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+.info-value  { font-size:15px; font-weight:600; color:#e0e0e0; }
+.metric-row  { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+.metric-box  { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:14px 18px; text-align:center; min-width:100px; }
+.metric-num  { font-size:22px; font-weight:700; }
+.metric-lbl  { font-size:10px; color:#888; margin-top:2px; }
+.green  { color:#4caf7d; }
+.yellow { color:#e6a817; }
+.red    { color:#e85656; }
+.gray   { color:#666; }
+.section-title { font-size:13px; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:.5px; margin:20px 0 10px; }
+.of-row  { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:6px; padding:12px 14px; margin-bottom:8px;
+           display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+.of-num  { font-size:13px; font-weight:700; color:#fff; }
+.of-meta { font-size:11px; color:#888; }
+.badge   { display:inline-block; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; }
+.badge-pendiente  { background:#1a1a2e; color:#7799dd; border:1px solid #2a2a5e; }
+.badge-enviada    { background:#2e1e0a; color:#e6a817; border:1px solid #5e3e0a; }
+.badge-recibida   { background:#0a2e0a; color:#4caf7d; border:1px solid #1a5e1a; }
+.badge-completada { background:#0a2e0a; color:#4caf7d; border:1px solid #1a5e1a; }
+.hist-row { font-size:11px; color:#888; padding:6px 0; border-bottom:1px solid #222; display:flex; gap:16px; flex-wrap:wrap; }
+.hist-row:last-child { border-bottom:none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="det-header">
+    <div>
+        <div style="font-size:12px;color:#666;margin-bottom:6px">
+            <a href="/plantas/" style="color:#666;text-decoration:none">🏭 Plantas</a> /
+        </div>
+        <h2 class="det-title">{{ planta.nombre }}</h2>
+        <div class="det-sub">RUC {{ planta.ruc }} · {{ planta.direccion }}</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+        {% if planta.activo %}
+        <span class="badge" style="background:#0a2e0a;color:#4caf7d;border:1px solid #1a5e1a">Activa</span>
+        {% else %}
+        <span class="badge" style="background:#2a2a2a;color:#555;border:1px solid #333">Inactiva</span>
+        {% endif %}
+        <a href="/plantas/" class="btn btn-secondary btn-sm">← Volver</a>
+    </div>
+</div>
+
+<!-- Info básica -->
+<div class="info-grid">
+    <div class="info-card">
+        <div class="info-label">Encargado</div>
+        <div class="info-value">{{ planta.encargado or "—" }}</div>
+    </div>
+    <div class="info-card">
+        <div class="info-label">Dirección</div>
+        <div class="info-value" style="font-size:13px">{{ planta.direccion or "—" }}</div>
+    </div>
+    <div class="info-card">
+        <div class="info-label">Registrada desde</div>
+        <div class="info-value" style="font-size:13px">{{ planta.created_at.strftime('%d/%m/%Y') if planta.created_at else "—" }}</div>
+    </div>
+</div>
+
+<!-- Métricas -->
+<div class="metric-row">
+    <div class="metric-box">
+        <div class="metric-num {% if total_ofs > 0 %}yellow{% else %}gray{% endif %}">{{ total_ofs }}</div>
+        <div class="metric-lbl">OFs tercerizadas</div>
+    </div>
+    <div class="metric-box">
+        <div class="metric-num {% if pct_cumplimiento is not none and pct_cumplimiento >= 80 %}green{% elif pct_cumplimiento is not none and pct_cumplimiento >= 50 %}yellow{% elif pct_cumplimiento is not none %}red{% else %}gray{% endif %}">
+            {% if pct_cumplimiento is not none %}{{ pct_cumplimiento }}%{% else %}—{% endif %}
+        </div>
+        <div class="metric-lbl">Cumplimiento</div>
+    </div>
+    <div class="metric-box">
+        <div class="metric-num {% if avg_retraso == 0 %}green{% elif avg_retraso <= 3 %}yellow{% else %}red{% endif %}">
+            {% if avg_retraso > 0 %}+{{ avg_retraso }}d{% else %}0d{% endif %}
+        </div>
+        <div class="metric-lbl">Retraso promedio</div>
+    </div>
+    <div class="metric-box">
+        <div class="metric-num {% if historial|length > 0 %}yellow{% else %}gray{% endif %}">{{ historial|length }}</div>
+        <div class="metric-lbl">Cambios de fecha</div>
+    </div>
+</div>
+
+<!-- OFs activas/historial -->
+<div class="section-title">Órdenes de Fabricación</div>
+
+{% if not ofs %}
+<div style="text-align:center;padding:30px;color:#555">No hay OFs asignadas a esta planta.</div>
+{% else %}
+{% for of in ofs %}
+<div class="of-row">
+    <div>
+        <div class="of-num">
+            <a href="/of/{{ of.id }}/detalle" style="color:#fff;text-decoration:none">{{ of.numero_of }}</a>
+        </div>
+        <div class="of-meta">
+            {{ of.cliente }} · {{ of.tipo_prenda.value }} · {{ of.total_juegos }} juegos
+            {% if of.fecha_envio %} · Enviada: {{ of.fecha_envio.strftime('%d/%m/%Y') }}{% endif %}
+            {% if of.fecha_recepcion_est %} · Est.: {{ of.fecha_recepcion_est.strftime('%d/%m/%Y') }}{% endif %}
+            {% if of.fecha_recepcion_real %} · Real: {{ of.fecha_recepcion_real.strftime('%d/%m/%Y') }}{% endif %}
+        </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+        {% if of.fecha_recepcion_real and of.fecha_recepcion_est %}
+            {% set delta = (of.fecha_recepcion_real - of.fecha_recepcion_est).days %}
+            {% if delta <= 0 %}
+            <span style="font-size:10px;color:#4caf7d">✓ A tiempo</span>
+            {% else %}
+            <span style="font-size:10px;color:#e85656">+{{ delta }}d tarde</span>
+            {% endif %}
+        {% endif %}
+        {% set est = of.estado_tercerizado or "PENDIENTE_ENVIO" %}
+        <span class="badge badge-{{ est.lower() }}">{{ est.replace('_',' ') }}</span>
+        {% if of.juegos_recibidos > 0 %}
+        <span style="font-size:10px;color:#888">{{ of.juegos_recibidos }}/{{ of.total_juegos }}</span>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Historial cambios de fecha -->
+{% if historial %}
+<div class="section-title">Historial cambios de fecha estimada</div>
+<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:14px">
+{% for h in historial %}
+<div class="hist-row">
+    <span>{{ h.registrado_at.strftime('%d/%m/%Y %H:%M') if h.registrado_at else '—' }}</span>
+    <span>
+        {% if h.fecha_anterior %}{{ h.fecha_anterior.strftime('%d/%m/%Y') }}{% else %}—{% endif %}
+        → <strong style="color:#e0e0e0">{{ h.fecha_nueva.strftime('%d/%m/%Y') if h.fecha_nueva else '—' }}</strong>
+    </span>
+    {% if h.motivo %}<span style="color:#aaa">{{ h.motivo }}</span>{% endif %}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

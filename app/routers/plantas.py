@@ -76,6 +76,50 @@ def lista_plantas(
     })
 
 
+# ── Página detalle de planta ───────────────────────────────────
+@router.get("/{planta_id}/detalle", response_class=HTMLResponse)
+def detalle_planta(
+    planta_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _check_rol(current_user)
+    planta = db.query(PlantaExterna).filter_by(id=planta_id).first()
+    if not planta:
+        raise HTTPException(404, "Planta no encontrada")
+
+    ofs = planta.ofs_tercerizadas or []
+    recepciones = db.query(TercRecepcion).filter_by(planta_id=planta_id).order_by(TercRecepcion.fecha_recepcion.desc()).all()
+    historial   = db.query(TercHistorialFecha).filter_by(planta_id=planta_id).order_by(TercHistorialFecha.registrado_at.desc()).all()
+
+    entregas_a_tiempo = entregas_tarde = dias_retraso_total = 0
+    for of in ofs:
+        if of.fecha_recepcion_real and of.fecha_recepcion_est:
+            delta = (of.fecha_recepcion_real - of.fecha_recepcion_est).days
+            if delta <= 0:
+                entregas_a_tiempo += 1
+            else:
+                entregas_tarde += 1
+                dias_retraso_total += delta
+
+    total_ofs = len(ofs)
+    pct_cumplimiento = round(entregas_a_tiempo / total_ofs * 100) if total_ofs else None
+    avg_retraso = round(dias_retraso_total / entregas_tarde) if entregas_tarde else 0
+
+    return templates.TemplateResponse("plantas/detalle.html", {
+        "request": request,
+        "planta": planta,
+        "ofs": ofs,
+        "recepciones": recepciones,
+        "historial": historial,
+        "total_ofs": total_ofs,
+        "pct_cumplimiento": pct_cumplimiento,
+        "avg_retraso": avg_retraso,
+        "current_user": current_user,
+    })
+
+
 # ── API: JSON para dropdown ────────────────────────────────────
 @router.get("/api/")
 def api_plantas(
