@@ -340,19 +340,16 @@ async def telegram_webhook(request: Request):
     match = re.search(r'\b(\d{4,7})\b', text)
 
     if match:
-        # Cualquier pregunta que incluya un número de OF → cargar todos los datos y usar Gemini
         numero_of = match.group(1)
         data = await buscar_of_por_numero(numero_of)
         if "error" in data:
             respuesta = f"❌ No encontré la OF *{numero_of}*. Verifica el número."
         else:
-            # Si es pregunta simple de estado/avance → respuesta directa formateada
             palabras_estado = ["estado", "avance", "progreso", "cómo va", "como va", "fases"]
             es_pregunta_simple = any(w in text_lower for w in palabras_estado) and len(text.split()) <= 8
             if es_pregunta_simple:
                 respuesta = formatear_estado_of(numero_of, data)
             else:
-                # Pregunta elaborada → pasar todo el contexto a Gemini
                 context_data = json.dumps(data, ensure_ascii=False, indent=2)
                 respuesta = await get_gemini_response(text, context_data)
 
@@ -364,19 +361,18 @@ async def telegram_webhook(request: Request):
             context_data = f"OFs registradas ({len(ofs)} total, {len(activas)} activas/en proceso):\n"
             for o in ofs[:20]:
                 context_data += f"- OF {o.get('numero_of')} | {o.get('cliente')} | {o.get('tipo_prenda')} | {o.get('total_juegos')} juegos | {o.get('estado')} | creada: {o.get('fecha_creacion')} | APT: {o.get('fecha_apt')}\n"
-            respuesta = get_gemini_response(text, context_data)
+            respuesta = await get_gemini_response(text, context_data)
         else:
             respuesta = "No pude obtener el listado de OFs."
 
     else:
-        # Pregunta general — cargar lista completa como contexto
         data = await listar_ofs_activas()
         ofs = data.get("ofs", [])
         context_data = f"Sistema Samitex Planta — {len(ofs) if isinstance(ofs, list) else 0} OFs registradas.\n"
         if isinstance(ofs, list):
             for o in ofs[:15]:
                 context_data += f"- OF {o.get('numero_of')} | {o.get('cliente')} | {o.get('estado')}\n"
-        respuesta = get_gemini_response(text, context_data)
+        respuesta = await get_gemini_response(text, context_data)
 
     await send_message(chat_id, respuesta)
     return JSONResponse({"ok": True})

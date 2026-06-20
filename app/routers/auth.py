@@ -4,7 +4,6 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
@@ -15,9 +14,9 @@ from app.core.auth import (
 )
 from app.schemas.usuario import TokenResponse, UsuarioResponse
 from app.config import settings
+from app.core.templates import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 COOKIE_MAX_AGE = settings.JWT_EXPIRE_MINUTES * 60  # segundos
 

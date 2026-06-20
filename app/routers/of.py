@@ -841,4 +841,21 @@ def actualizar_fecha_recepcion(
     if rol not in ("ADMIN", "PLANEADOR"):
         raise HTTPException(403, "Sin permiso")
 
-    nueva_fecha = _safe_date(body.fec
+    nueva_fecha = _safe_date(body.fecha_recepcion_est)
+    if of.fecha_apt and nueva_fecha > of.fecha_apt:
+        raise HTTPException(400, f"La fecha de recepción ({nueva_fecha}) no puede superar el APT ({of.fecha_apt})")
+
+    # Guardar historial de cambio
+    from app.models.planta import TercHistorialFecha
+    historial = TercHistorialFecha(
+        of_id=of.id,
+        planta_id=of.planta_externa_id,
+        fecha_anterior=of.fecha_recepcion_est,
+        fecha_nueva=nueva_fecha,
+        motivo=body.motivo,
+        usuario_id=current_user.id,
+    )
+    db.add(historial)
+    of.fecha_recepcion_est = nueva_fecha
+    db.commit()
+    return {"ok": True, "fecha_recepcion_est": str(nueva_fecha)}

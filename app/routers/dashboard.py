@@ -262,4 +262,8 @@ def ofs_resumen(
             "tipo_prenda": of.tipo_prenda,
             "total_juegos": of.total_juegos,
             "estado": of.estado,
-      
+            "fecha_apt": of.fecha_apt.isoformat() if of.fecha_apt else None,
+            "fecha_inicio_plan": of.fecha_inicio_plan.isoformat() if of.fecha_inicio_plan else None,
+        }
+        for of in ofs
+    ]
