@@ -55,7 +55,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             value=signed,
             httponly=False,
             samesite="lax",
-            secure=False,
+            secure=settings.APP_ENV == "production",
         )
         return response
 
