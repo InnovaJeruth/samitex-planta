@@ -53,7 +53,10 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:
         if self.DATABASE_URL_OVERRIDE:
-            return self.DATABASE_URL_OVERRIDE
+            # psycopg2 no entiende el param ?pgbouncer=true de Supabase
+            url = self.DATABASE_URL_OVERRIDE
+            url = url.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
+            return url
         driver = self.DB_DRIVER.replace(" ", "+")
         if self.DB_TRUSTED_CONNECTION:
             return (

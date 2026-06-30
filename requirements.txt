@@ -9,8 +9,8 @@ aiofiles==23.2.1                   # servir archivos estáticos async
 
 # ─── Base de Datos ────────────────────────────────────────────
 sqlalchemy==2.0.36                 # ORM principal
-pyodbc==5.2.0                      # conector ODBC para SQL Server (desarrollo local)
 psycopg2-binary==2.9.9             # conector PostgreSQL (producción / Supabase)
+# pyodbc: solo desarrollo local en Windows — no instalar en Render (sin driver ODBC en Linux)
 alembic==1.13.1                    # migraciones de BD
 
 # ─── Supabase Storage ─────────────────────────────────────────
