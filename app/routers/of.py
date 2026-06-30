@@ -10,7 +10,7 @@ def _safe_date(s: str) -> date:
         return date.fromisoformat(s)
     except (ValueError, TypeError):
         raise HTTPException(400, f"Fecha inválida: '{s}'. Use formato YYYY-MM-DD")
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel as PydanticBase
 import os, shutil, uuid, json
 
@@ -1202,17 +1202,18 @@ def api_get_tallas_dist(
     }
 
 
+class TallaDistBody(PydanticBase):
+    entries: List[TallaDistEntry]
+
+
 @router.post("/api/{of_id}/tallas-dist")
 def api_guardar_tallas_dist(
     of_id: int,
-    entries: list,
+    body: TallaDistBody,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
     """Guarda la distribución de tallas para la OF (reemplaza la anterior)."""
-    from typing import List as _List
-    from pydantic import BaseModel as _BM
-
     of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
@@ -1224,18 +1225,15 @@ def api_guardar_tallas_dist(
             .filter_by(prenda_catalogo_id=of.prenda_catalogo_id, activo=True)
             .all()
         }
-        for e in entries:
-            sku_id = e.get("sku_id") if isinstance(e, dict) else e.sku_id
-            if sku_id not in skus_validos:
-                raise HTTPException(400, f"SKU {sku_id} no pertenece a la prenda")
+        for e in body.entries:
+            if e.sku_id not in skus_validos:
+                raise HTTPException(400, f"SKU {e.sku_id} no pertenece a la prenda")
 
     # Reemplazar distribución
     db.query(OFTallaDistribucion).filter_by(of_id=of_id).delete()
-    for e in entries:
-        sku_id  = e.get("sku_id")  if isinstance(e, dict) else e.sku_id
-        cantidad = e.get("cantidad") if isinstance(e, dict) else e.cantidad
-        if cantidad and cantidad > 0:
-            db.add(OFTallaDistribucion(of_id=of_id, sku_id=sku_id, cantidad=int(cantidad)))
+    for e in body.entries:
+        if e.cantidad > 0:
+            db.add(OFTallaDistribucion(of_id=of_id, sku_id=e.sku_id, cantidad=e.cantidad))
 
     db.commit()
     return {"ok": True, "msg": "Distribución de tallas guardada"}
