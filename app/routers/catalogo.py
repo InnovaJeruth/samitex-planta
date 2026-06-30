@@ -727,6 +727,7 @@ class AvioIn(_PBase):
     consumo_unitario: float           = 1.0
     pct_adicional:    float           = 0.01
     unidad_compra:    Optional[str]   = None
+    factor_conversion: float          = 1.0
     moneda:           Optional[str]   = None
     precio:           Optional[float] = None
     orden:            int             = 0
@@ -752,6 +753,7 @@ def _avio_dict(a: CatalogoAvio) -> dict:
         "consumo_unitario": a.consumo_unitario,
         "pct_adicional":    a.pct_adicional,
         "unidad_compra":    a.unidad_compra,
+        "factor_conversion": a.factor_conversion,
         "moneda":           a.moneda,
         "precio":           a.precio,
         "orden":            a.orden,
@@ -870,6 +872,7 @@ def api_editar_avio(
     avio.consumo_unitario = body.consumo_unitario
     avio.pct_adicional    = body.pct_adicional
     avio.unidad_compra    = body.unidad_compra
+    avio.factor_conversion = body.factor_conversion
     avio.moneda           = body.moneda
     avio.precio           = body.precio
     avio.orden            = body.orden
@@ -961,6 +964,8 @@ class MpIn(_PBase):
     consumo_unitario:  float           = 1.0
     pct_adicional:     float           = 0.02
     unidad_medida:     str             = "mt."
+    unidad_compra:     Optional[str]   = None
+    factor_conversion: float           = 1.0
     codigo_interno:    Optional[str]   = None
     proveedor:         Optional[str]   = None
     procedencia:       Optional[str]   = None
@@ -985,6 +990,8 @@ def _mp_dict(m: CatalogoMp) -> dict:
         "consumo_unitario":  m.consumo_unitario,
         "pct_adicional":     m.pct_adicional,
         "unidad_medida":     m.unidad_medida,
+        "unidad_compra":     m.unidad_compra,
+        "factor_conversion": m.factor_conversion,
         "codigo_interno":    m.codigo_interno,
         "codigo_base":       m.codigo_base,
         "proveedor":         m.proveedor,
@@ -1103,6 +1110,8 @@ def api_editar_mp(
     mp.consumo_unitario  = body.consumo_unitario
     mp.pct_adicional     = body.pct_adicional
     mp.unidad_medida     = body.unidad_medida
+    mp.unidad_compra     = body.unidad_compra
+    mp.factor_conversion = body.factor_conversion
     mp.codigo_interno    = body.codigo_interno
     mp.proveedor         = body.proveedor
     mp.procedencia       = body.procedencia
