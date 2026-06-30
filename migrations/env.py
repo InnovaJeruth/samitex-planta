@@ -24,6 +24,10 @@ import app.models.of        # noqa: F401
 import app.models.pieza     # noqa: F401
 import app.models.fase      # noqa: F401
 import app.models.planta    # noqa: F401
+import app.models.catalogo  # noqa: F401
+import app.models.curva_tallas  # noqa: F401
+import app.models.ingenieria    # noqa: F401
+import app.models.parametro     # noqa: F401
 
 target_metadata = Base.metadata
 
