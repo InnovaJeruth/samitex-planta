@@ -1,7 +1,7 @@
 """
 Catálogo de prendas — Samitex Planta
 """
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Index, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -59,6 +59,8 @@ class PrendaCatalogo(Base):
                                     cascade="all, delete-orphan")
     skus             = relationship("PrendaSku",         back_populates="prenda",
                                     cascade="all, delete-orphan", order_by="PrendaSku.orden")
+    hojas_costos     = relationship("HojaCostos",        back_populates="prenda",
+                                    cascade="all, delete-orphan", order_by="HojaCostos.created_at")
 
     __table_args__ = (
         Index("ix_prendas_catalogo_tipo_activo", "tipo_base", "activo"),
@@ -260,4 +262,96 @@ class PrendaDocumento(Base):
 
     __table_args__ = (
         Index("ix_prenda_documentos_prenda", "prenda_catalogo_id"),
+    )
+
+
+# ── Hoja de Costos ────────────────────────────────────────────
+
+ESTADOS_HOJA_COSTOS = ["BORRADOR", "APROBADA"]
+TIPOS_LINEA_HOJA    = ["MP", "AVIO"]
+
+
+class HojaCostos(Base):
+    """Hoja de costos teorica asociada a una variante del catalogo.
+    Se crea una por variante. Para MARCA se reutiliza entre OFs.
+    Para INSTITUCION se crea en etapa de muestra y la OF la hereda."""
+    __tablename__ = "hojas_costos"
+
+    id                 = Column(Integer,     primary_key=True, index=True)
+    prenda_catalogo_id = Column(Integer,     ForeignKey("prendas_catalogo.id", ondelete="CASCADE"),
+                                nullable=False, index=True)
+    estado             = Column(String(20),  nullable=False, default="BORRADOR")
+    notas              = Column(Text,        nullable=True)
+    total_mp           = Column(Float,       nullable=True)
+    total_avios        = Column(Float,       nullable=True)
+    total_general      = Column(Float,       nullable=True)
+    moneda_base        = Column(String(5),   nullable=False, default="SO")
+    creado_por_id      = Column(Integer,     ForeignKey("usuarios.id"), nullable=True)
+    aprobado_por_id    = Column(Integer,     ForeignKey("usuarios.id"), nullable=True)
+    aprobado_at        = Column(DateTime,    nullable=True)
+    created_at         = Column(DateTime,    server_default=func.now())
+    updated_at         = Column(DateTime,    server_default=func.now(), onupdate=func.now())
+
+    prenda       = relationship("PrendaCatalogo", back_populates="hojas_costos")
+    lineas       = relationship("HojaCostosLinea", back_populates="hoja",
+                                cascade="all, delete-orphan", order_by="HojaCostosLinea.orden")
+    creado_por   = relationship("Usuario", foreign_keys=[creado_por_id])
+    aprobado_por = relationship("Usuario", foreign_keys=[aprobado_por_id])
+
+    __table_args__ = (
+        Index("ix_hojas_costos_prenda", "prenda_catalogo_id"),
+    )
+
+
+class HojaCostosLinea(Base):
+    """Linea de detalle de una HojaCostos.
+    precio_snapshot = precio al momento de crear la hoja (no cambia si el catalogo se actualiza)."""
+    __tablename__ = "hojas_costos_lineas"
+
+    id               = Column(Integer,     primary_key=True, index=True)
+    hoja_id          = Column(Integer,     ForeignKey("hojas_costos.id", ondelete="CASCADE"),
+                              nullable=False, index=True)
+    tipo             = Column(String(10),  nullable=False)
+    item_id          = Column(Integer,     nullable=False)
+    seccion          = Column(String(30),  nullable=True)
+    nombre           = Column(String(200), nullable=False)
+    unidad_medida    = Column(String(20),  nullable=True)
+    consumo_unitario = Column(Float,       nullable=False, default=1.0)
+    pct_adicional    = Column(Float,       nullable=False, default=0.0)
+    precio_snapshot  = Column(Float,       nullable=True)
+    moneda           = Column(String(5),   nullable=True)
+    subtotal         = Column(Float,       nullable=True)
+    editado_manual   = Column(Boolean,     default=False)
+    notas            = Column(String(300), nullable=True)
+    orden            = Column(Integer,     nullable=False, default=0)
+    created_at       = Column(DateTime,    server_default=func.now())
+
+    hoja = relationship("HojaCostos", back_populates="lineas")
+
+    __table_args__ = (
+        Index("ix_hojas_costos_lineas_hoja", "hoja_id"),
+    )
+
+
+# ── Historial de precios ──────────────────────────────────────
+
+class PrecioHistorico(Base):
+    """Registra cada cambio de precio en MP o Avio del catalogo.
+    Se inserta automaticamente antes de sobreescribir el precio actual."""
+    __tablename__ = "precios_historicos"
+
+    id                = Column(Integer,     primary_key=True, index=True)
+    tipo              = Column(String(10),  nullable=False)
+    item_id           = Column(Integer,     nullable=False)
+    nombre_item       = Column(String(200), nullable=False)
+    precio_anterior   = Column(Float,       nullable=True)
+    precio_nuevo      = Column(Float,       nullable=True)
+    moneda            = Column(String(5),   nullable=True)
+    registrado_por_id = Column(Integer,     ForeignKey("usuarios.id"), nullable=True)
+    created_at        = Column(DateTime,    server_default=func.now())
+
+    registrado_por = relationship("Usuario", foreign_keys=[registrado_por_id])
+
+    __table_args__ = (
+        Index("ix_precios_historicos_item", "tipo", "item_id"),
     )
