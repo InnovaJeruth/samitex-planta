@@ -47,6 +47,8 @@ class LineaIn(_PBase):
     seccion:          Optional[str]  = None
     nombre:           str
     unidad_medida:    Optional[str]  = None
+    unidad_compra:    Optional[str]  = None
+    factor_conversion: float         = 1.0
     consumo_unitario: float          = 1.0
     pct_adicional:    float          = 0.0
     precio_snapshot:  Optional[float] = None
@@ -57,6 +59,7 @@ class LineaIn(_PBase):
 
 class HojaIn(_PBase):
     moneda_base: str           = "SO"
+    tipo_cambio: float         = 3.70
     notas:       Optional[str] = None
     lineas:      List[LineaIn] = []
 
@@ -75,6 +78,7 @@ def _hoja_dict(h: HojaCostos) -> dict:
         "id":          h.id,
         "estado":      h.estado,
         "moneda_base": h.moneda_base,
+        "tipo_cambio": h.tipo_cambio,
         "notas":       h.notas,
         "total_mp":    h.total_mp,
         "total_avios": h.total_avios,
@@ -90,6 +94,8 @@ def _hoja_dict(h: HojaCostos) -> dict:
                 "seccion":          l.seccion,
                 "nombre":           l.nombre,
                 "unidad_medida":    l.unidad_medida,
+                "unidad_compra":    l.unidad_compra,
+                "factor_conversion": l.factor_conversion,
                 "consumo_unitario": l.consumo_unitario,
                 "pct_adicional":    l.pct_adicional,
                 "precio_snapshot":  l.precio_snapshot,
@@ -104,10 +110,20 @@ def _hoja_dict(h: HojaCostos) -> dict:
     }
 
 
-def _calcular_subtotal(consumo: float, pct: float, precio: Optional[float]) -> Optional[float]:
+def _calcular_subtotal(
+    consumo: float,
+    pct: float,
+    precio: Optional[float],
+    factor_conversion: float = 1.0,
+    moneda: Optional[str] = None,
+    tipo_cambio: float = 3.70,
+) -> Optional[float]:
+    """subtotal en soles = consumo × (1+pct) / factor_conversion × precio_SO_por_UC"""
     if precio is None:
         return None
-    return round(consumo * (1 + pct) * precio, 4)
+    factor = max(factor_conversion, 0.000001)
+    precio_so = precio * tipo_cambio if (moneda and moneda != 'SO') else precio
+    return round(consumo * (1 + pct) / factor * precio_so, 4)
 
 
 def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
@@ -143,13 +159,16 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
             continue
         consumo  = cfg.consumo_override if (cfg and cfg.consumo_override) else mp.consumo_unitario
         precio   = mp.precio_referencia
-        subtotal = _calcular_subtotal(consumo, mp.pct_adicional, precio)
+        fc       = getattr(mp, 'factor_conversion', 1.0) or 1.0
+        subtotal = _calcular_subtotal(consumo, mp.pct_adicional, precio, fc, mp.moneda, 3.70)
         lineas.append({
             "tipo":             "MP",
             "item_id":          mp.id,
             "seccion":          mp.tipo,
             "nombre":           mp.nombre,
             "unidad_medida":    mp.unidad_medida,
+            "unidad_compra":    getattr(mp, 'unidad_compra', None),
+            "factor_conversion": fc,
             "consumo_unitario": consumo,
             "pct_adicional":    mp.pct_adicional,
             "precio_snapshot":  precio,
@@ -171,13 +190,16 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
             continue
         consumo  = cfg.consumo_override if (cfg and cfg.consumo_override) else avio.consumo_unitario
         precio   = avio.precio
-        subtotal = _calcular_subtotal(consumo, avio.pct_adicional, precio)
+        fc       = getattr(avio, 'factor_conversion', 1.0) or 1.0
+        subtotal = _calcular_subtotal(consumo, avio.pct_adicional, precio, fc, avio.moneda, 3.70)
         lineas.append({
             "tipo":             "AVIO",
             "item_id":          avio.id,
             "seccion":          avio.seccion,
             "nombre":           avio.nombre,
             "unidad_medida":    avio.unidad_medida,
+            "unidad_compra":    getattr(avio, 'unidad_compra', None),
+            "factor_conversion": fc,
             "consumo_unitario": consumo,
             "pct_adicional":    avio.pct_adicional,
             "precio_snapshot":  precio,
@@ -191,6 +213,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
 
     total_mp    = sum(l["subtotal"] for l in lineas if l["tipo"] == "MP"   and l["subtotal"] is not None)
     total_avios = sum(l["subtotal"] for l in lineas if l["tipo"] == "AVIO" and l["subtotal"] is not None)
+    tipo_cambio_default = 3.70
 
     return {
         "lineas":       lineas,
@@ -278,12 +301,15 @@ def api_guardar_hoja(
 
     # Calcular totales
     lineas_data = body.lineas
+    tc = body.tipo_cambio or 3.70
     total_mp    = sum(
-        _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot) or 0
+        _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot,
+                           l.factor_conversion, l.moneda, tc) or 0
         for l in lineas_data if l.tipo == "MP"
     )
     total_avios = sum(
-        _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot) or 0
+        _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot,
+                           l.factor_conversion, l.moneda, tc) or 0
         for l in lineas_data if l.tipo == "AVIO"
     )
 
@@ -308,6 +334,7 @@ def api_guardar_hoja(
 
     hoja.estado        = "BORRADOR"
     hoja.moneda_base   = body.moneda_base
+    hoja.tipo_cambio   = body.tipo_cambio or 3.70
     hoja.notas         = body.notas
     hoja.total_mp      = round(total_mp, 2)
     hoja.total_avios   = round(total_avios, 2)
@@ -315,22 +342,25 @@ def api_guardar_hoja(
     hoja.updated_at    = datetime.utcnow()
 
     for i, l in enumerate(lineas_data):
-        subtotal = _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot)
+        subtotal = _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot,
+                                      l.factor_conversion or 1.0, l.moneda, tc)
         db.add(HojaCostosLinea(
-            hoja_id          = hoja.id,
-            tipo             = l.tipo,
-            item_id          = l.item_id,
-            seccion          = l.seccion,
-            nombre           = l.nombre,
-            unidad_medida    = l.unidad_medida,
-            consumo_unitario = l.consumo_unitario,
-            pct_adicional    = l.pct_adicional,
-            precio_snapshot  = l.precio_snapshot,
-            moneda           = l.moneda,
-            subtotal         = subtotal,
-            editado_manual   = (l.precio_snapshot is not None),
-            notas            = l.notas,
-            orden            = l.orden if l.orden else i,
+            hoja_id           = hoja.id,
+            tipo              = l.tipo,
+            item_id           = l.item_id,
+            seccion           = l.seccion,
+            nombre            = l.nombre,
+            unidad_medida     = l.unidad_medida,
+            unidad_compra     = l.unidad_compra,
+            factor_conversion = l.factor_conversion or 1.0,
+            consumo_unitario  = l.consumo_unitario,
+            pct_adicional     = l.pct_adicional,
+            precio_snapshot   = l.precio_snapshot,
+            moneda            = l.moneda,
+            subtotal          = subtotal,
+            editado_manual    = (l.precio_snapshot is not None),
+            notas             = l.notas,
+            orden             = l.orden if l.orden else i,
         ))
 
     db.commit()

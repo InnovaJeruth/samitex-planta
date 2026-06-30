@@ -565,6 +565,7 @@
         <span class="card-title">💰 Hoja de Costos</span>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span id="hoja-estado-badge" style="display:none;font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px"></span>
+          <span style="font-size:11px;color:#666">TC S/.<input type="number" id="hoja-tc" step="0.01" min="1" value="3.70" style="width:48px;text-align:right;background:#0a0a0a;border:1px solid #2a2a2a;color:#ccc;padding:2px 4px;border-radius:3px;font-size:11px;margin-left:2px" oninput="window._hcRecalcAll()"></span>
           {% if puede_editar %}
           <button class="btn btn-secondary btn-sm" onclick="prefillHoja()" id="btn-prefill">↙ Pre-llenar desde BASE</button>
           <button class="btn btn-primary btn-sm" onclick="guardarHoja()" id="btn-guardar-hoja" style="display:none">💾 Guardar borrador</button>
@@ -585,14 +586,15 @@
             <th style="padding:6px 8px;text-align:left">Nombre</th>
             <th style="padding:6px 4px;text-align:right;white-space:nowrap">Cons.</th>
             <th style="padding:6px 4px;text-align:right;white-space:nowrap">%Ad.</th>
-            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Precio</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Precio/UC</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap;font-size:10px">UC/UM</th>
             <th style="padding:6px 4px;text-align:right;white-space:nowrap">Mon.</th>
             <th style="padding:6px 4px;text-align:right;white-space:nowrap">Subtotal</th>
             <th style="padding:6px 4px;width:24px"></th>
           </tr></thead>
           <tbody id="tbody-hoja-mp"></tbody>
           <tfoot><tr style="border-top:1px solid #2a2a2a">
-            <td colspan="5" style="padding:8px;text-align:right;font-size:11px;color:#888">Total MP</td>
+            <td colspan="6" style="padding:8px;text-align:right;font-size:11px;color:#888">Total MP</td>
             <td style="padding:8px 4px;text-align:right;font-weight:600;color:#e0e0e0" id="total-mp-cell">—</td>
             <td></td>
           </tr></tfoot>
@@ -604,14 +606,15 @@
             <th style="padding:6px 8px;text-align:left">Nombre</th>
             <th style="padding:6px 4px;text-align:right;white-space:nowrap">Cons.</th>
             <th style="padding:6px 4px;text-align:right;white-space:nowrap">%Ad.</th>
-            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Precio</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Precio/UC</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap;font-size:10px">UC/UM</th>
             <th style="padding:6px 4px;text-align:right;white-space:nowrap">Mon.</th>
             <th style="padding:6px 4px;text-align:right;white-space:nowrap">Subtotal</th>
             <th style="padding:6px 4px;width:24px"></th>
           </tr></thead>
           <tbody id="tbody-hoja-avios"></tbody>
           <tfoot><tr style="border-top:1px solid #2a2a2a">
-            <td colspan="5" style="padding:8px;text-align:right;font-size:11px;color:#888">Total Avíos</td>
+            <td colspan="6" style="padding:8px;text-align:right;font-size:11px;color:#888">Total Avíos</td>
             <td style="padding:8px 4px;text-align:right;font-weight:600;color:#e0e0e0" id="total-avios-cell">—</td>
             <td></td>
           </tr></tfoot>
@@ -1253,15 +1256,23 @@ async function cargarHistorialCurvas(){
              style="width:68px;text-align:right;background:#0a0a0a;border:1px solid #333;color:#e0e0e0;padding:2px 4px;border-radius:3px;font-size:12px"
              oninput="window._hcPrecio(${idx},this.value)">`
         : `<span style="color:#ccc">${_fmt(l.precio_snapshot)}</span>`;
+      const fcVal = l.factor_conversion || 1;
+      const fcCell = HC_PUEDE_EDITAR
+        ? `<input type="number" step="1" min="1" value="${fcVal}"
+             style="width:52px;text-align:right;background:#0a0a0a;border:1px solid #333;color:#e0e0e0;padding:2px 4px;border-radius:3px;font-size:11px"
+             oninput="window._hcFactor(${idx},this.value)">`
+        : `<span style="color:#555;font-size:10px">${fcVal}</span>`;
 
       const pct = l.pct_adicional ? `${(l.pct_adicional*100).toFixed(0)}%` : '–';
+      const ucLabel = l.unidad_compra ? `<span style="font-size:9px;color:#444">${l.unidad_compra}</span>` : '';
       const tr = document.createElement('tr');
       tr.style.borderBottom = '1px solid #141414';
       tr.innerHTML = `
         <td style="padding:6px 8px;color:#ddd">${l.nombre}<br><span style="font-size:10px;color:#555">${l.seccion||''}</span></td>
         <td style="padding:6px 4px;text-align:right;color:#aaa">${l.consumo_unitario}</td>
         <td style="padding:6px 4px;text-align:right;color:#aaa">${pct}</td>
-        <td style="padding:6px 4px;text-align:right">${precioCell}</td>
+        <td style="padding:6px 4px;text-align:right">${precioCell}${ucLabel}</td>
+        <td style="padding:6px 4px;text-align:right">${fcCell}</td>
         <td style="padding:6px 4px;text-align:right;color:#666;font-size:10px">${l.moneda||''}</td>
         <td style="padding:6px 4px;text-align:right;color:#4caf7d;font-weight:600" id="hoja-sub-${idx}">${_fmt(l.subtotal)}</td>
         <td style="padding:6px 2px;text-align:center">
@@ -1274,12 +1285,16 @@ async function cargarHistorialCurvas(){
     _recalc();
   }
 
+  function _hcTc(){ return parseFloat(document.getElementById('hoja-tc')?.value || 3.70) || 3.70; }
+
   function _recalc(){
+    const tc = _hcTc();
     let tMP = 0, tAV = 0;
     _lineas.forEach((l, idx) => {
-      const s = l.precio_snapshot != null
-        ? l.consumo_unitario * (1 + (l.pct_adicional || 0)) * parseFloat(l.precio_snapshot)
-        : null;
+      if(l.precio_snapshot == null){ const c=document.getElementById(`hoja-sub-${idx}`);if(c)c.textContent='—';return;}
+      const fc = parseFloat(l.factor_conversion) || 1;
+      const precioSO = (l.moneda && l.moneda !== 'SO') ? parseFloat(l.precio_snapshot) * tc : parseFloat(l.precio_snapshot);
+      const s = l.consumo_unitario * (1 + (l.pct_adicional || 0)) / fc * precioSO;
       _lineas[idx].subtotal = s;
       const cell = document.getElementById(`hoja-sub-${idx}`);
       if(cell) cell.textContent = s != null ? s.toFixed(2) : '—';
@@ -1298,6 +1313,13 @@ async function cargarHistorialCurvas(){
     _lineas[idx].precio_snapshot = val === '' ? null : parseFloat(val);
     _recalc();
   };
+
+  window._hcFactor = function(idx, val){
+    _lineas[idx].factor_conversion = val === '' ? 1 : parseFloat(val);
+    _recalc();
+  };
+
+  window._hcRecalcAll = _recalc;
 
   window._hcHist = async function(tipo, itemId, nombre){
     const modal   = document.getElementById('modal-historial-precio');
@@ -1337,6 +1359,8 @@ async function cargarHistorialCurvas(){
       _badge(data.estado);
       const notasEl = document.getElementById('hoja-notas');
       if(notasEl && data.notas) notasEl.value = data.notas;
+      const tcEl = document.getElementById('hoja-tc');
+      if(tcEl && data.tipo_cambio) tcEl.value = data.tipo_cambio;
       _renderLineas(data.lineas);
       if(data.estado === 'APROBADA'){
         if(btnGuardar) btnGuardar.style.display = 'none';
@@ -1349,7 +1373,8 @@ async function cargarHistorialCurvas(){
       }
     } catch(e){
       loading.style.display = 'none';
-      if(e.message && e.message.includes('404')){
+      const esVacio = e.message && (e.message.includes('404') || e.message.toLowerCase().includes('sin hoja'));
+      if(esVacio){
         empty.innerHTML = '<div style="font-size:28px;margin-bottom:6px">💰</div><p style="font-size:13px">Sin hoja de costos. Usa "Pre-llenar desde BASE" para comenzar.</p>';
       } else {
         empty.innerHTML = `<div style="color:#f06060;padding:16px;font-size:12px">Error: ${e.message}</div>`;
@@ -1388,19 +1413,22 @@ async function cargarHistorialCurvas(){
     const notas = document.getElementById('hoja-notas')?.value || '';
     const body = {
       moneda_base: 'SO',
+      tipo_cambio: _hcTc(),
       notas,
       lineas: _lineas.map((l, i) => ({
-        tipo:             l.tipo,
-        item_id:          l.item_id,
-        seccion:          l.seccion || null,
-        nombre:           l.nombre,
-        unidad_medida:    l.unidad_medida || null,
-        consumo_unitario: l.consumo_unitario,
-        pct_adicional:    l.pct_adicional || 0,
-        precio_snapshot:  l.precio_snapshot != null ? parseFloat(l.precio_snapshot) : null,
-        moneda:           l.moneda || null,
-        notas:            l.notas || null,
-        orden:            i,
+        tipo:              l.tipo,
+        item_id:           l.item_id,
+        seccion:           l.seccion || null,
+        nombre:            l.nombre,
+        unidad_medida:     l.unidad_medida || null,
+        unidad_compra:     l.unidad_compra || null,
+        factor_conversion: parseFloat(l.factor_conversion) || 1,
+        consumo_unitario:  l.consumo_unitario,
+        pct_adicional:     l.pct_adicional || 0,
+        precio_snapshot:   l.precio_snapshot != null ? parseFloat(l.precio_snapshot) : null,
+        moneda:            l.moneda || null,
+        notas:             l.notas || null,
+        orden:             i,
       }))
     };
     try{
@@ -1426,9 +1454,4 @@ async function cargarHistorialCurvas(){
   };
 
   document.addEventListener('DOMContentLoaded', () => {
-    if(document.getElementById('card-hoja-costos')) _cargar();
-  });
-})();
-
-</script>
-{% endblock %}
+    if(document.getE

@@ -85,6 +85,7 @@ class CatalogoAvio(Base):
     consumo_unitario   = Column(Float,        nullable=False, default=1.0)
     pct_adicional      = Column(Float,        nullable=False, default=0.01)
     unidad_compra      = Column(String(20),   nullable=True)
+    factor_conversion  = Column(Float,        nullable=False, server_default='1')  # Unid/UC ej: 4572 mt/cono
     moneda             = Column(String(5),    nullable=True)
     precio             = Column(Float,        nullable=True)
     orden              = Column(Integer,      nullable=False, default=0)
@@ -138,6 +139,8 @@ class CatalogoMp(Base):
     consumo_unitario   = Column(Float,        nullable=False, default=1.0)
     pct_adicional      = Column(Float,        nullable=False, default=0.02)
     unidad_medida      = Column(String(10),   nullable=False, server_default="mt.")
+    unidad_compra      = Column(String(20),   nullable=True)
+    factor_conversion  = Column(Float,        nullable=False, server_default='1')  # Unid/UC ej: 4572 mt/cono
     codigo_interno     = Column(String(50),   nullable=True)
     codigo_base        = Column(String(60),   nullable=True)    # trazabilidad BASE→VARIANTE
     proveedor          = Column(String(150),  nullable=True)
@@ -286,6 +289,7 @@ class HojaCostos(Base):
     total_avios        = Column(Float,       nullable=True)
     total_general      = Column(Float,       nullable=True)
     moneda_base        = Column(String(5),   nullable=False, default="SO")
+    tipo_cambio        = Column(Float,       nullable=False, server_default='3.70')  # USD→SO
     creado_por_id      = Column(Integer,     ForeignKey("usuarios.id"), nullable=True)
     aprobado_por_id    = Column(Integer,     ForeignKey("usuarios.id"), nullable=True)
     aprobado_at        = Column(DateTime,    nullable=True)
@@ -315,10 +319,12 @@ class HojaCostosLinea(Base):
     item_id          = Column(Integer,     nullable=False)
     seccion          = Column(String(30),  nullable=True)
     nombre           = Column(String(200), nullable=False)
-    unidad_medida    = Column(String(20),  nullable=True)
-    consumo_unitario = Column(Float,       nullable=False, default=1.0)
-    pct_adicional    = Column(Float,       nullable=False, default=0.0)
-    precio_snapshot  = Column(Float,       nullable=True)
+    unidad_medida      = Column(String(20),  nullable=True)
+    unidad_compra      = Column(String(20),  nullable=True)
+    factor_conversion  = Column(Float,       nullable=False, server_default='1')
+    consumo_unitario   = Column(Float,       nullable=False, default=1.0)
+    pct_adicional      = Column(Float,       nullable=False, default=0.0)
+    precio_snapshot    = Column(Float,       nullable=True)
     moneda           = Column(String(5),   nullable=True)
     subtotal         = Column(Float,       nullable=True)
     editado_manual   = Column(Boolean,     default=False)
