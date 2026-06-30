@@ -314,7 +314,9 @@ async def telegram_webhook(request: Request):
     username = message.get("from", {}).get("first_name", "Usuario")
 
     # Verificar acceso
-    if ALLOWED_IDS and chat_id not in ALLOWED_IDS:
+    # Lista vacía (TELEGRAM_ALLOWED_IDS no configurado) = cerrado por defecto.
+    # Configura TELEGRAM_ALLOWED_IDS=id1,id2 en .env para habilitar el bot.
+    if not ALLOWED_IDS or chat_id not in ALLOWED_IDS:
         await send_message(chat_id, "⛔ No tienes acceso a este bot.")
         return JSONResponse({"ok": True})
 
