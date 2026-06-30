@@ -21,6 +21,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.models.of import OrdenFabricacion, TipoDocumentoOF, DocumentoOF
+from app.models.catalogo import HojaCostos
 
 
 # ── Definición de gates ───────────────────────────────────────
@@ -135,7 +136,31 @@ def calcular_gates(of: OrdenFabricacion, db: Session) -> Dict[str, GateResult]:
         valor: Optional[str] = None
 
         if not bloqueado:
-            if gate.tipo == "doc" and gate.doc_type:
+            if gate.gate_id == "HOJA_COSTOS":
+                # Pasa si la variante vinculada a la OF tiene una HojaCostos APROBADA en catálogo
+                # (flujo nuevo), o si hay un archivo subido a la OF (flujo legado).
+                hoja_aprobada = (
+                    db.query(HojaCostos)
+                    .filter_by(
+                        prenda_catalogo_id=of.prenda_catalogo_id,
+                        estado="APROBADA",
+                    )
+                    .first()
+                ) if of.prenda_catalogo_id else None
+
+                if hoja_aprobada:
+                    pasado = True
+                    valor  = f"Hoja aprobada · S/. {hoja_aprobada.total_general or 0:.2f}"
+                elif gate.doc_type in docs_subidos:
+                    pasado = True
+                    doc = next(
+                        (d for d in of.documentos
+                         if str(d.tipo.value if hasattr(d.tipo, "value") else d.tipo) == gate.doc_type),
+                        None,
+                    )
+                    valor = doc.nombre_archivo if doc else None
+
+            elif gate.tipo == "doc" and gate.doc_type:
                 pasado = gate.doc_type in docs_subidos
                 if pasado:
                     doc = next(
