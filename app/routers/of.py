@@ -1147,7 +1147,20 @@ def guardar_edicion_piezas(
         raise HTTPException(403, "Sin permiso")
 
     piezas_map = {p.id: p for p in of.piezas}
-   
+
+    for item in body.piezas:
+        pieza = piezas_map.get(item.id)
+        if not pieza:
+            continue
+        pieza.nombre           = item.nombre
+        pieza.codigo_sap       = item.codigo_sap or None
+        pieza.material         = item.material
+        pieza.cantidad_x_prenda = item.cantidad_x_prenda
+        pieza.fusionado        = item.fusionado
+
+    db.commit()
+    return {"ok": True, "actualizadas": len(body.piezas)}
+
 
 # ── API: Curva de tallas en OF ────────────────────────────────────────────────
 
