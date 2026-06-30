@@ -8,7 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.config import settings
 from app.database.connection import engine, Base
 from app.routers import auth, dashboard, of, corte, piezas, admin, ws, plantas, comercial, supervisor, telegram_bot, pdf_report
-from app.routers import ingenieria, catalogo, curvas
+from app.routers import ingenieria, catalogo, curvas, hoja_costos
 from app.core.csrf import (
     new_token, sign_token, verify_signed, is_exempt,
     CSRF_COOKIE, CSRF_HEADER,
@@ -105,5 +105,6 @@ app.include_router(supervisor.router,   prefix="/supervisor", tags=["Supervisor"
 app.include_router(telegram_bot.router,                       tags=["Telegram"])
 app.include_router(pdf_report.router,                         tags=["Reportes"])
 app.include_router(ingenieria.router,                         tags=["Ingenieria"])
-app.include_router(catalogo.router,   prefix="/catalogo",    tags=["Catalogo de Prendas"])
-app.include_router(curvas.router,     prefix="/curvas",      tags=["Curvas de Tallas"])
+app.include_router(catalogo.router,    prefix="/catalogo",    tags=["Catalogo de Prendas"])
+app.include_router(hoja_costos.router, prefix="/catalogo",    tags=["Hoja de Costos"])
+app.include_router(curvas.router,      prefix="/curvas",      tags=["Curvas de Tallas"])
