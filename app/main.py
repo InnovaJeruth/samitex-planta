@@ -63,8 +63,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 app = FastAPI(
     title="Sistema de seguimiento de Ordenes de Fabricacion - Area de Planta",
     version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url=settings.DOCS_URL,
+    redoc_url=settings.REDOC_URL,
 )
 
 app.add_middleware(CSRFMiddleware)

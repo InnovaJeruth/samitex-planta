@@ -6,8 +6,16 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "Samitex Planta"
     APP_ENV: str = "development"
-    DEBUG: bool = True
+    DEBUG: bool = False
     SECRET_KEY: str
+
+    @property
+    def DOCS_URL(self) -> str | None:
+        return "/api/docs" if self.APP_ENV != "production" else None
+
+    @property
+    def REDOC_URL(self) -> str | None:
+        return "/api/redoc" if self.APP_ENV != "production" else None
 
     # Base de datos SQL Server
     DB_SERVER: str
