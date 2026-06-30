@@ -6,26 +6,20 @@ from typing import Optional
 
 from app.database.connection import get_db
 from app.models.usuario import Usuario, RolEnum
-from app.core.auth import get_current_user, hash_password
+from app.core.auth import hash_password, require_roles
 from app.core.templates import templates
 
 router = APIRouter()
 
-
-def _solo_admin(user: Usuario):
-    rol = user.rol.value if hasattr(user.rol, "value") else str(user.rol)
-    if rol != "ADMIN":
-        raise HTTPException(403, "Solo ADMIN puede acceder")
-
+_admin = Depends(require_roles(RolEnum.ADMIN))
 
 # ── Página usuarios ───────────────────────────────────────────
 @router.get("/", response_class=HTMLResponse)
 def lista_usuarios(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = _admin,
 ):
-    _solo_admin(current_user)
     usuarios = db.query(Usuario).order_by(Usuario.nombre).all()
     return templates.TemplateResponse("admin/usuarios.html", {
         "request": request,
@@ -48,9 +42,8 @@ class UsuarioCreate(PydanticBase):
 def crear_usuario(
     body: UsuarioCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = _admin,
 ):
-    _solo_admin(current_user)
     if db.query(Usuario).filter_by(username=body.username).first():
         raise HTTPException(400, f"Username '{body.username}' ya existe")
     hashed = hash_password(body.password)
@@ -73,9 +66,8 @@ def crear_usuario(
 def toggle_usuario(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = _admin,
 ):
-    _solo_admin(current_user)
     user = db.query(Usuario).filter_by(id=user_id).first()
     if not user:
         raise HTTPException(404, "Usuario no encontrado")
@@ -96,9 +88,8 @@ def cambiar_password(
     user_id: int,
     body: CambiarPasswordBody,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = _admin,
 ):
-    _solo_admin(current_user)
     user = db.query(Usuario).filter_by(id=user_id).first()
     if not user:
         raise HTTPException(404, "Usuario no encontrado")
