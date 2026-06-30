@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from datetime import datetime
 import enum
 
 from app.database.connection import Base
@@ -41,3 +42,13 @@ class Usuario(Base):
     of_creadas         = relationship("OrdenFabricacion", back_populates="responsable")
     registros_avance   = relationship("AvanceRegistro",   back_populates="usuario")
     documentos_subidos = relationship("DocumentoOF",      back_populates="usuario")
+
+
+class TokenRevocado(Base):
+    """Lista negra de JWTs revocados (logout). Se limpia automáticamente al expirar."""
+    __tablename__ = "tokens_revocados"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    jti        = Column(String(64), unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    revoked_at = Column(DateTime, default=datetime.utcnow, nullable=False)

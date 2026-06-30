@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 import bcrypt as _bcrypt
+import uuid
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -32,14 +33,14 @@ def verify_password(plain: str, hashed: str) -> bool:
 def create_access_token(data: dict) -> str:
     payload = data.copy()
     payload["exp"] = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    payload["jti"] = uuid.uuid4().hex  # ID único para poder revocar el token
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-def _decode_token(token: str) -> Optional[str]:
-    """Decodifica un JWT y retorna el username, o None si es inválido."""
+def _decode_token(token: str) -> Optional[dict]:
+    """Decodifica un JWT y retorna el payload completo, o None si es inválido."""
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        return payload.get("sub")
+        return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
     except JWTError:
         return None
 
@@ -72,7 +73,26 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    username = _decode_token(token)
+    payload = _decode_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido o expirado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Verificar que el token no haya sido revocado (logout)
+    jti = payload.get("jti")
+    if jti:
+        from app.models.usuario import TokenRevocado
+        if db.query(TokenRevocado).filter_by(jti=jti).first():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Sesión cerrada. Inicia sesión nuevamente.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    username = payload.get("sub")
     if not username:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
