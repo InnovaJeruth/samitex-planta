@@ -12,7 +12,8 @@ def _safe_date(s: str) -> date:
         raise HTTPException(400, f"Fecha inválida: '{s}'. Use formato YYYY-MM-DD")
 from typing import Optional, List
 from pydantic import BaseModel as PydanticBase
-import os, shutil, uuid, json
+import os, shutil as _shutil, uuid, json
+from app.services import storage
 
 from app.database.connection import get_db
 from app.models.of import OrdenFabricacion, EstadoOF, TipoPrendaEnum, TipoDocumentoOF, DocumentoOF, TipoClienteEnum, EstadoDocsEnum, OFTallaDistribucion, AuditoriaDocumentoOF
@@ -671,25 +672,15 @@ async def subir_documento(
     if rol not in ("ADMIN", "PLANEADOR") and not puede_subir_gate(rol, gate_id, tipo_cliente):
         raise HTTPException(403, f"Tu rol ({rol}) no tiene permiso para subir '{gate_id}' en OFs de tipo {tipo_cliente}")
 
-    upload_dir = os.path.join(settings.UPLOAD_DIR, str(of_id))
-    os.makedirs(upload_dir, exist_ok=True)
-    # Usar solo el stem del nombre original + extensión validada (sin path traversal)
     nombre_seguro = pathlib.Path(archivo.filename).name
     filename = f"{uuid.uuid4().hex}_{nombre_seguro}"
-    filepath = os.path.join(upload_dir, filename)
-
-    with open(filepath, "wb") as f:
-        f.write(contenido)
+    filepath = storage.save_bytes(contenido, str(of_id), filename)
 
     # Upsert: si ya existe un doc del mismo tipo para esta OF, actualizarlo
     doc_existente = db.query(DocumentoOF).filter_by(of_id=of_id, tipo=tipo).first()
     if doc_existente:
-        # Eliminar archivo físico anterior si existe y es distinto
         if doc_existente.ruta_archivo and doc_existente.ruta_archivo != filepath:
-            try:
-                os.remove(doc_existente.ruta_archivo)
-            except OSError:
-                pass
+            storage.delete(doc_existente.ruta_archivo)
         nombre_anterior = doc_existente.nombre_archivo
         doc_existente.nombre_archivo = archivo.filename
         doc_existente.ruta_archivo   = filepath
@@ -730,13 +721,9 @@ def descargar_documento(
     doc = db.query(DocumentoOF).filter_by(id=doc_id).first()
     if not doc:
         raise HTTPException(404, "Documento no encontrado")
-    if not os.path.exists(doc.ruta_archivo):
+    if not storage.exists(doc.ruta_archivo):
         raise HTTPException(404, "Archivo no encontrado en el servidor")
-    return FileResponse(
-        path=doc.ruta_archivo,
-        filename=doc.nombre_archivo,
-        media_type="application/octet-stream",
-    )
+    return storage.serve(doc.ruta_archivo, doc.nombre_archivo)
 
 
 # ── API: ficha técnica disponible en catálogo para esta OF ────
@@ -794,22 +781,15 @@ def usar_ficha_catalogo(
     if not ficha:
         raise HTTPException(404, "Ficha técnica no encontrada en el catálogo")
 
-    upload_dir = os.path.join(settings.UPLOAD_DIR, str(of_id))
-    os.makedirs(upload_dir, exist_ok=True)
-    ext          = os.path.splitext(ficha.ruta_archivo)[1]
     nuevo_nombre = f"{uuid.uuid4().hex}_{ficha.nombre_archivo}"
-    nueva_ruta   = os.path.join(upload_dir, nuevo_nombre)
-    _shutil.copy2(ficha.ruta_archivo, nueva_ruta)
+    nueva_ruta   = storage.copy_file(ficha.ruta_archivo, str(of_id), nuevo_nombre)
 
     area = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
 
     doc_existente = db.query(DocumentoOF).filter_by(of_id=of_id, tipo="FICHA_TECNICA").first()
     if doc_existente:
         if doc_existente.ruta_archivo and doc_existente.ruta_archivo != nueva_ruta:
-            try:
-                os.remove(doc_existente.ruta_archivo)
-            except OSError:
-                pass
+            storage.delete(doc_existente.ruta_archivo)
         doc_existente.nombre_archivo = ficha.nombre_archivo
         doc_existente.ruta_archivo   = nueva_ruta
         doc_existente.area           = area

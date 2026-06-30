@@ -17,13 +17,19 @@ class Settings(BaseSettings):
     def REDOC_URL(self) -> str | None:
         return "/api/redoc" if self.APP_ENV != "production" else None
 
-    # Base de datos SQL Server
-    DB_SERVER: str
-    DB_NAME: str
+    # Base de datos — en producción, DATABASE_URL_OVERRIDE reemplaza todo lo de abajo
+    DATABASE_URL_OVERRIDE: str = ""      # ej. postgresql://user:pass@host/db (Supabase)
+    DB_SERVER: str = ""
+    DB_NAME: str = ""
     DB_DRIVER: str = "ODBC Driver 17 for SQL Server"
     DB_TRUSTED_CONNECTION: bool = True   # Windows Auth
     DB_USER: str = ""
     DB_PASSWORD: str = ""
+
+    # Supabase Storage
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
+    SUPABASE_BUCKET: str = "uploads"
 
     # JWT
     JWT_SECRET_KEY: str
@@ -46,6 +52,8 @@ class Settings(BaseSettings):
 
     @property
     def DATABASE_URL(self) -> str:
+        if self.DATABASE_URL_OVERRIDE:
+            return self.DATABASE_URL_OVERRIDE
         driver = self.DB_DRIVER.replace(" ", "+")
         if self.DB_TRUSTED_CONNECTION:
             return (

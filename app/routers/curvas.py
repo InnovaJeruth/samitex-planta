@@ -18,6 +18,7 @@ from app.models.usuario import Usuario
 from app.core.auth import get_current_user, get_rol
 from app.core.templates import templates
 from app.config import settings
+from app.services import storage
 
 router = APIRouter()
 
@@ -210,20 +211,10 @@ async def api_adjuntar_doc(
     if len(contenido) > 10 * 1024 * 1024:
         raise HTTPException(400, "Archivo supera 10 MB")
 
-    upload_dir = os.path.join(settings.UPLOAD_DIR, "curvas", str(curva_id))
-    os.makedirs(upload_dir, exist_ok=True)
-
-    # Eliminar archivo anterior si existe
-    if curva.ruta_archivo:
-        try:
-            os.remove(curva.ruta_archivo)
-        except OSError:
-            pass
+    storage.delete(curva.ruta_archivo or "")
 
     filename = f"{uuid.uuid4().hex}_{pathlib.Path(archivo.filename).name}"
-    filepath = os.path.join(upload_dir, filename)
-    with open(filepath, "wb") as f:
-        f.write(contenido)
+    filepath = storage.save_bytes(contenido, f"curvas/{curva_id}", filename)
 
     curva.nombre_archivo = archivo.filename
     curva.ruta_archivo   = filepath
@@ -241,13 +232,9 @@ def api_descargar_doc(
     curva = db.query(CurvaTallas).filter_by(id=curva_id, activo=True).first()
     if not curva or not curva.ruta_archivo:
         raise HTTPException(404, "Documento no encontrado")
-    if not os.path.exists(curva.ruta_archivo):
+    if not storage.exists(curva.ruta_archivo):
         raise HTTPException(404, "Archivo no encontrado en el servidor")
-    return FileResponse(
-        path=curva.ruta_archivo,
-        filename=curva.nombre_archivo,
-        media_type="application/octet-stream",
-    )
+    return storage.serve(curva.ruta_archivo, curva.nombre_archivo)
 
 
 class VincularOFsBody(PydanticBase):
@@ -295,23 +282,16 @@ def api_vincular_ofs(
         # Se copia el archivo físico a la carpeta de la OF para que cada OF
         # tenga su propia copia independiente — evita puntero colgante si la
         # curva reemplaza su archivo en el futuro.
-        if curva.ruta_archivo and os.path.exists(curva.ruta_archivo):
-            import shutil as _shutil
-            of_upload_dir = os.path.join(settings.UPLOAD_DIR, str(of_id))
-            os.makedirs(of_upload_dir, exist_ok=True)
+        if curva.ruta_archivo and storage.exists(curva.ruta_archivo):
             ext = pathlib.Path(curva.nombre_archivo or "").suffix
             copia_nombre = f"{uuid.uuid4().hex}_reporte_tallas{ext}"
-            copia_ruta   = os.path.join(of_upload_dir, copia_nombre)
-            _shutil.copy2(curva.ruta_archivo, copia_ruta)
+            copia_ruta   = storage.copy_file(curva.ruta_archivo, str(of_id), copia_nombre)
 
             doc_ex = db.query(DocumentoOF).filter_by(of_id=of_id, tipo="REPORTE_TALLAS").first()
             if doc_ex:
                 # Eliminar copia anterior si existe
-                if doc_ex.ruta_archivo and os.path.exists(doc_ex.ruta_archivo):
-                    try:
-                        os.remove(doc_ex.ruta_archivo)
-                    except OSError:
-                        pass
+                if doc_ex.ruta_archivo:
+                    storage.delete(doc_ex.ruta_archivo)
                 doc_ex.nombre_archivo = curva.nombre_archivo
                 doc_ex.ruta_archivo   = copia_ruta
                 doc_ex.usuario_id     = current_user.id

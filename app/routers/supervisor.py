@@ -74,7 +74,7 @@ def programacion(
 
     # Verificar si la tabla of_fase_tiempos existe antes del loop
     try:
-        db.execute(text("SELECT TOP 1 1 FROM of_fase_tiempos"))
+        db.execute(text("SELECT 1 FROM of_fase_tiempos LIMIT 1"))
         tabla_tiempos_ok = True
     except Exception:
         db.rollback()

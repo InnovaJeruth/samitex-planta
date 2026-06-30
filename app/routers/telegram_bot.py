@@ -29,7 +29,7 @@ async def send_message(chat_id: int, text: str):
         })
 
 # ── Consultas internas a la BD ───────────────────────────────
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = settings.NGROK_URL or "http://127.0.0.1:8000"
 BOT_KEY = settings.BOT_SECRET_KEY  # clave exclusiva para endpoints internos del bot
 
 async def _get(path: str) -> dict:

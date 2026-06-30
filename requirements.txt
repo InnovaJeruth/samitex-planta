@@ -9,8 +9,12 @@ aiofiles==23.2.1                   # servir archivos estáticos async
 
 # ─── Base de Datos ────────────────────────────────────────────
 sqlalchemy==2.0.36                 # ORM principal
-pyodbc==5.2.0                      # conector ODBC para SQL Server
+pyodbc==5.2.0                      # conector ODBC para SQL Server (desarrollo local)
+psycopg2-binary==2.9.9             # conector PostgreSQL (producción / Supabase)
 alembic==1.13.1                    # migraciones de BD
+
+# ─── Supabase Storage ─────────────────────────────────────────
+supabase==2.9.1                    # SDK para Supabase Storage (producción)
 
 # ─── Validación de datos ─────────────────────────────────────
 pydantic==2.10.6

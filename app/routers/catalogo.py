@@ -29,6 +29,7 @@ from app.models.catalogo import (
     TIPOS_MP, UNIDADES_MP,
 )
 from app.models.pieza import PlantillaPieza
+from app.services import storage
 
 router = APIRouter()
 
@@ -46,30 +47,16 @@ def _rol(usuario: Usuario) -> str:
     return usuario.rol.value if hasattr(usuario.rol, "value") else str(usuario.rol)
 
 
-def _asegurar_carpetas():
-    os.makedirs(UPLOAD_PRENDA, exist_ok=True)
-    os.makedirs(UPLOAD_PIEZA,  exist_ok=True)
-    os.makedirs(UPLOAD_DOCS,   exist_ok=True)
-
-
 def _guardar_imagen(archivo: UploadFile, carpeta: str) -> str:
-    _asegurar_carpetas()
     ext = os.path.splitext(archivo.filename or "")[1].lower()
     if ext not in EXTS_IMAGEN:
         raise HTTPException(400, f"Formato no permitido. Use: {', '.join(EXTS_IMAGEN)}")
     nombre = f"{uuid.uuid4().hex}{ext}"
-    ruta = os.path.join(carpeta, nombre)
-    with open(ruta, "wb") as f:
-        f.write(archivo.file.read())
-    return ruta
+    return storage.save_file(archivo, carpeta, nombre)
 
 
 def _borrar_imagen(ruta: Optional[str]):
-    if ruta and os.path.isfile(ruta):
-        try:
-            os.remove(ruta)
-        except OSError:
-            pass
+    storage.delete(ruta or "")
 
 
 def _prenda_base_de(prenda: PrendaCatalogo, db: Session) -> Optional[PrendaCatalogo]:
@@ -590,12 +577,9 @@ def api_subir_documento(
     if ext not in EXTS_DOC:
         raise HTTPException(400, f"Formato no permitido. Use: {', '.join(EXTS_DOC)}")
 
-    _asegurar_carpetas()
     nombre_guardado = f"{uuid.uuid4().hex}{ext}"
-    ruta = os.path.join(UPLOAD_DOCS, nombre_guardado)
     contenido = archivo.file.read()
-    with open(ruta, "wb") as f:
-        f.write(contenido)
+    ruta = storage.save_bytes(contenido, UPLOAD_DOCS, nombre_guardado)
 
     doc = PrendaDocumento(
         prenda_catalogo_id = prenda_id,
@@ -657,12 +641,8 @@ def api_copiar_ficha_a_ofs(
         of = db.query(OrdenFabricacion).filter_by(id=of_id, estado=EstadoOF.BORRADOR).first()
         if not of:
             continue
-        upload_dir = os.path.join(settings.UPLOAD_DIR, str(of_id))
-        os.makedirs(upload_dir, exist_ok=True)
-        ext = os.path.splitext(doc.ruta_archivo)[1]
         nuevo_nombre = f"{uuid.uuid4().hex}_{doc.nombre_archivo}"
-        nueva_ruta   = os.path.join(upload_dir, nuevo_nombre)
-        _shutil.copy2(doc.ruta_archivo, nueva_ruta)
+        nueva_ruta   = storage.copy_file(doc.ruta_archivo, str(of_id), nuevo_nombre)
 
         doc_of = DocumentoOF(
             of_id=of_id,
