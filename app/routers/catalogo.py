@@ -1397,13 +1397,13 @@ def api_ofs_activas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Lista OFs activas de esta variante. tipo= indica qué doc revisar para ya_tiene."""
+    """Lista OFs en BORRADOR de esta variante. tipo= indica qué doc revisar para ya_tiene."""
     from app.models.of import OrdenFabricacion, EstadoOF
     ofs = (
         db.query(OrdenFabricacion)
           .filter(
               OrdenFabricacion.prenda_catalogo_id == prenda_id,
-              OrdenFabricacion.estado.in_([EstadoOF.BORRADOR, EstadoOF.ACTIVA, EstadoOF.EN_PROCESO]),
+              OrdenFabricacion.estado == EstadoOF.BORRADOR,
           ).order_by(OrdenFabricacion.numero_of).all()
     )
     return [
@@ -1453,14 +1453,14 @@ def api_vincular_muestra(
 
     q = db.query(OrdenFabricacion).filter(
         OrdenFabricacion.prenda_catalogo_id == prenda_id,
-        OrdenFabricacion.estado.in_([EstadoOF.BORRADOR, EstadoOF.ACTIVA, EstadoOF.EN_PROCESO]),
+        OrdenFabricacion.estado == EstadoOF.BORRADOR,
     )
     if body.of_ids:
         q = q.filter(OrdenFabricacion.id.in_(body.of_ids))
     ofs = q.all()
 
     if not ofs:
-        return {"ok": True, "vinculadas": [], "msg": "No hay OFs activas para vincular"}
+        return {"ok": True, "vinculadas": [], "msg": "No hay OFs en BORRADOR para vincular"}
 
     vinculadas = []
     for of in ofs:

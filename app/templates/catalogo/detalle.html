@@ -782,6 +782,20 @@
   </div>
 </div>
 
+<!-- Modal vincular muestra -->
+<div class="modal-overlay" id="modal-vincular-muestra">
+  <div class="modal-box" style="max-width:520px">
+    <h3 style="margin:0 0 4px">Vincular muestra aprobada a OFs</h3>
+    <p style="font-size:12px;color:#666;margin:0 0 16px">Solo OFs en BORRADOR. Selecciona las que recibirán la muestra.</p>
+    <div id="mvm-lista" style="max-height:320px;overflow-y:auto;border:1px solid #1e1e1e;border-radius:6px;padding:4px"></div>
+    <p id="mvm-empty" style="display:none;font-size:12px;color:#555;text-align:center;padding:20px">No hay OFs en BORRADOR para esta prenda.</p>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-vincular-muestra').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" id="mvm-btn-confirmar" onclick="confirmarVincularMuestra()">Vincular seleccionadas</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal avío -->
 <div class="modal-overlay" id="modal-avio">
   <div class="modal-box">
@@ -1078,6 +1092,47 @@ async function guardarPendiente(i){const p=_pendingPiezas[i];const codigo=(docum
 async function guardarCodigo(piezaId,nombre){const input=document.getElementById(`cod-${piezaId}`);const codigo=(input?.value||'').trim();if(!codigo){toast('Ingresa un código','error');return;}const fd=new FormData();fd.append('nombre',nombre);fd.append('codigo',codigo);try{const res=await fetch(`/catalogo/api/piezas/${piezaId}/editar`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||'Error');}toast('Código guardado');setTimeout(()=>location.reload(),1000);}catch(e){toast(e.message,'error');}}
 async function eliminarPieza(id){if(!confirm('¿Eliminar esta pieza?'))return;try{await apiFetch(`/catalogo/api/piezas/${id}/eliminar`,{method:'POST'});document.getElementById(`pieza-card-${id}`)?.remove();toast('Pieza eliminada');}catch(e){toast(e.message,'error');}}
 async function archivarPrenda(id){if(!confirm('¿Archivar esta prenda?'))return;try{await apiFetch(`/catalogo/api/${id}/archivar`,{method:'POST'});toast('Archivada');setTimeout(()=>window.location.href='/catalogo/',1200);}catch(e){toast(e.message,'error');}}
+
+// ── Vincular muestra a OFs ────────────────────────────────────────────────────
+async function vincularMuestra(){
+  const lista  = document.getElementById('mvm-lista');
+  const empty  = document.getElementById('mvm-empty');
+  const btn    = document.getElementById('mvm-btn-confirmar');
+  lista.innerHTML = '<div style="padding:16px;text-align:center;color:#555;font-size:12px">Cargando OFs…</div>';
+  empty.style.display = 'none';
+  btn.style.display = 'inline-block';
+  document.getElementById('modal-vincular-muestra').classList.add('open');
+  try {
+    const ofs = await apiFetch(`/catalogo/api/${PRENDA_ID}/ofs-activas?tipo=MUESTRA_APROBADA`);
+    if(!ofs.length){
+      lista.innerHTML = '';
+      empty.style.display = 'block';
+      btn.style.display = 'none';
+      return;
+    }
+    lista.innerHTML = ofs.map(of => `
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #1a1a1a;cursor:${of.ya_tiene?'default':'pointer'};opacity:${of.ya_tiene?0.45:1}">
+        <input type="checkbox" value="${of.id}" ${of.ya_tiene?'disabled checked':''} style="accent-color:#4caf7d;width:15px;height:15px">
+        <div style="flex:1">
+          <div style="color:#e0e0e0;font-weight:500">${of.numero_of}</div>
+          <div style="font-size:11px;color:#666">${of.cliente||'—'} · ${of.total_juegos} juegos · <span style="color:${of.ya_tiene?'#4caf7d':'#888'}">${of.ya_tiene?'✓ Ya tiene muestra':'Sin muestra'}</span></div>
+        </div>
+      </label>`).join('');
+  } catch(e){ toast(e.message,'error'); document.getElementById('modal-vincular-muestra').classList.remove('open'); }
+}
+
+async function confirmarVincularMuestra(){
+  const checks = [...document.querySelectorAll('#mvm-lista input[type=checkbox]:checked:not([disabled])')];
+  if(!checks.length){ toast('Selecciona al menos una OF','error'); return; }
+  const of_ids = checks.map(c => parseInt(c.value));
+  try {
+    const r = await apiFetch(`/catalogo/api/${PRENDA_ID}/vincular-muestra`, {
+      method:'POST', body:JSON.stringify({of_ids}), headers:{'Content-Type':'application/json'}
+    });
+    document.getElementById('modal-vincular-muestra').classList.remove('open');
+    toast(r.msg || `Muestra vinculada a ${r.vinculadas.length} OF(s)`);
+  } catch(e){ toast(e.message,'error'); }
+}
 
 // ── Modal MP ──────────────────────────────────────────────────────────────────
 function _resetModalMp(){
@@ -1430,7 +1485,7 @@ async function cargarHistorialCurvas(){
       tipo_cambio: _hcTc(),
       notas,
       lineas: _lineas.map((l, i) => ({
-                tipo:              l.tipo,
+        tipo:              l.tipo,
         item_id:           l.item_id,
         seccion:           l.seccion || null,
         nombre:            l.nombre,
@@ -1500,4 +1555,4 @@ async function cargarHistorialCurvas(){
 })();
 
 </script>
-{% endblock %}
+{% endblock %}block %}
