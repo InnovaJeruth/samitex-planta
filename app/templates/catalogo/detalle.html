@@ -556,6 +556,91 @@
       <div style="text-align:center;padding:30px;color:#555"><div style="font-size:32px;margin-bottom:8px">📎</div><p>No hay documentos.</p></div>
       {% endif %}
     </div>
+
+    <!-- Hoja de Costos -->
+    {% if prenda.tipo_cliente != 'BASE' %}
+    <script>const HC_PUEDE_EDITAR = {% if puede_editar %}true{% else %}false{% endif %};</script>
+    <div class="card" id="card-hoja-costos" style="margin-top:16px">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span class="card-title">💰 Hoja de Costos</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span id="hoja-estado-badge" style="display:none;font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px"></span>
+          {% if puede_editar %}
+          <button class="btn btn-secondary btn-sm" onclick="prefillHoja()" id="btn-prefill">↙ Pre-llenar desde BASE</button>
+          <button class="btn btn-primary btn-sm" onclick="guardarHoja()" id="btn-guardar-hoja" style="display:none">💾 Guardar borrador</button>
+          {% endif %}
+          <button class="btn btn-sm" id="btn-aprobar-hoja" style="background:#1a4a2a;color:#4caf7d;border:1px solid #2a6a3a;display:none" onclick="aprobarHoja()">✓ Aprobar</button>
+        </div>
+      </div>
+      <div id="hoja-loading" style="text-align:center;padding:20px;color:#555;display:none">Cargando…</div>
+      <div id="hoja-empty" style="text-align:center;padding:24px;color:#555">
+        <div style="font-size:28px;margin-bottom:6px">💰</div>
+        <p style="font-size:13px">Sin hoja de costos. Usa "Pre-llenar desde BASE" para comenzar.</p>
+      </div>
+      <div id="hoja-content" style="display:none">
+        <!-- MP -->
+        <div style="padding:12px 16px 4px;font-size:11px;font-weight:700;color:#4a9fff;letter-spacing:.08em">MATERIA PRIMA</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <thead><tr style="color:#555;font-size:10px;border-bottom:1px solid #1e1e1e">
+            <th style="padding:6px 8px;text-align:left">Nombre</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Cons.</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">%Ad.</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Precio</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Mon.</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Subtotal</th>
+            <th style="padding:6px 4px;width:24px"></th>
+          </tr></thead>
+          <tbody id="tbody-hoja-mp"></tbody>
+          <tfoot><tr style="border-top:1px solid #2a2a2a">
+            <td colspan="5" style="padding:8px;text-align:right;font-size:11px;color:#888">Total MP</td>
+            <td style="padding:8px 4px;text-align:right;font-weight:600;color:#e0e0e0" id="total-mp-cell">—</td>
+            <td></td>
+          </tr></tfoot>
+        </table>
+        <!-- Avíos -->
+        <div style="padding:12px 16px 4px;font-size:11px;font-weight:700;color:#c084f5;letter-spacing:.08em">AVÍOS</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <thead><tr style="color:#555;font-size:10px;border-bottom:1px solid #1e1e1e">
+            <th style="padding:6px 8px;text-align:left">Nombre</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Cons.</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">%Ad.</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Precio</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Mon.</th>
+            <th style="padding:6px 4px;text-align:right;white-space:nowrap">Subtotal</th>
+            <th style="padding:6px 4px;width:24px"></th>
+          </tr></thead>
+          <tbody id="tbody-hoja-avios"></tbody>
+          <tfoot><tr style="border-top:1px solid #2a2a2a">
+            <td colspan="5" style="padding:8px;text-align:right;font-size:11px;color:#888">Total Avíos</td>
+            <td style="padding:8px 4px;text-align:right;font-weight:600;color:#e0e0e0" id="total-avios-cell">—</td>
+            <td></td>
+          </tr></tfoot>
+        </table>
+        <!-- Total general -->
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:12px 16px;border-top:2px solid #2a2a2a;font-weight:700">
+          <span style="color:#888;font-size:12px">TOTAL GENERAL</span>
+          <span style="font-size:18px;color:#4caf7d" id="total-general-cell">—</span>
+        </div>
+        <!-- Notas -->
+        <div style="padding:0 16px 12px">
+          <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Notas</label>
+          <textarea id="hoja-notas" rows="2" style="width:100%;background:#0f0f0f;border:1px solid #2a2a2a;color:#ccc;border-radius:4px;padding:6px 8px;font-size:12px;resize:vertical;box-sizing:border-box" placeholder="Observaciones…"></textarea>
+        </div>
+        <div id="hoja-aprobado-info" style="display:none;padding:4px 16px 12px;font-size:11px;color:#4caf7d"></div>
+      </div>
+    </div>
+
+    <!-- Modal historial de precios -->
+    <div id="modal-historial-precio" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1500;align-items:center;justify-content:center">
+      <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:20px;width:360px;max-width:90vw">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-weight:700;font-size:14px" id="hist-titulo">Historial de precios</span>
+          <button onclick="document.getElementById('modal-historial-precio').style.display='none'" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer">✕</button>
+        </div>
+        <div id="hist-content" style="font-size:12px;color:#ccc;max-height:300px;overflow-y:auto">Cargando…</div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 
@@ -1133,5 +1218,217 @@ async function cargarHistorialCurvas(){
     wrap.innerHTML = `<div style="font-size:11px;color:#f06060;padding:8px;">Error al cargar historial</div>`;
   }
 }
+
+// ── Hoja de Costos ────────────────────────────────────────────────────────────
+;(function(){
+  let _lineas = [];
+
+  function _fmt(v){ return v != null ? parseFloat(v).toFixed(2) : '—'; }
+
+  function _badge(estado){
+    const b = document.getElementById('hoja-estado-badge');
+    if(!b) return;
+    if(!estado){ b.style.display='none'; return; }
+    b.style.display = 'inline-block';
+    if(estado === 'APROBADA'){
+      b.style.background='#1a4a2a'; b.style.color='#4caf7d';
+    } else {
+      b.style.background='#2a2a0a'; b.style.color='#f5c842';
+    }
+    b.textContent = estado;
+  }
+
+  function _renderLineas(lineas){
+    _lineas = lineas.map(l => Object.assign({}, l));
+    const tbMP  = document.getElementById('tbody-hoja-mp');
+    const tbAV  = document.getElementById('tbody-hoja-avios');
+    if(!tbMP || !tbAV) return;
+    tbMP.innerHTML = '';
+    tbAV.innerHTML = '';
+
+    _lineas.forEach((l, idx) => {
+      const pVal = l.precio_snapshot != null ? l.precio_snapshot : '';
+      const precioCell = HC_PUEDE_EDITAR
+        ? `<input type="number" step="0.001" min="0" value="${pVal}"
+             style="width:68px;text-align:right;background:#0a0a0a;border:1px solid #333;color:#e0e0e0;padding:2px 4px;border-radius:3px;font-size:12px"
+             oninput="window._hcPrecio(${idx},this.value)">`
+        : `<span style="color:#ccc">${_fmt(l.precio_snapshot)}</span>`;
+
+      const pct = l.pct_adicional ? `${(l.pct_adicional*100).toFixed(0)}%` : '–';
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid #141414';
+      tr.innerHTML = `
+        <td style="padding:6px 8px;color:#ddd">${l.nombre}<br><span style="font-size:10px;color:#555">${l.seccion||''}</span></td>
+        <td style="padding:6px 4px;text-align:right;color:#aaa">${l.consumo_unitario}</td>
+        <td style="padding:6px 4px;text-align:right;color:#aaa">${pct}</td>
+        <td style="padding:6px 4px;text-align:right">${precioCell}</td>
+        <td style="padding:6px 4px;text-align:right;color:#666;font-size:10px">${l.moneda||''}</td>
+        <td style="padding:6px 4px;text-align:right;color:#4caf7d;font-weight:600" id="hoja-sub-${idx}">${_fmt(l.subtotal)}</td>
+        <td style="padding:6px 2px;text-align:center">
+          <button title="Historial de precios" onclick="window._hcHist('${l.tipo}',${l.item_id},'${l.nombre.replace("'","\'")}');event.stopPropagation()"
+            style="background:none;border:none;color:#555;cursor:pointer;font-size:12px;padding:2px">📈</button>
+        </td>`;
+      if(l.tipo === 'MP') tbMP.appendChild(tr);
+      else                tbAV.appendChild(tr);
+    });
+    _recalc();
+  }
+
+  function _recalc(){
+    let tMP = 0, tAV = 0;
+    _lineas.forEach((l, idx) => {
+      const s = l.precio_snapshot != null
+        ? l.consumo_unitario * (1 + (l.pct_adicional || 0)) * parseFloat(l.precio_snapshot)
+        : null;
+      _lineas[idx].subtotal = s;
+      const cell = document.getElementById(`hoja-sub-${idx}`);
+      if(cell) cell.textContent = s != null ? s.toFixed(2) : '—';
+      if(s != null){ if(l.tipo === 'MP') tMP += s; else tAV += s; }
+    });
+    const tG = tMP + tAV;
+    const cMP = document.getElementById('total-mp-cell');
+    const cAV = document.getElementById('total-avios-cell');
+    const cG  = document.getElementById('total-general-cell');
+    if(cMP) cMP.textContent = `S/. ${tMP.toFixed(2)}`;
+    if(cAV) cAV.textContent = `S/. ${tAV.toFixed(2)}`;
+    if(cG)  cG.textContent  = `S/. ${tG.toFixed(2)}`;
+  }
+
+  window._hcPrecio = function(idx, val){
+    _lineas[idx].precio_snapshot = val === '' ? null : parseFloat(val);
+    _recalc();
+  };
+
+  window._hcHist = async function(tipo, itemId, nombre){
+    const modal   = document.getElementById('modal-historial-precio');
+    const content = document.getElementById('hist-content');
+    const titulo  = document.getElementById('hist-titulo');
+    if(!modal) return;
+    titulo.textContent = `Historial: ${nombre}`;
+    content.textContent = 'Cargando…';
+    modal.style.display = 'flex';
+    try{
+      const data = await apiFetch(`/catalogo/api/${PRENDA_ID}/hoja-costos/historial-precios/${tipo}/${itemId}`);
+      if(!data || !data.length){ content.textContent = 'Sin historial de precios.'; return; }
+      content.innerHTML = data.map(r => `
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e1e">
+          <span style="color:#888">${r.fecha ? r.fecha.slice(0,10) : '—'}</span>
+          <span style="color:#ccc">${r.precio_anterior != null ? r.precio_anterior.toFixed(3) : '—'}
+            → <b style="color:#4caf7d">${r.precio_nuevo != null ? r.precio_nuevo.toFixed(3) : '—'}</b>
+            ${r.moneda || ''}</span>
+        </div>`).join('');
+    } catch(e){ content.textContent = `Error: ${e.message}`; }
+  };
+
+  async function _cargar(){
+    const content    = document.getElementById('hoja-content');
+    const empty      = document.getElementById('hoja-empty');
+    const loading    = document.getElementById('hoja-loading');
+    const btnGuardar = document.getElementById('btn-guardar-hoja');
+    const btnAprobar = document.getElementById('btn-aprobar-hoja');
+    const infoAp     = document.getElementById('hoja-aprobado-info');
+    if(!content) return;
+    loading.style.display = 'block';
+    empty.style.display   = 'none';
+    try{
+      const data = await apiFetch(`/catalogo/api/${PRENDA_ID}/hoja-costos`);
+      loading.style.display = 'none';
+      content.style.display = 'block';
+      _badge(data.estado);
+      const notasEl = document.getElementById('hoja-notas');
+      if(notasEl && data.notas) notasEl.value = data.notas;
+      _renderLineas(data.lineas);
+      if(data.estado === 'APROBADA'){
+        if(btnGuardar) btnGuardar.style.display = 'none';
+        if(btnAprobar) btnAprobar.style.display = 'none';
+        if(infoAp){ infoAp.style.display = 'block'; infoAp.textContent = `✓ Aprobada ${data.aprobado_at ? data.aprobado_at.slice(0,10) : ''}`; }
+      } else {
+        if(btnGuardar) btnGuardar.style.display = 'inline-block';
+        if(btnAprobar) btnAprobar.style.display = 'inline-block';
+        if(infoAp)     infoAp.style.display = 'none';
+      }
+    } catch(e){
+      loading.style.display = 'none';
+      if(e.message && e.message.includes('404')){
+        empty.innerHTML = '<div style="font-size:28px;margin-bottom:6px">💰</div><p style="font-size:13px">Sin hoja de costos. Usa "Pre-llenar desde BASE" para comenzar.</p>';
+      } else {
+        empty.innerHTML = `<div style="color:#f06060;padding:16px;font-size:12px">Error: ${e.message}</div>`;
+      }
+      empty.style.display = 'block';
+    }
+  }
+
+  window.prefillHoja = async function(){
+    const content    = document.getElementById('hoja-content');
+    const empty      = document.getElementById('hoja-empty');
+    const loading    = document.getElementById('hoja-loading');
+    const btnGuardar = document.getElementById('btn-guardar-hoja');
+    const btnAprobar = document.getElementById('btn-aprobar-hoja');
+    if(!content) return;
+    loading.style.display = 'block';
+    empty.style.display   = 'none';
+    content.style.display = 'none';
+    try{
+      const data = await apiFetch(`/catalogo/api/${PRENDA_ID}/hoja-costos/prefill`);
+      loading.style.display = 'none';
+      content.style.display = 'block';
+      if(data.aviso) toast(data.aviso, 'error');
+      _badge('BORRADOR');
+      _renderLineas(data.lineas);
+      if(btnGuardar) btnGuardar.style.display = 'inline-block';
+      if(btnAprobar) btnAprobar.style.display = 'none';
+    } catch(e){
+      loading.style.display = 'none';
+      empty.style.display   = 'block';
+      toast(`Error al pre-llenar: ${e.message}`, 'error');
+    }
+  };
+
+  window.guardarHoja = async function(){
+    const notas = document.getElementById('hoja-notas')?.value || '';
+    const body = {
+      moneda_base: 'SO',
+      notas,
+      lineas: _lineas.map((l, i) => ({
+        tipo:             l.tipo,
+        item_id:          l.item_id,
+        seccion:          l.seccion || null,
+        nombre:           l.nombre,
+        unidad_medida:    l.unidad_medida || null,
+        consumo_unitario: l.consumo_unitario,
+        pct_adicional:    l.pct_adicional || 0,
+        precio_snapshot:  l.precio_snapshot != null ? parseFloat(l.precio_snapshot) : null,
+        moneda:           l.moneda || null,
+        notas:            l.notas || null,
+        orden:            i,
+      }))
+    };
+    try{
+      await apiFetch(`/catalogo/api/${PRENDA_ID}/hoja-costos`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+      });
+      toast('Hoja guardada en BORRADOR');
+      _badge('BORRADOR');
+      const btnAprobar = document.getElementById('btn-aprobar-hoja');
+      if(btnAprobar) btnAprobar.style.display = 'inline-block';
+    } catch(e){ toast(`Error: ${e.message}`, 'error'); }
+  };
+
+  window.aprobarHoja = async function(){
+    if(!confirm('¿Aprobar la hoja de costos? Esta acción es definitiva.')) return;
+    try{
+      await apiFetch(`/catalogo/api/${PRENDA_ID}/hoja-costos/aprobar`, {method:'POST'});
+      toast('Hoja de costos aprobada');
+      setTimeout(() => _cargar(), 600);
+    } catch(e){ toast(`Error: ${e.message}`, 'error'); }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if(document.getElementById('card-hoja-costos')) _cargar();
+  });
+})();
+
 </script>
 {% endblock %}
