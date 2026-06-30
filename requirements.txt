@@ -17,7 +17,7 @@ alembic==1.13.1                    # migraciones de BD
 supabase==2.9.1                    # SDK para Supabase Storage (producción)
 
 # ─── Validación de datos ─────────────────────────────────────
-pydantic==2.11.7
+pydantic[email]==2.11.7
 pydantic-settings==2.8.1           # config desde .env
 
 # ─── Autenticación ───────────────────────────────────────────
