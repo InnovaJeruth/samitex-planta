@@ -38,14 +38,14 @@
 .doc-row:last-child { border-bottom:none; }
 .doc-tipo { font-size:11px; color:#888; font-weight:600; min-width:150px; }
 .doc-nombre { font-size:13px; color:#e0e0e0; flex:1; }
-.doc-fecha  { font-size:11px; color:#555; }
+.doc-fecha  { font-size:11px; color:#767676; }
 
 /* ── Piezas / fases ── */
 .fase-mini { display:inline-block; width:22px; height:22px; border-radius:4px; text-align:center; line-height:22px; font-size:10px; font-weight:700; }
 .fase-ok     { background:#0d3320; color:#4caf7d; }
 .fase-parcial{ background:#3a2a00; color:#e6a817; }
 .fase-pend   { background:#1a1a1a; color:#444; border:1px solid #2a2a2a; }
-.fase-na     { background:#111; color:#333; }
+.fase-na     { background:#111; color:#767676; }
 
 /* ── Historial ── */
 .hist-row { display:grid; grid-template-columns:120px 100px 80px 60px 1fr 100px; gap:8px; align-items:center; padding:7px 12px; border-bottom:1px solid #1a1a1a; font-size:12px; }
@@ -79,6 +79,26 @@
 .modal-box { background:#1a1a1a; border:1px solid #3a3a3a; border-radius:10px; padding:24px; width:420px; max-width:95vw; }
 .modal-title { font-size:16px; font-weight:700; color:#fff; margin-bottom:16px; }
 .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+
+/* ── Plan vs Real — paradas inline ── */
+.pvr-row { cursor:pointer; transition:background .1s; }
+.pvr-row:hover td { background:rgba(255,255,255,.025); }
+.pvr-row.pvr-open td { background:rgba(74,159,255,.04); }
+.pvr-chevron { display:inline-block; transition:transform .2s; color:#888; font-size:14px; margin-left:3px; }
+.pvr-expand-row td { padding:0 !important; background:#090909 !important; }
+.pvr-expand-body { border-top:1px solid #1a1a1a; padding:10px 12px 12px 36px; }
+.pvr-sub { width:100%; border-collapse:collapse; font-size:11px; }
+.pvr-sub th { padding:4px 10px; text-align:left; color:#444; font-size:9px; text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid #141414; background:#0d0d0d; }
+.pvr-sub td { padding:6px 10px; border-bottom:1px solid #111; color:#aaa; }
+.pvr-sub tr:last-child td { border-bottom:none; }
+.pvr-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:3px; font-size:10px; font-weight:700; white-space:nowrap; }
+.pvr-badge-activa { background:#4a2000; color:#f5c542; border:1px solid #e6a817; box-shadow:0 0 4px rgba(230,168,23,.3); }
+.pvr-badge-cerrada { background:#1e2a1e; color:#4caf7d; border:1px solid #2a4a2a; }
+.pvr-badge-none { color:#2a2a2a; font-size:11px; }
+.pvr-estado-activa { background:#3a1800; color:#e6a817; border:1px solid #6a3000; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; }
+.pvr-estado-ok { background:#0a1a0a; color:#4caf7d; border:1px solid #1a3a1a; padding:1px 6px; border-radius:3px; font-size:9px; }
+.pvr-of-link { color:#c084fc; font-size:10px; text-decoration:none; }
+.pvr-of-link:hover { text-decoration:underline; }
 </style>
 {% endblock %}
 
@@ -117,7 +137,7 @@
         <div class="meta-item"><strong>{{ of.fecha_apt or '—' }}</strong>Fecha APT</div>
         <div class="meta-item"><strong>{{ of.fecha_creacion }}</strong>Creación</div>
         <div class="meta-item">
-            <strong style="color:{% if of.estado_docs.value == 'COMPLETA' %}#4caf7d{% elif of.estado_docs.value == 'EN_DOCUMENTACION' %}#e6a817{% else %}#555{% endif %}">
+            <strong style="color:{% if of.estado_docs.value == 'COMPLETA' %}#4caf7d{% elif of.estado_docs.value == 'EN_DOCUMENTACION' %}#e6a817{% else %}#767676{% endif %}">
                 {{ of.estado_docs.value.replace('_',' ') }}
             </strong>Docs
         </div>
@@ -184,7 +204,7 @@
         <div class="gate-row">
             <div class="gate-icon">
                 {% if gate.pasado %}<span style="color:#4caf7d">✓</span>
-                {% elif gate.bloqueado %}<span style="color:#333">◌</span>
+                {% elif gate.bloqueado %}<span style="color:#767676">◌</span>
                 {% else %}<span style="color:#e6a817">○</span>{% endif %}
             </div>
             <div class="gate-info">
@@ -205,7 +225,7 @@
         <div class="card-header">
             <span class="card-title">{% if es_rol_doc %}Mis documentos{% else %}Cadena documental{% endif %}</span>
             {% if not es_rol_doc %}
-            <span style="font-size:11px;color:{% if of.estado_docs.value == 'COMPLETA' %}#4caf7d{% elif of.estado_docs.value == 'EN_DOCUMENTACION' %}#e6a817{% else %}#555{% endif %}">
+            <span style="font-size:11px;color:{% if of.estado_docs.value == 'COMPLETA' %}#4caf7d{% elif of.estado_docs.value == 'EN_DOCUMENTACION' %}#e6a817{% else %}#767676{% endif %}">
                 {{ of.estado_docs.value.replace('_',' ') }}
             </span>
             {% endif %}
@@ -236,7 +256,7 @@
         {% endfor %}
 
         {% if es_rol_doc and ns.mis_gates == 0 %}
-        <div style="padding:20px;text-align:center;color:#555;font-size:12px">
+        <div style="padding:20px;text-align:center;color:#767676;font-size:12px">
             No tienes documentos asignados en esta OF (tipo cliente: <strong>{{ tipo_cliente }}</strong>)
         </div>
         {% else %}
@@ -250,7 +270,7 @@
         <div class="doc-row" style="flex-wrap:wrap;gap:6px">
             <div style="width:20px;flex-shrink:0;text-align:center">
                 {% if gate.pasado %}<span style="color:#4caf7d">✓</span>
-                {% elif gate.bloqueado %}<span style="color:#333">◌</span>
+                {% elif gate.bloqueado %}<span style="color:#767676">◌</span>
                 {% else %}<span style="color:#e6a817">○</span>{% endif %}
             </div>
             <div class="doc-tipo">{{ label }}</div>
@@ -260,14 +280,33 @@
                     <div class="doc-nombre">📄 {{ docs_map[key].nombre_archivo }}</div>
                     <div class="doc-fecha">{{ docs_map[key].uploaded_at.strftime('%d/%m %H:%M') if docs_map[key].uploaded_at else '' }}</div>
                     <a href="/of/api/documentos/{{ docs_map[key].id }}/descargar" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;text-decoration:none" download>⬇ Descargar</a>
-                    {% if puede and of.estado.value == 'BORRADOR' %}
+                    {% if puede and of.estado.value in ('BORRADOR', 'ACTIVA') %}
                     <label class="btn btn-secondary btn-sm" for="file-{{ gate_id }}" style="font-size:10px;cursor:pointer;padding:2px 8px">↑ Reemplazar</label>
                     <input type="file" id="file-{{ gate_id }}" style="display:none" onchange="subirDoc('{{ gate_id }}', this)">
                     {% endif %}
-                {% elif puede and of.estado.value == 'BORRADOR' %}
+                {% elif puede and of.estado.value in ('BORRADOR', 'ACTIVA') %}
                     <label class="btn btn-primary btn-sm" for="file-{{ gate_id }}" style="font-size:10px;cursor:pointer;padding:2px 8px">📎 Subir</label>
                     <input type="file" id="file-{{ gate_id }}" style="display:none" onchange="subirDoc('{{ gate_id }}', this)">
-                    <span style="font-size:11px;color:#555" id="fn-{{ gate_id }}">Sin archivo</span>
+                    {% if gate_id == 'FICHA_TECNICA' and of.prenda_catalogo_id %}
+                    <button type="button" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px" onclick="
+                        var ofId={{ of.id }};
+                        fetch('/of/api/'+ofId+'/ficha-catalogo')
+                        .then(function(r){return r.json();})
+                        .then(function(d){
+                            if(!d.disponible){showToast(d.motivo||'Sin ficha en catálogo','warning',7000);return;}
+                            showConfirm('Usar &quot;'+d.nombre_archivo+'&quot; como ficha técnica?',function(){
+                                var fd=new FormData();fd.append('doc_id',d.doc_id);
+                                fetch('/of/api/'+ofId+'/usar-ficha-catalogo',{method:'POST',body:fd})
+                                .then(function(r2){
+                                    if(r2.ok){showToast('Ficha aplicada — recargando...','success');setTimeout(function(){location.reload();},1200);}
+                                    else{r2.json().then(function(e){showToast(e.detail||'Error','error');});}
+                                }).catch(function(){showToast('Error al aplicar','error');});
+                            },'Usar ficha');
+                        })
+                        .catch(function(){showToast('Error al conectar','error');});
+                    ">📂 Usar del catálogo</button>
+                    {% endif %}
+                    <span style="font-size:11px;color:#767676" id="fn-{{ gate_id }}">Sin archivo</span>
                 {% elif not puede and not es_rol_doc %}
                     <span style="font-size:11px;color:#444">Sin archivo</span>
                 {% endif %}
@@ -280,14 +319,14 @@
 
                 {% if valor_actual %}
                     <div class="doc-nombre" style="color:#4caf7d">🔢 {{ valor_actual }}</div>
-                    {% if puede and of.estado.value == 'BORRADOR' %}
+                    {% if puede and of.estado.value in ('BORRADOR', 'ACTIVA') %}
                     <input id="inp-{{ gate_id }}" value="{{ valor_actual }}"
-                           style="background:#0f0f0f;border:1px solid #2a2a2a;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px">
+                           style="background:#0f0f0f;border:1px solid #2a2a2a;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px" aria-label="Inp">
                     <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 7px" onclick="guardarCodigo('{{ key }}','{{ gate_id }}')">Guardar</button>
                     {% endif %}
-                {% elif puede and of.estado.value == 'BORRADOR' %}
+                {% elif puede and of.estado.value in ('BORRADOR', 'ACTIVA') %}
                     <input id="inp-{{ gate_id }}" placeholder="Ej: 4500001234"
-                           style="background:#0f0f0f;border:1px solid #2a2a2a;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px">
+                           style="background:#0f0f0f;border:1px solid #2a2a2a;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px" aria-label="Inp">
                     <button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 7px" onclick="guardarCodigo('{{ key }}','{{ gate_id }}')">Guardar</button>
                 {% elif not puede and not es_rol_doc %}
                     <span style="font-size:11px;color:#444">Pendiente</span>
@@ -299,13 +338,29 @@
 
         {% endif %}{# fin check mis_gates #}
 
-        {% if of.estado.value not in ('BORRADOR',) and not es_rol_doc %}
+        {% if of.estado.value not in ('BORRADOR', 'ACTIVA') and not es_rol_doc %}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a1a1a;font-size:11px;color:#444">
-            🔒 Documentos bloqueados — OF en estado <strong style="color:#555">{{ of.estado.value }}</strong>
+            🔒 Documentos bloqueados — OF en estado <strong style="color:#767676">{{ of.estado.value }}</strong>
         </div>
         {% endif %}
     </div>
 </div>
+
+<!-- CURVA DE TALLAS -->
+{% if of.prenda_catalogo_id %}
+<div class="card" style="margin-bottom:16px" id="card-curva-tallas">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <span class="card-title">📐 Distribución por talla</span>
+        <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:12px;color:#888">Total: <strong id="curva-total" style="color:#4a9fff">0</strong> / {{ of.total_juegos }} uds.</span>
+            <span style="font-size:11px;color:#555;font-style:italic">Enviada desde Curvas de tallas</span>
+        </div>
+    </div>
+    <div id="curva-body" style="padding:12px 16px">
+        <div style="color:#555;font-size:12px">Cargando tallas...</div>
+    </div>
+</div>
+{% endif %}
 
 <!-- PIEZAS Y FASES -->
 <div class="card" style="margin-bottom:16px">
@@ -314,6 +369,9 @@
         <div style="display:flex;gap:10px;align-items:center">
             {% if of.estado.value == 'BORRADOR' and current_user and current_user.rol.value in ('ADMIN', 'PLANEADOR') %}
             <a href="/of/{{ of.id }}/editar-piezas" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px">✏ Editar piezas</a>
+            {% endif %}
+            {% if of.piezas|length == 0 and current_user.rol.value in ('ADMIN', 'PLANEADOR') %}
+            <button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 8px" onclick="generarPiezas()">🔄 Generar piezas desde catálogo</button>
             {% endif %}
             <div style="font-size:11px;color:#888;display:flex;gap:8px;align-items:center">
                 <span class="fase-mini fase-ok">✓</span> Completa
@@ -362,7 +420,7 @@
             {% endfor %}
         </tr>
         {% else %}
-        <tr><td colspan="12" style="text-align:center;color:#555;padding:20px">Sin piezas registradas</td></tr>
+        <tr><td colspan="12" style="text-align:center;color:#767676;padding:20px">Sin piezas registradas</td></tr>
         {% endfor %}
         </tbody>
     </table>
@@ -379,19 +437,22 @@
     <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
             <tr style="background:#0e0e0e">
-                <th style="padding:8px 12px;text-align:left;color:#555;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fase</th>
+                <th style="padding:8px 12px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fase</th>
                 <th style="padding:8px 12px;text-align:left;color:#4a7faf;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Inicio Plan</th>
                 <th style="padding:8px 12px;text-align:left;color:#4a7faf;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fin Plan</th>
                 <th style="padding:8px 12px;text-align:left;color:#4caf7d;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Inicio Real</th>
                 <th style="padding:8px 12px;text-align:left;color:#4caf7d;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fin Real</th>
                 <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a;color:#888">Variación inicio</th>
                 <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a;color:#888">Variación fin</th>
+                <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a;color:#767676;width:110px">Paradas</th>
             </tr>
         </thead>
         <tbody>
         {% set fases_nombres = {'F1':'Tizado','F2':'Tendido','F3':'Corte','F4':'Numerado','F5':'Fusionado','F6':'Calidad','F7':'Habilitado','F8':'Estampado','F9':'Auditoría'} %}
         {% for t in of.fase_tiempos | sort(attribute='fase_id') %}
-        <tr style="border-bottom:1px solid #111">
+        <tr class="pvr-row" data-fase-id="{{ t.fase_id }}"
+            onclick="toggleParadasRow('{{ t.fase_id }}')"
+            style="border-bottom:1px solid #111">
             <td style="padding:9px 12px">
                 <strong style="color:#e0e0e0">{{ t.fase_id }}</strong>
                 <span style="color:#888;margin-left:4px">{{ fases_nombres.get(t.fase_id, t.fase_id) }}</span>
@@ -406,7 +467,7 @@
                 {{ t.inicio_real.strftime('%d/%m %H:%M') if t.inicio_real else '—' }}
             </td>
             <td style="padding:9px 12px;color:#4caf7d">
-                {{ t.fin_real.strftime('%d/%m %H:%M') if t.fin_real else '<span style="color:#555">En curso</span>' | safe }}
+                {{ t.fin_real.strftime('%d/%m %H:%M') if t.fin_real else '<span style="color:#767676">En curso</span>' | safe }}
             </td>
             {# Variación inicio en minutos #}
             <td style="padding:9px 12px;text-align:center">
@@ -420,7 +481,7 @@
                         <span style="color:#888">0 min</span>
                     {% endif %}
                 {% else %}
-                    <span style="color:#333">—</span>
+                    <span style="color:#767676">—</span>
                 {% endif %}
             </td>
             {# Variación fin en minutos #}
@@ -435,8 +496,11 @@
                         <span style="color:#888">0 min</span>
                     {% endif %}
                 {% else %}
-                    <span style="color:#333">—</span>
+                    <span style="color:#767676">—</span>
                 {% endif %}
+            </td>
+            <td id="pvr-cell-{{ t.fase_id }}" style="padding:9px 12px;text-align:center">
+                <span class="pvr-badge-none">—</span>
             </td>
         </tr>
         {% endfor %}
@@ -455,7 +519,7 @@
 <div class="card" style="margin-bottom:16px">
     <div class="card-header">
         <span class="card-title">Historial de avances</span>
-        <span style="font-size:11px;color:#555">Últimos 50</span>
+        <span style="font-size:11px;color:#767676">Últimos 50</span>
     </div>
     <table>
         <thead>
@@ -504,7 +568,7 @@
         </tbody>
     </table>
     {% else %}
-    <div style="padding:16px;text-align:center;color:#555;font-size:12px">Sin recepciones registradas aún</div>
+    <div style="padding:16px;text-align:center;color:#767676;font-size:12px">Sin recepciones registradas aún</div>
     {% endif %}
 
     {% if of.historial_fechas_terc %}
@@ -512,7 +576,7 @@
         <div style="font-size:11px;color:#888;margin-bottom:8px;padding:0 12px">Historial cambios de fecha estimada:</div>
         {% for h in of.historial_fechas_terc | sort(attribute='created_at', reverse=True) %}
         <div style="font-size:11px;padding:4px 12px;display:flex;gap:12px;color:#888">
-            <span style="color:#555">{{ h.created_at.strftime('%d/%m/%Y') if h.created_at else '—' }}</span>
+            <span style="color:#767676">{{ h.created_at.strftime('%d/%m/%Y') if h.created_at else '—' }}</span>
             <span><s>{{ h.fecha_anterior or '—' }}</s> → <strong style="color:#a78bfa">{{ h.fecha_nueva }}</strong></span>
             {% if h.motivo %}<span style="color:#666">{{ h.motivo }}</span>{% endif %}
             <span style="color:#444">{{ h.usuario.nombre if h.usuario else '' }}</span>
@@ -540,14 +604,14 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div>
                     <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de envío</label>
-                    <input type="date" id="terc-fecha-envio" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                    <input type="date" id="terc-fecha-envio" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Fecha de envío tercerizado">
                 </div>
                 <div>
                     <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Recepción estimada</label>
                     <input type="date" id="terc-fecha-recep"
                            {% if of.fecha_apt %}max="{{ of.fecha_apt.isoformat() }}"{% endif %}
-                           style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
-                    {% if of.fecha_apt %}<div style="font-size:10px;color:#555;margin-top:3px">Máx: APT {{ of.fecha_apt }}</div>{% endif %}
+                           style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Fecha de recepción tercerizado">
+                    {% if of.fecha_apt %}<div style="font-size:10px;color:#767676;margin-top:3px">Máx: APT {{ of.fecha_apt }}</div>{% endif %}
                 </div>
             </div>
         </div>
@@ -567,12 +631,12 @@
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Nueva fecha de recepción *</label>
                 <input type="date" id="nueva-fecha-recep"
                        {% if of.fecha_apt %}max="{{ of.fecha_apt.isoformat() }}"{% endif %}
-                       style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
-                {% if of.fecha_apt %}<div style="font-size:10px;color:#555;margin-top:3px">No puede superar APT: {{ of.fecha_apt }}</div>{% endif %}
+                       style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Nueva fecha de recepción">
+                {% if of.fecha_apt %}<div style="font-size:10px;color:#767676;margin-top:3px">No puede superar APT: {{ of.fecha_apt }}</div>{% endif %}
             </div>
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Motivo del cambio</label>
-                <input type="text" id="motivo-fecha" placeholder="Ej: Planta solicitó más tiempo" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                <input type="text" id="motivo-fecha" placeholder="Ej: Planta solicitó más tiempo" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Motivo de cambio de fecha">
             </div>
         </div>
         <div class="modal-actions">
@@ -592,15 +656,15 @@
         <div style="display:flex;flex-direction:column;gap:12px">
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Juegos recibidos en esta entrega *</label>
-                <input type="number" id="inp-juegos-recibidos" min="1" placeholder="Ej: 50" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                <input type="number" id="inp-juegos-recibidos" min="1" placeholder="Ej: 50" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Juegos recibidos">
             </div>
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de recepción *</label>
-                <input type="date" id="inp-fecha-recepcion" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                <input type="date" id="inp-fecha-recepcion" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Fecha de recepción">
             </div>
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Observación</label>
-                <input type="text" id="inp-obs-recepcion" placeholder="Opcional" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                <input type="text" id="inp-obs-recepcion" placeholder="Opcional" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Observación de recepción">
             </div>
         </div>
         <div class="modal-actions">
@@ -612,6 +676,50 @@
 
 <script>
 const OF_ID = {{ of.id }};
+
+// ── Modal de confirmación reutilizable ────────────────────────
+let _detailResolve = null;
+
+function _confirmClose(val) {
+    document.getElementById('modal-action-confirm').style.display = 'none';
+    if (_detailResolve) { _detailResolve(val); _detailResolve = null; }
+}
+
+function mostrarConfirm(titulo, mensaje, btnLabel, btnColor) {
+    document.getElementById('mconfirm-title').textContent = titulo;
+    document.getElementById('mconfirm-body').innerHTML = mensaje;
+    const btn = document.getElementById('mconfirm-ok');
+    btn.textContent = btnLabel || 'Confirmar';
+    btn.style.background = btnColor || '#1a6fbe';
+    document.getElementById('modal-action-confirm').style.display = 'flex';
+    return new Promise(resolve => { _detailResolve = resolve; });
+}
+
+function _getCsrf(){
+    const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? m[1].split('.')[0] : '';
+}
+
+async function generarPiezas(){
+    const ok = await mostrarConfirm('Generar piezas', '¿Generar las piezas desde el catálogo para esta OF?', 'Generar', '#1a6fbe');
+    if(!ok) return;
+    const r = await fetch(`/of/api/${OF_ID}/piezas/plantilla`, {
+        method: 'POST',
+        headers: {'x-csrf-token': _getCsrf()}
+    });
+    const d = await r.json();
+    if(r.ok){
+        const n = (d.piezas_creadas || []).length;
+        if(n === 0){
+            showToast('La prenda no tiene piezas en el catálogo. Define las piezas primero.', 'warning');
+        } else {
+            showToast(`${n} pieza(s) generadas — recargando...`);
+            setTimeout(() => location.reload(), 1000);
+        }
+    } else {
+        showToast(d.detail || 'Error al generar piezas', 'error');
+    }
+}
 
 async function activarOF() {
     showConfirm('¿Activar esta OF?', async () => {
@@ -634,33 +742,74 @@ async function completarOF() {
 async function guardarCodigo(campo, gateId) {
     const val = document.getElementById('inp-' + gateId)?.value?.trim();
     if (!val) return showToast('Ingresa un valor', 'warning');
+    showToast('Guardando código...', 'info');
     var body = {};
     body[campo] = val;
-    const r = await fetch('/of/api/' + OF_ID + '/codigos', {
-        method:'PATCH',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(body),
-    });
-    const d = await r.json();
-    if (r.ok) location.reload();
-    else showToast(d.detail || 'Error al guardar');
+    try {
+        const r = await fetch('/of/api/' + OF_ID + '/codigos', {
+            method:'PATCH',
+            headers:{'Content-Type':'application/json', 'x-csrf-token': getCsrf()},
+            body: JSON.stringify(body),
+        });
+        const d = await r.json();
+        if (r.ok) location.reload();
+        else showToast(d.detail || 'Error al guardar código', 'error');
+    } catch(e) { showToast('Error de red: ' + e.message, 'error'); }
 }
 
-function subirDoc(tipo) {
-    const input = document.getElementById('file-' + tipo);
+function getCsrf(){
+    const m=document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? m[1].split('.')[0] : '';
+}
+
+function subirDoc(tipo, inputEl) {
+    const input = inputEl || document.getElementById('file-' + tipo);
     if (!input || !input.files[0]) return showToast('Selecciona un archivo', 'warning');
     const fd = new FormData();
     fd.append('tipo', tipo);
     fd.append('archivo', input.files[0]);
-    fetch('/of/api/' + OF_ID + '/documentos', {method:'POST', body: fd})
-        .then(function(r) {
-            if (!r.ok) return r.json().then(function(d) { showToast(d.detail || 'Error'); });
-            if (tipo === 'FICHA_TECNICA') {
-                abrirModalSAP();
-            } else {
-                location.reload();
-            }
-        });
+    showToast('Subiendo archivo...', 'info');
+    fetch('/of/api/' + OF_ID + '/documentos', {
+        method:'POST', body: fd,
+        headers: {'x-csrf-token': getCsrf()}
+    })
+    .then(function(r) {
+        if (!r.ok) return r.json().then(function(d) { showToast(d.detail || 'Error al subir', 'error'); });
+        if (tipo === 'FICHA_TECNICA') { abrirModalSAP(); } else { location.reload(); }
+    })
+    .catch(function(e) { showToast('Error de red: ' + e.message, 'error'); });
+}
+
+async function usarFichaCatalogo(){
+    showToast('⏳ Consultando catálogo...', 'info');
+    let data;
+    try {
+        const r = await fetch('/of/api/' + OF_ID + '/ficha-catalogo', {headers: {'x-csrf-token': getCsrf()}});
+        data = await r.json();
+    } catch(e) { showToast('Error al conectar con el servidor', 'error'); return; }
+
+    if (!data.disponible) {
+        showToast(data.motivo || 'Ficha técnica no disponible en el catálogo', 'warning', 7000);
+        return;
+    }
+
+    showConfirm(
+        'Usar "' + data.nombre_archivo + '" como ficha técnica de esta OF?',
+        async function() {
+            try {
+                const fd = new FormData();
+                fd.append('doc_id', data.doc_id);
+                const res = await fetch('/of/api/' + OF_ID + '/usar-ficha-catalogo', {
+                    method: 'POST', body: fd,
+                    headers: {'x-csrf-token': getCsrf()}
+                });
+                if (!res.ok) { const d = await res.json(); showToast(d.detail || 'Error', 'error'); return; }
+                showToast('Ficha técnica aplicada — recargando...', 'success');
+                setTimeout(() => location.reload(), 1200);
+            } catch(e) { showToast('Error al aplicar la ficha', 'error'); }
+        },
+        'Usar ficha'
+    );
 }
 
 async function abrirModalSAP() {
@@ -677,9 +826,9 @@ async function abrirModalSAP() {
         html += '<input type="text" data-id="' + p.id + '"';
         html += ' value="' + (p.codigo_sap||'') + '"';
         html += ' placeholder="Ej: 1000123"';
-        html += ' style="background:#111;border:1px solid #333;border-radius:5px;padding:6px 10px;color:#e0e0e0;font-size:12px;width:100%;outline:none;"';
+        html += ' style="background:#111;border:1px solid #333;border-radius:5px;padding:6px 10px;color:#e0e0e0;font-size:12px;width:100%;"';
         html += ' onfocus="this.style.borderColor=\'#1a6fbe\'"';
-        html += ' onblur="this.style.borderColor=\'#333\'">';
+        html += ' onblur="this.style.borderColor=\'#333\'" aria-label="Ej: 1000123">';
         html += '</td></tr>';
     });;
     html += '</tbody></table>';
@@ -712,7 +861,73 @@ async function guardarSAP() {
     }
 }
 
+// ── Distribución por talla (solo lectura — datos vienen de Curvas de tallas) ──
+async function cargarCurva() {
+    const card = document.getElementById('card-curva-tallas');
+    if (!card) return;
+    try {
+        const r = await fetch(`/of/api/${OF_ID}/tallas-dist`, {headers:{'x-csrf-token':getCsrfToken()}});
+        const data = await r.json();
+        const skus = data.skus_disponibles || [];
+        const dist = data.distribucion || {};
+        const body = document.getElementById('curva-body');
+        if (skus.length === 0) {
+            body.innerHTML = '<div style="color:#555;font-size:12px;padding:8px 0">Sin SKUs definidos para esta prenda.</div>';
+            return;
+        }
+        const tieneDatos = skus.some(s => (dist[s.id] || 0) > 0);
+        if (!tieneDatos) {
+            body.innerHTML = '<div style="color:#555;font-size:12px;padding:8px 0;text-align:center">Sin distribución de tallas. Envía una curva desde <a href="/curvas/" style="color:#4a9fff">Curvas de tallas</a>.</div>';
+            document.getElementById('curva-total').textContent = '0';
+            return;
+        }
+        let total = 0;
+        skus.forEach(s => { total += (dist[s.id] || 0); });
+        document.getElementById('curva-total').textContent = total;
+        body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="color:#555;font-size:11px;border-bottom:1px solid #222">
+                <th style="padding:6px 8px;text-align:left">Talla</th>
+                <th style="padding:6px 8px;text-align:left">Código SKU</th>
+                <th style="padding:6px 8px;text-align:right">Cantidad</th>
+                <th style="padding:6px 8px;text-align:right">%</th>
+            </tr></thead>
+            <tbody>${skus.map(s => {
+                const qty = dist[s.id] || 0;
+                const pct = total > 0 ? Math.round(qty/total*100) : 0;
+                return `<tr style="border-bottom:1px solid #141414">
+                    <td style="padding:7px 8px;font-weight:600;color:#e0e0e0">${s.talla}</td>
+                    <td style="padding:7px 8px;font-family:monospace;font-size:12px;color:#4caf7d">${s.codigo_sku||'—'}</td>
+                    <td style="padding:7px 8px;text-align:right;font-size:14px;font-weight:600;color:#e0e0e0">${qty}</td>
+                    <td style="padding:7px 8px;text-align:right;font-size:11px;color:#555">${total>0?pct+'%':'—'}</td>
+                </tr>`;
+            }).join('')}</tbody>
+            <tfoot><tr style="border-top:1px solid #2a2a2a">
+                <td colspan="2" style="padding:8px;font-size:12px;color:#888;text-align:right"><strong>Total</strong></td>
+                <td style="padding:8px;font-size:13px;font-weight:700;text-align:right">${total}</td>
+                <td></td>
+            </tr></tfoot>
+        </table>`;
+    } catch(e) {
+        document.getElementById('curva-body').innerHTML = `<div style="color:#f88;font-size:12px">Error cargando distribución: ${e.message}</div>`;
+    }
+}
+
+// Cargar al iniciar si hay prenda vinculada
+document.addEventListener('DOMContentLoaded', () => { cargarCurva(); });
+
 </script>
+
+<!-- Modal confirmación genérico (detalle) -->
+<div id="modal-action-confirm" class="modal-overlay" style="display:none">
+    <div class="modal-box" style="width:400px">
+        <div class="modal-title" id="mconfirm-title"></div>
+        <div id="mconfirm-body" style="font-size:13px;color:#bbb;line-height:1.5"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="_confirmClose(false)">Cancelar</button>
+            <button id="mconfirm-ok" class="btn btn-sm" style="color:#fff;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600" onclick="_confirmClose(true)"></button>
+        </div>
+    </div>
+</div>
 
 <!-- Modal SAP tras subir Ficha Técnica -->
 <div id="modal-sap" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:3000;align-items:center;justify-content:center;">
@@ -722,7 +937,7 @@ async function guardarSAP() {
                 <div style="font-size:15px;font-weight:700;color:#fff;">Códigos SAP de Piezas</div>
                 <div style="font-size:12px;color:#666;margin-top:2px;">Asigna el código SAP a cada pieza creada</div>
             </div>
-            <button onclick="cerrarModalSAP()" style="background:none;border:none;color:#555;font-size:20px;cursor:pointer;">✕</button>
+            <button onclick="cerrarModalSAP()" style="background:none;border:none;color:#767676;font-size:20px;cursor:pointer;">✕</button>
         </div>
         <div id="sap-piezas-list"></div>
         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
@@ -840,6 +1055,93 @@ document.addEventListener('keydown', function(e) {
         document.getElementById('modal-recepcion').style.display = 'none';
     }
 });
+
+// ── Plan vs Real — paradas inline expand ─────────────────────
+(function(OF_ID) {
+    if (!document.querySelector('.pvr-row')) return;  // sección no existe (sin fase_tiempos)
+
+    const MOTIVOS = {
+        EMERGENCIA_OF: '🚨 OF Emergencia',
+        REQUERIMIENTO: '📄 Requerimiento',
+        MATERIAL:      '📦 Falta material',
+        MAQUINA:       '🔧 Mantenimiento',
+        ADMIN:         '📋 Administrativo',
+        OTRO:          'Otro',
+    };
+
+    function fmtDT(str) { return str || '\u2014'; }
+
+    function buildSubTable(paradas) {
+        const rows = paradas.map((p, i) => {
+            const inicio = fmtDT(p.inicio_parada);
+            const fin    = p.fin_parada ? fmtDT(p.fin_parada) : '<span style="color:#767676">\u2014</span>';
+            const dur    = p.activa
+                ? '<span style="color:#e6a817;font-weight:600">🔴 En curso</span>'
+                : (p.duracion_minutos != null ? '<span style="color:#888">' + p.duracion_minutos + ' min</span>' : '\u2014');
+            const motivo = MOTIVOS[p.motivo] || p.motivo || '\u2014';
+            const emerg  = p.of_emergencia_numero
+                ? '<a class="pvr-of-link" href="/corte/' + (p.of_emergencia_id || '') + '" title="Ver OF emergencia">\u2192 OF ' + p.of_emergencia_numero + '</a>'
+                : '';
+            const obs    = p.observacion
+                ? '<span style="color:#666">' + p.observacion + '</span>'
+                : '<span style="color:#767676">\u2014</span>';
+            const estado = p.activa
+                ? '<span class="pvr-estado-activa">ACTIVA</span>'
+                : '<span class="pvr-estado-ok">\u2713 Cerrada</span>';
+            return '<tr><td style="color:#767676">' + (i+1) + '</td><td>' + inicio + '</td><td>' + fin + '</td><td>' + dur + '</td><td>' + motivo + (emerg ? ' '+emerg : '') + '</td><td>' + obs + '</td><td>' + estado + '</td></tr>';
+        }).join('');
+        return '<table class="pvr-sub"><thead><tr><th>#</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Motivo</th><th>Observación</th><th>Estado</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+
+    async function cargarParadasEnDetalle() {
+        try {
+            const res = await fetch('/corte/api/' + OF_ID + '/paradas');
+            if (!res.ok) return;
+            const all = await res.json();
+            const byFase = {};
+            all.forEach(p => { if (!byFase[p.fase_id]) byFase[p.fase_id] = []; byFase[p.fase_id].push(p); });
+            document.querySelectorAll('.pvr-row').forEach(row => {
+                const faseId  = row.dataset.faseId;
+                const paradas = byFase[faseId] || [];
+                const cell    = document.getElementById('pvr-cell-' + faseId);
+                if (!cell) return;
+                if (!paradas.length) {
+                    cell.innerHTML = '<span class="pvr-badge-none">\u2014</span>';
+                    row.style.cursor = 'default'; row.onclick = null; return;
+                }
+                const activas  = paradas.filter(p => p.activa);
+                const totalMin = paradas.reduce((s, p) => {
+                    if (!p.activa && p.duracion_minutos != null) return s + p.duracion_minutos;
+                    if (p.activa && p.inicio_parada) return s + Math.round((Date.now() - new Date(p.inicio_parada)) / 60000);
+                    return s;
+                }, 0);
+                const durStr   = totalMin > 0 ? ' \u00b7 ' + totalMin + ' min' : '';
+                const badgeCls = activas.length ? 'pvr-badge pvr-badge-activa' : 'pvr-badge pvr-badge-cerrada';
+                cell.innerHTML = '<span class="' + badgeCls + '">' + paradas.length + ' parada' + (paradas.length > 1 ? 's' : '') + durStr + ' <span class="pvr-chevron" data-fase="' + faseId + '">&rsaquo;</span></span>';
+
+                var expRow = document.createElement('tr');
+                expRow.className = 'pvr-expand-row';
+                expRow.dataset.faseId = faseId;
+                expRow.style.display = 'none';
+                expRow.innerHTML = '<td colspan="8"><div class="pvr-expand-body">' + buildSubTable(paradas) + '</div></td>';
+                row.insertAdjacentElement('afterend', expRow);
+            });
+        } catch(e) { console.warn('pvr paradas error', e); }
+    }
+
+    window.toggleParadasRow = function(faseId) {
+        var expRow  = document.querySelector('.pvr-expand-row[data-fase-id="' + faseId + '"]');
+        var chevron = document.querySelector('.pvr-chevron[data-fase="' + faseId + '"]');
+        if (!expRow) return;
+        var isOpen = expRow.style.display !== 'none';
+        expRow.style.display = isOpen ? 'none' : '';
+        if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+        var row = document.querySelector('.pvr-row[data-fase-id="' + faseId + '"]');
+        if (row) row.classList.toggle('pvr-open', !isOpen);
+    };
+
+    cargarParadasEnDetalle();
+})(typeof OF_ID !== "undefined" ? OF_ID : 0);
 </script>
 
 {% endblock %}

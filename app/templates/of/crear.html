@@ -3,11 +3,8 @@
 
 {% block extra_head %}
 <style>
-/* ── Layout ── */
 .of-grid   { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
 .of-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
-
-/* ── Progreso ── */
 .progress-section { background:#141414; border:1px solid #2a2a2a; border-radius:8px; padding:14px; margin-bottom:16px; }
 .progress-label   { display:flex; justify-content:space-between; font-size:12px; color:#888; margin-bottom:6px; }
 .progress-bar     { height:6px; background:#111; border-radius:3px; }
@@ -16,18 +13,41 @@
 .req-dot          { width:8px; height:8px; border-radius:50%; }
 .req-dot.ok       { background:#4caf7d; }
 .req-dot.err      { background:#2a2a2a; border:1px solid #444; }
+.info-card        { background:#0d1a2e; border:1px solid #1a3a6f; border-radius:8px; padding:16px 18px; margin-bottom:16px; display:flex; align-items:flex-start; gap:12px; }
+.info-icon        { font-size:20px; flex-shrink:0; margin-top:1px; }
+.info-body h4     { font-size:13px; font-weight:600; color:#4a9fff; margin-bottom:4px; }
+.info-body p      { font-size:12px; color:#8ab4f8; line-height:1.5; margin:0; }
+.toast            { position:fixed; top:16px; right:16px; padding:12px 18px; border-radius:8px; font-size:13px; font-weight:500; z-index:999; opacity:0; transform:translateY(-8px); transition:all .2s; pointer-events:none; }
+.toast.show       { opacity:1; transform:translateY(0); }
+.toast-success    { background:#0d3320; border:1px solid #1d5f40; color:#4caf7d; }
+.toast-error      { background:#3a0a0a; border:1px solid #6a1a1a; color:#f88; }
 
-/* ── Info card ── */
-.info-card      { background:#0d1a2e; border:1px solid #1a3a6f; border-radius:8px; padding:16px 18px; margin-bottom:16px; display:flex; align-items:flex-start; gap:12px; }
-.info-icon      { font-size:20px; flex-shrink:0; margin-top:1px; }
-.info-body h4   { font-size:13px; font-weight:600; color:#4a9fff; margin-bottom:4px; }
-.info-body p    { font-size:12px; color:#8ab4f8; line-height:1.5; margin:0; }
-
-/* ── Toast ── */
-.toast         { position:fixed; top:16px; right:16px; padding:12px 18px; border-radius:8px; font-size:13px; font-weight:500; z-index:999; opacity:0; transform:translateY(-8px); transition:all .2s; pointer-events:none; }
-.toast.show    { opacity:1; transform:translateY(0); }
-.toast-success { background:#0d3320; border:1px solid #1d5f40; color:#4caf7d; }
-.toast-error   { background:#3a0a0a; border:1px solid #6a1a1a; color:#f88; }
+/* ── Combo buscable ── */
+.combo-wrap   { position:relative; }
+.combo-search {
+    width:100%; background:#0f0f0f; border:1px solid #333; color:#e0e0e0;
+    padding:8px 32px 8px 10px; border-radius:6px; font-size:13px; box-sizing:border-box;
+}
+.combo-search:focus { outline:none; border-color:#1a6fbe; }
+.combo-search.has-value { border-color:#1d5f40; color:#4caf7d; }
+.combo-arrow  {
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    color:#555; pointer-events:none; font-size:11px;
+}
+.combo-drop   {
+    position:absolute; z-index:200; left:0; right:0; top:calc(100% + 2px);
+    background:#1a1a1a; border:1px solid #333; border-radius:6px;
+    max-height:260px; overflow-y:auto; display:none; box-shadow:0 8px 20px rgba(0,0,0,.5);
+}
+.combo-drop.open { display:block; }
+.combo-group  { font-size:10px; font-weight:700; color:#555; letter-spacing:.06em;
+                text-transform:uppercase; padding:8px 12px 4px; }
+.combo-item   {
+    padding:9px 12px; font-size:13px; color:#ccc; cursor:pointer;
+    border-left:2px solid transparent; transition:background .1s;
+}
+.combo-item:hover, .combo-item.active { background:#252525; color:#fff; border-left-color:#1a6fbe; }
+.combo-empty  { padding:14px 12px; font-size:12px; color:#555; text-align:center; }
 </style>
 {% endblock %}
 
@@ -53,37 +73,40 @@
     <div class="of-grid">
         <div class="form-group">
             <label>N° OF *</label>
-            <input id="numero_of" placeholder="826501" oninput="actualizarProgreso()">
+            <input id="numero_of" placeholder="826501" oninput="actualizarProgreso()" aria-label="Número de OF">
         </div>
         <div class="form-group">
             <label>Cliente *</label>
-            <input id="cliente" placeholder="Empresa S.A.C." oninput="actualizarProgreso()">
+            <input id="cliente" placeholder="Empresa S.A.C." oninput="actualizarProgreso()" aria-label="Cliente">
         </div>
     </div>
     <div class="of-grid-3">
         <div class="form-group">
-            <label>Tipo de Prenda *</label>
-            <select id="tipo_prenda" onchange="actualizarProgreso()">
-                <option value="">Seleccionar...</option>
-                <option value="SACO">Saco</option>
-                <option value="PANTALON">Pantalón</option>
-                <option value="CAMISA">Camisa</option>
-                <option value="OTRO">Otro</option>
-            </select>
+            <label>Prenda del catálogo *</label>
+            <!-- Combo buscable -->
+            <div class="combo-wrap" id="combo-wrap">
+                <input id="prenda-search" class="combo-search" type="text"
+                       placeholder="Buscar prenda..." autocomplete="off"
+                       oninput="filtrarPrendas()" onfocus="abrirDrop()" aria-label="Buscar prenda">
+                <span class="combo-arrow">▾</span>
+                <input type="hidden" id="prenda_catalogo_id">
+                <div class="combo-drop" id="combo-drop"></div>
+            </div>
+            <div id="preview-piezas" style="font-size:11px;color:#555;min-height:14px;margin-top:4px"></div>
         </div>
         <div class="form-group">
             <label>Total Juegos *</label>
-            <input id="total_juegos" type="number" min="1" placeholder="170" oninput="actualizarProgreso()">
+            <input id="total_juegos" type="number" min="1" placeholder="170" oninput="actualizarProgreso()" aria-label="Total de juegos">
         </div>
         <div class="form-group">
             <label>Fecha APT</label>
-            <input id="fecha_apt" type="date" style="border-color:#bf9000">
+            <input id="fecha_apt" type="date" style="border-color:#bf9000" aria-label="Fecha APT">
         </div>
     </div>
     <div class="of-grid">
         <div class="form-group">
             <label>Tipo de Cliente *</label>
-            <select id="tipo_cliente">
+            <select id="tipo_cliente" onchange="onTipoClienteChange()">
                 <option value="INSTITUCION">Institución</option>
                 <option value="MARCA">Marca</option>
             </select>
@@ -107,11 +130,15 @@
 </div>
 
 <!-- INFO: piezas auto -->
-<div class="info-card">
+<div class="info-card" id="info-piezas">
     <div class="info-icon">🔧</div>
     <div class="info-body">
         <h4>Piezas generadas automáticamente</h4>
-        <p>Al subir la <strong>Ficha Técnica</strong> en el detalle de la OF, las piezas se generarán automáticamente desde la plantilla del tipo de prenda. No es necesario ingresarlas aquí.</p>
+        <p>Al subir la <strong>Ficha Técnica</strong>, las piezas se generarán desde la plantilla de la prenda seleccionada. No es necesario ingresarlas aquí.</p>
+        <div id="lista-piezas-preview" style="margin-top:8px;display:none">
+            <p style="color:#888;font-size:11px;margin-bottom:4px">Piezas de la plantilla:</p>
+            <div id="piezas-chips" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+        </div>
     </div>
 </div>
 
@@ -128,11 +155,169 @@
 
 {% block extra_scripts %}
 <script>
-function actualizarProgreso() {
+function getCsrf(){
+    const m=document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? m[1].split('.')[0] : '';
+}
+
+// ── Combo buscable ────────────────────────────────────────────
+let _prendas = [];   // lista completa cargada del servidor
+let _activeIdx = -1; // índice activo para navegación con teclado
+
+function abrirDrop(){
+    document.getElementById('combo-drop').classList.add('open');
+    if(_prendas.length === 0) cargarPrendas();
+}
+
+function cerrarDrop(){
+    document.getElementById('combo-drop').classList.remove('open');
+    _activeIdx = -1;
+}
+
+function filtrarPrendas(){
+    const q = document.getElementById('prenda-search').value.trim().toLowerCase();
+    renderDrop(q);
+    // Si el usuario borra el texto, limpiar selección
+    if(!q){
+        document.getElementById('prenda_catalogo_id').value = '';
+        document.getElementById('prenda-search').classList.remove('has-value');
+        document.getElementById('preview-piezas').textContent = '';
+        document.getElementById('lista-piezas-preview').style.display = 'none';
+        actualizarProgreso();
+    }
+    document.getElementById('combo-drop').classList.add('open');
+}
+
+function renderDrop(filtro){
+    const drop = document.getElementById('combo-drop');
+    filtro = (filtro || '').toLowerCase();
+    // Filtrar
+    const resultado = filtro
+        ? _prendas.filter(p =>
+            p.codigo.toLowerCase().includes(filtro) ||
+            p.nombre.toLowerCase().includes(filtro) ||
+            p.tipo_base.toLowerCase().includes(filtro))
+        : _prendas;
+
+    if(resultado.length === 0){
+        drop.innerHTML = '<div class="combo-empty">Sin resultados</div>';
+        return;
+    }
+
+    // Agrupar por tipo_base
+    const grupos = {};
+    resultado.forEach(p => {
+        if(!grupos[p.tipo_base]) grupos[p.tipo_base] = [];
+        grupos[p.tipo_base].push(p);
+    });
+
+    let html = '';
+    Object.entries(grupos).forEach(([base, items]) => {
+        html += `<div class="combo-group">${base}</div>`;
+        items.forEach(p => {
+            html += `<div class="combo-item" data-id="${p.id}" data-nombre="${p.nombre}" data-tipo="${p.tipo_base}"
+                         onclick="seleccionarPrenda(${p.id},'${p.codigo.replace(/'/g,"\\'")} — ${p.nombre.replace(/'/g,"\\'")}','${p.tipo_base}','${p.nombre.replace(/'/g,"\\'")}')">
+                         <span style="font-family:monospace;font-size:11px;color:#666">${p.codigo}</span>
+                         &nbsp;—&nbsp;${p.nombre}
+                     </div>`;
+        });
+    });
+    drop.innerHTML = html;
+    _activeIdx = -1;
+}
+
+function seleccionarPrenda(id, label, tipo, nombre){
+    document.getElementById('prenda_catalogo_id').value = id;
+    document.getElementById('prenda-search').value = label;
+    document.getElementById('prenda-search').classList.add('has-value');
+    document.getElementById('preview-piezas').textContent = `→ ${nombre}`;
+    cerrarDrop();
+    actualizarProgreso();
+    cargarPiezasPreview(id);
+}
+
+// Navegación teclado en el combo
+document.addEventListener('keydown', function(e){
+    const drop = document.getElementById('combo-drop');
+    if(!drop.classList.contains('open')) return;
+    const items = drop.querySelectorAll('.combo-item');
+    if(!items.length) return;
+    if(e.key === 'ArrowDown'){
+        e.preventDefault();
+        _activeIdx = Math.min(_activeIdx + 1, items.length - 1);
+    } else if(e.key === 'ArrowUp'){
+        e.preventDefault();
+        _activeIdx = Math.max(_activeIdx - 1, 0);
+    } else if(e.key === 'Enter' && _activeIdx >= 0){
+        e.preventDefault();
+        items[_activeIdx].click();
+        return;
+    } else if(e.key === 'Escape'){
+        cerrarDrop();
+        return;
+    }
+    items.forEach((it,i) => it.classList.toggle('active', i === _activeIdx));
+    if(_activeIdx >= 0) items[_activeIdx].scrollIntoView({block:'nearest'});
+});
+
+// Cerrar al clic fuera
+document.addEventListener('click', function(e){
+    if(!document.getElementById('combo-wrap').contains(e.target)) cerrarDrop();
+});
+
+// ── Carga de prendas del servidor ─────────────────────────────
+async function cargarPrendas(){
+    const tc  = document.getElementById('tipo_cliente').value;
+    const drop = document.getElementById('combo-drop');
+    drop.innerHTML = '<div class="combo-empty">Cargando...</div>';
+    try {
+        _prendas = await fetch(`/catalogo/api/lista?tipo_cliente=${tc}`, {
+            headers: {'x-csrf-token': getCsrf()}
+        }).then(r => r.json());
+        renderDrop(document.getElementById('prenda-search').value.trim());
+    } catch(e) {
+        drop.innerHTML = '<div class="combo-empty">Error al cargar</div>';
+    }
+}
+
+async function onTipoClienteChange(){
+    // Limpiar selección actual al cambiar tipo cliente
+    _prendas = [];
+    document.getElementById('prenda_catalogo_id').value = '';
+    document.getElementById('prenda-search').value = '';
+    document.getElementById('prenda-search').classList.remove('has-value');
+    document.getElementById('preview-piezas').textContent = '';
+    document.getElementById('lista-piezas-preview').style.display = 'none';
+    document.getElementById('combo-drop').innerHTML = '';
+    actualizarProgreso();
+    await cargarPrendas();
+}
+
+async function cargarPiezasPreview(id){
+    const listDiv = document.getElementById('lista-piezas-preview');
+    const chips   = document.getElementById('piezas-chips');
+    chips.innerHTML = '';
+    if(!id){ listDiv.style.display='none'; return; }
+    try{
+        const piezas = await fetch(`/catalogo/api/${id}/piezas`,{
+            headers:{'x-csrf-token':getCsrf()}
+        }).then(r=>r.json());
+        piezas.forEach(p=>{
+            const chip=document.createElement('span');
+            chip.style.cssText='background:#1a2a40;color:#8ab4f8;border-radius:10px;padding:2px 8px;font-size:11px';
+            chip.textContent=p.nombre+(p.fusionado_default?' 🔥':'');
+            chips.appendChild(chip);
+        });
+        listDiv.style.display = piezas.length ? 'block' : 'none';
+    } catch(e){}
+}
+
+// ── Progreso ──────────────────────────────────────────────────
+function actualizarProgreso(){
     const checks = [
         !!document.getElementById('numero_of').value.trim(),
         !!document.getElementById('cliente').value.trim(),
-        !!document.getElementById('tipo_prenda').value,
+        !!document.getElementById('prenda_catalogo_id').value,
         !!document.getElementById('total_juegos').value,
     ];
     const ok  = checks.filter(Boolean).length;
@@ -143,54 +328,65 @@ function actualizarProgreso() {
         checks.map(c => `<span class="req-dot ${c?'ok':'err'}"></span>`).join('');
 }
 
-async function crearOF() {
-    const numero_of    = document.getElementById('numero_of').value.trim();
-    const cliente      = document.getElementById('cliente').value.trim();
-    const tipo_prenda  = document.getElementById('tipo_prenda').value;
-    const total_juegos = parseInt(document.getElementById('total_juegos').value);
+// ── Crear OF ──────────────────────────────────────────────────
+async function crearOF(){
+    const numero_of          = document.getElementById('numero_of').value.trim();
+    const cliente            = document.getElementById('cliente').value.trim();
+    const prenda_catalogo_id = document.getElementById('prenda_catalogo_id').value;
+    const total_juegos       = parseInt(document.getElementById('total_juegos').value);
 
-    if (!numero_of || !cliente || !tipo_prenda || !total_juegos) {
-        mostrarToast('Completa los campos obligatorios (N° OF, Cliente, Tipo, Juegos)', 'error');
+    if(!numero_of || !cliente || !prenda_catalogo_id || !total_juegos){
+        mostrarToast('Completa los campos obligatorios (N° OF, Cliente, Prenda, Juegos)', 'error');
         return;
     }
 
     const btn = document.getElementById('btn-guardar');
     btn.disabled = true;
 
+    // tipo_prenda: buscar en _prendas
+    const prenda = _prendas.find(p => p.id == prenda_catalogo_id);
+    const tipo_prenda = prenda ? prenda.tipo_base : 'OTRO';
+
     const fd = new FormData();
-    fd.append('numero_of',        numero_of);
-    fd.append('cliente',          cliente);
-    fd.append('tipo_prenda',      tipo_prenda);
-    fd.append('total_juegos',     total_juegos);
-    fd.append('tipo_cliente',     document.getElementById('tipo_cliente').value || 'INSTITUCION');
-    fd.append('estampado_activo', document.getElementById('estampado_activo').checked);
+    fd.append('numero_of',          numero_of);
+    fd.append('cliente',            cliente);
+    fd.append('tipo_prenda',        tipo_prenda);
+    fd.append('prenda_catalogo_id', prenda_catalogo_id);
+    fd.append('total_juegos',       total_juegos);
+    fd.append('tipo_cliente',       document.getElementById('tipo_cliente').value || 'INSTITUCION');
+    fd.append('estampado_activo',   document.getElementById('estampado_activo').checked);
 
     const fecha_apt = document.getElementById('fecha_apt').value;
-    if (fecha_apt) fd.append('fecha_apt', fecha_apt);
+    if(fecha_apt) fd.append('fecha_apt', fecha_apt);
 
     const resp_id = document.getElementById('responsable_id').value;
-    if (resp_id) fd.append('responsable_id', resp_id);
+    if(resp_id) fd.append('responsable_id', resp_id);
 
     mostrarToast('Guardando...', 'success');
-    const res = await fetch('/of/api/crear', { method: 'POST', body: fd });
-    if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
+    const res = await fetch('/of/api/crear', {
+        method:'POST', body:fd,
+        headers:{'x-csrf-token':getCsrf()}
+    });
+    if(!res.ok){
+        const d = await res.json().catch(()=>({}));
         mostrarToast(d.detail || 'Error al crear OF', 'error');
         btn.disabled = false;
         return;
     }
     const { id: of_id, numero_of: nof } = await res.json();
     mostrarToast(`OF ${nof} guardada como borrador ✓`, 'success');
-    setTimeout(() => window.location.href = `/of/${of_id}/detalle`, 1200);
+    setTimeout(()=> window.location.href = `/of/${of_id}/detalle`, 1200);
 }
 
-function mostrarToast(msg, tipo = 'success') {
+function mostrarToast(msg, tipo='success'){
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.className   = `toast toast-${tipo} show`;
-    setTimeout(() => t.classList.remove('show'), 3500);
+    setTimeout(()=> t.classList.remove('show'), 3500);
 }
 
+// Cargar prendas al iniciar (tipo INSTITUCION por defecto)
+cargarPrendas();
 actualizarProgreso();
 </script>
 {% endblock %}

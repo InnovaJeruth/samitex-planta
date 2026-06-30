@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 14mm 16mm 16mm 16mm;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #1a1a1a;
+  }
+
+  /* Portada */
+  .portada-table { width: 100%; border-bottom: 2.5pt solid #1a3a6e; padding-bottom: 8pt; margin-bottom: 12pt; }
+  .portada-titulo { font-size: 18pt; font-weight: bold; color: #1a3a6e; }
+  .portada-subtitulo { font-size: 10pt; font-weight: bold; color: #333; margin-top: 2pt; }
+  .portada-caption { font-size: 8pt; color: #666; }
+  .portada-meta { font-size: 8pt; color: #555; text-align: right; line-height: 1.7; }
+
+  /* Seccion heading */
+  .seccion-titulo {
+    font-size: 8.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #1a3a6e;
+    border-left: 3pt solid #1a3a6e;
+    padding-left: 7pt;
+    margin: 12pt 0 6pt 0;
+  }
+
+  /* KPI row */
+  .kpi-table { width: 100%; border-collapse: separate; border-spacing: 6pt 0; margin-bottom: 12pt; }
+  .kpi-cell { border: 0.75pt solid #dde3f0; background: #f7f9fd; padding: 7pt 10pt; width: 14%; }
+  .kpi-cell.rojo    { border-color: #f4c2c2; background: #fff5f5; }
+  .kpi-cell.naranja { border-color: #f5dfa0; background: #fffbf0; }
+  .kpi-cell.verde   { border-color: #b8e0c8; background: #f2fbf5; }
+  .kpi-label { font-size: 7pt; color: #888; text-transform: uppercase; margin-bottom: 3pt; }
+  .kpi-val { font-size: 20pt; font-weight: bold; color: #1a3a6e; line-height: 1; }
+  .kpi-cell.rojo    .kpi-val { color: #c0392b; }
+  .kpi-cell.naranja .kpi-val { color: #a06000; }
+  .kpi-cell.verde   .kpi-val { color: #1e7d34; }
+
+  /* Bottleneck */
+  .bn-table { width: 100%; border-collapse: separate; border-spacing: 8pt 0; margin-bottom: 8pt; }
+  .bn-cell { border: 0.75pt solid #f5dfa0; background: #fffbf0; padding: 7pt 10pt; width: 33%; }
+  .bn-fase  { font-size: 8pt; font-weight: bold; color: #a06000; }
+  .bn-count { font-size: 18pt; font-weight: bold; color: #c87f0a; }
+  .bn-label { font-size: 7pt; color: #888; }
+
+  /* Tablas de datos */
+  table.data { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  table.data thead tr { background: #1a3a6e; color: #ffffff; }
+  table.data thead th { padding: 5pt 6pt; text-align: left; font-size: 7pt; }
+  table.data tbody tr:nth-child(even) { background: #f7f9fd; }
+  table.data tbody td { padding: 4pt 6pt; border-bottom: 0.5pt solid #e8ecf4; vertical-align: middle; word-wrap: break-word; overflow: hidden; }
+  table.data td.col-of      { width: 7%; }
+  table.data td.col-cliente { width: 11%; max-width: 70pt; overflow: hidden; }
+  table.data td.col-tipo    { width: 8%; }
+  table.data td.col-juegos  { width: 5%; text-align: right; }
+  table.data td.col-fecha   { width: 8%; }
+  table.data td.col-dias    { width: 6%; text-align: center; }
+  table.data td.col-sem     { width: 7%; }
+  table.data td.col-estado  { width: 8%; }
+  table.data td.col-pct     { width: 6%; text-align: center; }
+  table.data td.col-fase    { width: 9%; }
+  table.data td.col-fases   { width: 15%; }
+
+  /* Badges */
+  .badge-vencido  { color: #c0392b; font-weight: bold; font-size: 7pt; }
+  .badge-alerta   { color: #a06000; font-weight: bold; font-size: 7pt; }
+  .badge-atiempo  { color: #1a5ba3; font-weight: bold; font-size: 7pt; }
+  .badge-ok       { color: #1e7d34; font-weight: bold; font-size: 7pt; }
+
+  /* Sub-tabla de tiempos */
+  .tiempos-row td { background: #f0f4fb; padding: 5pt 6pt; }
+  table.tiempos { width: 100%; border-collapse: collapse; font-size: 6.5pt; margin: 3pt 0; }
+  table.tiempos thead tr { background: #2a3a5a; color: #fff; }
+  table.tiempos thead th { padding: 3pt 5pt; text-align: left; font-size: 6pt; }
+  table.tiempos tbody tr:nth-child(even) { background: #e8edf7; }
+  table.tiempos tbody td { padding: 2.5pt 5pt; border-bottom: 0.4pt solid #d0d8ea; }
+  .dev-tarde    { color: #c0392b; font-weight: bold; }
+  .dev-adelanto { color: #1e7d34; font-weight: bold; }
+  .dev-ok       { color: #888; }
+
+  /* Fases mini */
+  .fase-ok   { color: #1a5c30; font-weight: bold; font-size: 6.5pt; }
+  .fase-par  { color: #7a4a00; font-weight: bold; font-size: 6.5pt; }
+  .fase-pend { color: #999;    font-size: 6.5pt; }
+  .fase-na   { color: #ccc;    font-size: 6.5pt; }
+
+  .empty-msg { font-size: 8pt; color: #aaa; font-style: italic; padding: 8pt; text-align: center; border: 0.75pt solid #eee; }
+  .page-break { page-break-before: always; }
+  .footer { font-size: 7pt; color: #999; text-align: center; margin-top: 14pt; border-top: 0.5pt solid #ddd; padding-top: 4pt; }
+</style>
+</head>
+<body>
+
+{% macro fila_tiempos(r, ncols) %}
+{% if r.tiempos %}
+<tr class="tiempos-row">
+  <td colspan="{{ ncols }}" style="padding:4pt 8pt 6pt 8pt;">
+    <table class="tiempos">
+      <thead>
+        <tr>
+          <th>Fase</th>
+          <th>Inicio Prog.</th><th>Inicio Real</th>
+          <th>Fin Prog.</th><th>Fin Real</th>
+          <th>Dur. Real (h)</th>
+          <th>Desviacion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in r.tiempos %}
+        <tr>
+          <td><strong>{{ t.nombre }}</strong></td>
+          <td>{{ t.ini_prog }}</td>
+          <td>{{ t.ini_real }}</td>
+          <td>{{ t.fin_prog }}</td>
+          <td>{{ t.fin_real }}</td>
+          <td>{% if t.dur_real is not none %}{{ t.dur_real }}h{% else %}--{% endif %}</td>
+          <td>
+            {% if t.dev is none %}<span class="dev-ok">--</span>
+            {% elif t.dev > 0 %}<span class="dev-tarde">+{{ t.dev }}h tarde</span>
+            {% elif t.dev < 0 %}<span class="dev-adelanto">{{ t.dev }}h adelanto</span>
+            {% else %}<span class="dev-ok">En tiempo</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </td>
+</tr>
+{% endif %}
+{% endmacro %}
+
+<!-- PORTADA -->
+<table class="portada-table">
+  <tr>
+    <td>
+      <div class="portada-titulo">SAMITEX</div>
+      <div class="portada-subtitulo">Reporte de Estado &mdash; Proceso de Corte</div>
+      <div class="portada-caption">Seguimiento interno &middot; Area de Planta</div>
+    </td>
+    <td class="portada-meta">
+      <strong>Fecha:</strong> {{ hoy }}<br/>
+      <strong>Hora:</strong> {{ hora }}<br/>
+      <strong>Generado por:</strong> {{ generado_por }}
+    </td>
+  </tr>
+</table>
+
+<!-- KPIs -->
+<div class="seccion-titulo">Resumen Ejecutivo</div>
+<table class="kpi-table">
+  <tr>
+    <td class="kpi-cell">
+      <div class="kpi-label">Total OFs</div>
+      <div class="kpi-val">{{ kpis.total }}</div>
+    </td>
+    <td class="kpi-cell">
+      <div class="kpi-label">En proceso</div>
+      <div class="kpi-val">{{ kpis.en_proceso }}</div>
+    </td>
+    <td class="kpi-cell verde">
+      <div class="kpi-label">Completadas</div>
+      <div class="kpi-val">{{ kpis.completadas }}</div>
+    </td>
+    <td class="kpi-cell naranja">
+      <div class="kpi-label">En alerta</div>
+      <div class="kpi-val">{{ kpis.alertas }}</div>
+    </td>
+    <td class="kpi-cell rojo">
+      <div class="kpi-label">Vencidas</div>
+      <div class="kpi-val">{{ kpis.vencidas }}</div>
+    </td>
+    <td class="kpi-cell">
+      <div class="kpi-label">Juegos activos</div>
+      <div class="kpi-val">{{ "{:,}".format(kpis.juegos_activos) }}</div>
+    </td>
+    <td class="kpi-cell {% if otd_rate and otd_rate >= 80 %}verde{% elif otd_rate and otd_rate >= 50 %}naranja{% else %}rojo{% endif %}">
+      <div class="kpi-label">OTD Rate</div>
+      <div class="kpi-val">{% if otd_rate is not none %}{{ otd_rate }}%{% else %}--{% endif %}</div>
+    </td>
+  </tr>
+</table>
+
+{% if bottleneck %}
+<div class="seccion-titulo">Bottleneck de Fases</div>
+<table class="bn-table">
+  <tr>
+    {% for b in bottleneck %}
+    <td class="bn-cell">
+      <div class="bn-fase">{{ b.fase }}</div>
+      <div class="bn-count">{{ b.count }}</div>
+      <div class="bn-label">OFs con esta fase pendiente</div>
+    </td>
+    {% endfor %}
+    {% for i in range(3 - bottleneck|length) %}<td></td>{% endfor %}
+  </tr>
+</table>
+{% endif %}
+
+
+<!-- OFs CRITICAS (11 cols) -->
+<div class="seccion-titulo">OFs Criticas &mdash; Vencidas y en Alerta</div>
+
+{% if criticas %}
+<table class="data">
+  <thead>
+    <tr>
+      <th class="col-of">OF</th>
+      <th class="col-cliente">Cliente</th>
+      <th class="col-tipo">Tipo</th>
+      <th class="col-juegos">Juegos</th>
+      <th class="col-fecha">F. Inicio</th>
+      <th class="col-fecha">Fecha APT</th>
+      <th class="col-dias">Dias</th>
+      <th class="col-sem">Estado</th>
+      <th class="col-pct">Avance %</th>
+      <th class="col-fase">Fase activa</th>
+      <th class="col-fases">Fases</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in criticas %}
+    <tr>
+      <td class="col-of"><strong>{{ r.numero_of }}</strong></td>
+      <td class="col-cliente">{{ r.cliente }}</td>
+      <td class="col-tipo">{{ r.tipo_prenda }}</td>
+      <td class="col-juegos">{{ "{:,}".format(r.juegos) }}</td>
+      <td class="col-fecha">{{ r.fecha_inicio }}</td>
+      <td class="col-fecha">{{ r.fecha_apt }}</td>
+      <td class="col-dias">
+        {% if r.dias is not none %}
+          {% if r.dias < 0 %}<span class="badge-vencido">{{ r.dias|abs }}d venc.</span>
+          {% else %}<span class="badge-alerta">{{ r.dias }}d</span>{% endif %}
+        {% else %}--{% endif %}
+      </td>
+      <td class="col-sem">
+        {% if r.sem_est == 'VENCIDO' %}<span class="badge-vencido">VENCIDO</span>
+        {% elif r.sem_est == 'ALERTA' %}<span class="badge-alerta">ALERTA</span>
+        {% else %}<span class="badge-atiempo">{{ r.sem_est }}</span>{% endif %}
+      </td>
+      <td class="col-pct"><strong>{{ r.pct }}%</strong></td>
+      <td class="col-fase">{{ r.fase_activa }}</td>
+      <td class="col-fases">
+        {% for fid in orden_fases %}
+          {% set est = r.fases.get(fid, 'na') %}
+          <span class="fase-{{ est }}">{{ fid }}</span>
+        {% endfor %}
+      </td>
+    </tr>
+    {{ fila_tiempos(r, 11) }}
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-msg">No hay OFs vencidas ni en alerta.</div>
+{% endif %}
+
+
+<!-- OFs EN PROCESO Y ACTIVAS (12 cols) -->
+<div class="seccion-titulo">Todas las OFs en Proceso y Activas</div>
+
+{% if activas %}
+<table class="data">
+  <thead>
+    <tr>
+      <th class="col-of">OF</th>
+      <th class="col-cliente">Cliente</th>
+      <th class="col-tipo">Tipo</th>
+      <th class="col-juegos">Juegos</th>
+      <th class="col-fecha">F. Inicio</th>
+      <th class="col-fecha">Fecha APT</th>
+      <th class="col-dias">Dias</th>
+      <th class="col-sem">Semaforo</th>
+      <th class="col-estado">Estado</th>
+      <th class="col-pct">Avance %</th>
+      <th class="col-fase">Fase activa</th>
+      <th class="col-fases">Fases</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in activas %}
+    <tr>
+      <td class="col-of"><strong>{{ r.numero_of }}</strong></td>
+      <td class="col-cliente">{{ r.cliente }}</td>
+      <td class="col-tipo">{{ r.tipo_prenda }}</td>
+      <td class="col-juegos">{{ "{:,}".format(r.juegos) }}</td>
+      <td class="col-fecha">{{ r.fecha_inicio }}</td>
+      <td class="col-fecha">{{ r.fecha_apt }}</td>
+      <td class="col-dias">
+        {% if r.dias is not none %}
+          {% if r.dias < 0 %}<span class="badge-vencido">{{ r.dias|abs }}d venc.</span>
+          {% elif r.dias <= 15 %}<span class="badge-alerta">{{ r.dias }}d</span>
+          {% else %}<span class="badge-atiempo">{{ r.dias }}d</span>{% endif %}
+        {% else %}--{% endif %}
+      </td>
+      <td class="col-sem">
+        {% if r.sem_est == 'VENCIDO' %}<span class="badge-vencido">VENCIDO</span>
+        {% elif r.sem_est == 'ALERTA' %}<span class="badge-alerta">ALERTA</span>
+        {% elif r.sem_est == 'A_TIEMPO' %}<span class="badge-atiempo">A TIEMPO</span>
+        {% else %}<span style="color:#999;font-size:7pt;">{{ r.sem_est }}</span>{% endif %}
+      </td>
+      <td class="col-estado">
+        {% if r.estado == 'EN_PROCESO' %}<span style="color:#c87f0a;font-weight:bold;font-size:7pt;">EN PROCESO</span>
+        {% else %}<span style="color:#1a5ba3;font-size:7pt;">ACTIVA</span>{% endif %}
+      </td>
+      <td class="col-pct"><strong>{{ r.pct }}%</strong></td>
+      <td class="col-fase">{{ r.fase_activa }}</td>
+      <td class="col-fases">
+        {% for fid in orden_fases %}
+          {% set est = r.fases.get(fid, 'na') %}
+          <span class="fase-{{ est }}">{{ fid }}</span>
+        {% endfor %}
+      </td>
+    </tr>
+    {{ fila_tiempos(r, 12) }}
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-msg">No hay OFs activas ni en proceso.</div>
+{% endif %}
+
+
+<!-- PROXIMAS A ENTREGAR -->
+<div class="page-break"></div>
+<div class="seccion-titulo">Proximas a Entregar &mdash; Siguientes 30 dias</div>
+
+{% if proximas %}
+<table class="data">
+  <thead>
+    <tr>
+      <th class="col-of">OF</th>
+      <th class="col-cliente">Cliente</th>
+      <th class="col-tipo">Tipo</th>
+      <th class="col-juegos">Juegos</th>
+      <th class="col-fecha">F. Inicio</th>
+      <th class="col-fecha">Fecha APT</th>
+      <th class="col-dias">Dias rest.</th>
+      <th class="col-pct">Avance %</th>
+      <th class="col-fase">Fase activa</th>
+      <th class="col-fases">Fases</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in proximas %}
+    <tr>
+      <td class="col-of"><strong>{{ r.numero_of }}</strong></td>
+      <td class="col-cliente">{{ r.cliente }}</td>
+      <td class="col-tipo">{{ r.tipo_prenda }}</td>
+      <td class="col-juegos">{{ "{:,}".format(r.juegos) }}</td>
+      <td class="col-fecha">{{ r.fecha_inicio }}</td>
+      <td class="col-fecha">{{ r.fecha_apt }}</td>
+      <td class="col-dias"><span class="badge-atiempo">{{ r.dias if r.dias is not none else '--' }}d</span></td>
+      <td class="col-pct"><strong>{{ r.pct }}%</strong></td>
+      <td class="col-fase">{{ r.fase_activa }}</td>
+      <td class="col-fases">
+        {% for fid in orden_fases %}
+          {% set est = r.fases.get(fid, 'na') %}
+          <span class="fase-{{ est }}">{{ fid }}</span>
+        {% endfor %}
+      </td>
+    </tr>
+    {{ fila_tiempos(r, 10) }}
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-msg">No hay OFs con entrega en los proximos 30 dias.</div>
+{% endif %}
+
+
+<!-- COMPLETADAS (12 cols, completa) -->
+<div class="seccion-titulo" style="margin-top:12pt;">OFs Completadas</div>
+
+{% if completadas %}
+<table class="data">
+  <thead>
+    <tr>
+      <th class="col-of">OF</th>
+      <th class="col-cliente">Cliente</th>
+      <th class="col-tipo">Tipo</th>
+      <th class="col-juegos">Juegos</th>
+      <th class="col-fecha">F. Inicio</th>
+      <th class="col-fecha">Fecha APT</th>
+      <th class="col-dias">Dias</th>
+      <th class="col-sem">Semaforo</th>
+      <th class="col-pct">Avance %</th>
+      <th class="col-fase">Fase activa</th>
+      <th class="col-fases">Fases</th>
+      <th class="col-estado">Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in completadas %}
+    <tr>
+      <td class="col-of"><strong>{{ r.numero_of }}</strong></td>
+      <td class="col-cliente">{{ r.cliente }}</td>
+      <td class="col-tipo">{{ r.tipo_prenda }}</td>
+      <td class="col-juegos">{{ "{:,}".format(r.juegos) }}</td>
+      <td class="col-fecha">{{ r.fecha_inicio }}</td>
+      <td class="col-fecha">{{ r.fecha_apt }}</td>
+      <td class="col-dias">
+        {% if r.dias is not none %}
+          {% if r.dias < 0 %}<span class="badge-vencido">{{ r.dias|abs }}d tarde</span>
+          {% else %}<span class="badge-ok">{{ r.dias }}d</span>{% endif %}
+        {% else %}--{% endif %}
+      </td>
+      <td class="col-sem">
+        {% if r.sem_est == 'VENCIDO' %}<span class="badge-vencido">VENCIDO</span>
+        {% elif r.sem_est == 'ALERTA' %}<span class="badge-alerta">ALERTA</span>
+        {% elif r.sem_est in ('A_TIEMPO','OK_FECHA','OK_TARDE') %}<span class="badge-ok">{{ r.sem_est }}</span>
+        {% else %}<span style="color:#888;font-size:7pt;">{{ r.sem_est }}</span>{% endif %}
+      </td>
+      <td class="col-pct"><strong>{{ r.pct }}%</strong></td>
+      <td class="col-fase">{{ r.fase_activa }}</td>
+      <td class="col-fases">
+        {% for fid in orden_fases %}
+          {% set est = r.fases.get(fid, 'na') %}
+          <span class="fase-{{ est }}">{{ fid }}</span>
+        {% endfor %}
+      </td>
+      <td class="col-estado"><span class="badge-ok">COMPLETADA</span></td>
+    </tr>
+    {{ fila_tiempos(r, 12) }}
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-msg">No hay OFs completadas registradas.</div>
+{% endif %}
+
+<div class="footer">Confidencial &middot; Samitex &middot; Area de Corte</div>
+
+</body>
+</html>

@@ -72,11 +72,21 @@
         /* FORM */
         .form-group { margin-bottom: 14px; }
         label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; font-weight: 500; }
-        input, select, textarea { width: 100%; background: #111; border: 1px solid #333; border-radius: 6px; padding: 8px 10px; color: #e0e0e0; font-size: 13px; outline: none; }
-        input:focus, select:focus, textarea:focus { border-color: #1a6fbe; }
+        input, select, textarea { width: 100%; background: #111; border: 1px solid #333; border-radius: 6px; padding: 8px 10px; color: #e0e0e0; font-size: 13px; }
+        input:focus, select:focus, textarea:focus { border-color: #1a6fbe; outline: none; }
+        input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: #1a6fbe; outline: 2px solid #4a9eff; outline-offset: 1px; }
         .form-row { display: grid; gap: 12px; }
         .form-row-2 { grid-template-columns: 1fr 1fr; }
         .form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+        /* FOCUS VISIBLE — teclado/lector de pantalla */
+        *:focus { outline: none; }
+        *:focus-visible { outline: 2px solid #4a9eff; outline-offset: 2px; border-radius: 3px; }
+        input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #4a9eff; outline-offset: 1px; }
+
+        /* SKIP LINK */
+        .skip-link { position:absolute; top:-44px; left:0; background:#1a6fbe; color:#fff; padding:8px 16px; border-radius:0 0 6px 0; font-size:13px; font-weight:600; z-index:99999; text-decoration:none; transition:top .15s; }
+        .skip-link:focus-visible { top:0; outline:2px solid #fff; outline-offset:2px; }
 
         /* TOAST ANIMATIONS */
         @keyframes toastIn  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
@@ -155,6 +165,9 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <!-- ── Skip link ─────────────────────────────────────────── -->
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+
     <!-- ── Toast container ─────────────────────────────────── -->
     <div id="toast-container" style="
         position:fixed; bottom:24px; right:24px; z-index:9999;
@@ -258,6 +271,19 @@
             return r;
         });
     };
+
+    // ── Helpers públicos usados en templates ───────────────────
+    function getCsrfToken() { return _getCsrfToken(); }
+    function toast(msg, type, duration) { showToast(msg, type, duration); }
+    async function apiFetch(url, opts) {
+        const r = await fetch(url, opts || {});
+        if (!r.ok) {
+            var msg = 'Error ' + r.status;
+            try { var d = await r.json(); msg = d.detail || d.msg || msg; } catch(_) {}
+            throw new Error(msg);
+        }
+        try { return await r.json(); } catch(_) { return {}; }
+    }
     </script>
     <script>
     function toggleMobileNav() {
@@ -298,8 +324,11 @@
             {% if rol in ['ADMIN','PLANEADOR','COMERCIAL','COMERCIAL_MARCA','PLANEAMIENTO_MARCA','GERENTE_PLANTA','GERENCIA'] %}
             <a href="/comercial/" {% if request.url.path.startswith('/comercial') %}class="active"{% endif %}>Comercial</a>
             {% endif %}
-            {% if rol in ['ADMIN','SUPERVISOR_CORTE','GERENTE_PLANTA','PLANEADOR','GERENCIA'] %}
-            <a href="/supervisor/programacion" {% if request.url.path.startswith('/supervisor') %}class="active"{% endif %}>Programación</a>
+            {% if rol in ['ADMIN','SUPERVISOR_CORTE','GERENTE_PLANTA','PLANEADOR','GERENCIA','UDP'] %}
+            <a href="/supervisor/programacion" {% if request.url.path.startswith('/supervisor') or request.url.path.startswith('/curvas') %}class="active"{% endif %}>Programación</a>
+            {% endif %}
+            {% if rol in ['ADMIN','UDP','COMERCIAL_MARCA'] %}
+            <a href="/catalogo/" {% if request.url.path.startswith('/catalogo') %}class="active"{% endif %}>Catálogo</a>
             {% endif %}
             {% if rol == 'ADMIN' %}
             <a href="/admin/" {% if request.url.path.startswith('/admin') %}class="active"{% endif %}>Admin</a>
@@ -325,7 +354,7 @@
 
 
     <!-- ── Content ──────────────────────────────────── -->
-    <main>
+    <main id="main-content">
         {% block content %}{% endblock %}
     </main>
 

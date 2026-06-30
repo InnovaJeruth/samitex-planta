@@ -33,7 +33,7 @@
 </div>
 
 {% if not plantas %}
-<div style="text-align:center;padding:40px;color:#555">
+<div style="text-align:center;padding:40px;color:#767676">
     No hay plantas registradas aún.
 </div>
 {% endif %}
@@ -44,7 +44,7 @@
         <div>
             <div class="plant-name">
                 {{ p.planta.nombre }}
-                {% if not p.planta.activo %}<span style="font-size:11px;color:#555;font-weight:400"> (inactiva)</span>{% endif %}
+                {% if not p.planta.activo %}<span style="font-size:11px;color:#767676;font-weight:400"> (inactiva)</span>{% endif %}
             </div>
             <div class="plant-meta">
                 <span>RUC: <strong>{{ p.planta.ruc }}</strong></span>
@@ -52,7 +52,7 @@
                 <span>{{ p.planta.direccion }}</span>
             </div>
         </div>
-        <div style="text-align:right;font-size:11px;color:#555">
+        <div style="text-align:right;font-size:11px;color:#767676">
             desde {{ p.planta.created_at.strftime('%d/%m/%Y') if p.planta.created_at else '—' }}
         </div>
     </div>
@@ -99,10 +99,10 @@
 <div class="modal-overlay" id="modal-crear" style="display:none">
     <div class="modal-box">
         <div class="modal-title">+ Nueva Planta Externa</div>
-        <div class="form-group"><label>Nombre *</label><input type="text" id="c-nombre" placeholder="Ej: Confecciones Pérez SAC"></div>
-        <div class="form-group"><label>RUC *</label><input type="text" id="c-ruc" maxlength="11" placeholder="11 dígitos"></div>
-        <div class="form-group"><label>Encargado *</label><input type="text" id="c-encargado" placeholder="Nombre del responsable"></div>
-        <div class="form-group"><label>Dirección *</label><input type="text" id="c-direccion" placeholder="Dirección completa"></div>
+        <div class="form-group"><label>Nombre *</label><input type="text" id="c-nombre" placeholder="Ej: Confecciones Pérez SAC" aria-label="Nombre del contratista"></div>
+        <div class="form-group"><label>RUC *</label><input type="text" id="c-ruc" maxlength="11" placeholder="11 dígitos" aria-label="RUC del contratista"></div>
+        <div class="form-group"><label>Encargado *</label><input type="text" id="c-encargado" placeholder="Nombre del responsable" aria-label="Encargado del contratista"></div>
+        <div class="form-group"><label>Dirección *</label><input type="text" id="c-direccion" placeholder="Dirección completa" aria-label="Dirección del contratista"></div>
         <div class="modal-actions">
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-crear').style.display='none'">Cancelar</button>
             <button class="btn btn-primary btn-sm" onclick="crearPlanta()">Guardar</button>
@@ -115,10 +115,10 @@
     <div class="modal-box">
         <div class="modal-title">✏ Editar Planta</div>
         <input type="hidden" id="e-id">
-        <div class="form-group"><label>Nombre *</label><input type="text" id="e-nombre"></div>
-        <div class="form-group"><label>RUC *</label><input type="text" id="e-ruc" maxlength="11"></div>
-        <div class="form-group"><label>Encargado *</label><input type="text" id="e-encargado"></div>
-        <div class="form-group"><label>Dirección *</label><input type="text" id="e-direccion"></div>
+        <div class="form-group"><label>Nombre *</label><input type="text" id="e-nombre" aria-label="Nombre de la empresa"></div>
+        <div class="form-group"><label>RUC *</label><input type="text" id="e-ruc" maxlength="11" aria-label="RUC de la empresa"></div>
+        <div class="form-group"><label>Encargado *</label><input type="text" id="e-encargado" aria-label="Encargado de la empresa"></div>
+        <div class="form-group"><label>Dirección *</label><input type="text" id="e-direccion" aria-label="Dirección de la empresa"></div>
         <div class="modal-actions">
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-editar').style.display='none'">Cancelar</button>
             <button class="btn btn-primary btn-sm" onclick="editarPlanta()">Guardar cambios</button>

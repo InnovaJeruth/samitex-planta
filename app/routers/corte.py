@@ -34,7 +34,7 @@ def seguimiento(of_id: int, request: Request, db: Session = Depends(get_db), cur
     if not of:
         raise HTTPException(404, "OF no encontrada")
     semaforo = calcular_semaforo(of.fecha_apt, of.estado.value == "COMPLETADA")
-    puede_registrar = get_rol(current_user) in ROLES_CORTE and not of.tercerizado
+    puede_registrar = get_rol(current_user) in ROLES_CORTE and not of.tercerizado and of.estado.value in ("ACTIVA", "EN_PROCESO")
     return templates.TemplateResponse("corte/seguimiento.html", {
         "request": request, "of": of, "semaforo": semaforo,
         "current_user": current_user, "puede_registrar": puede_registrar, "tercerizado": of.tercerizado,
@@ -87,6 +87,8 @@ def registrar(of_id: int, body: AvanceCreate, db: Session = Depends(get_db), cur
     of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
+    if of.estado.value not in ("ACTIVA", "EN_PROCESO"):
+        raise HTTPException(400, "Solo se pueden registrar avances en OFs ACTIVAS o EN PROCESO")
     pieza = db.query(OFPieza).filter_by(id=body.pieza_id, of_id=of_id).first()
     if not pieza:
         raise HTTPException(404, "Pieza no encontrada")
@@ -100,6 +102,8 @@ def completar(of_id: int, body: CompletarRequest, db: Session = Depends(get_db),
     of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
+    if of.estado.value not in ("ACTIVA", "EN_PROCESO"):
+        raise HTTPException(400, "Solo se pueden completar fases en OFs ACTIVAS o EN PROCESO")
     pieza = db.query(OFPieza).filter_by(id=body.pieza_id, of_id=of_id).first()
     if not pieza:
         raise HTTPException(404, "Pieza no encontrada")
@@ -165,6 +169,8 @@ def avance_bulk(of_id: int, body: AvanceBulkRequest, db: Session = Depends(get_d
     of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
+    if of.estado.value not in ("ACTIVA", "EN_PROCESO"):
+        raise HTTPException(400, "Solo se pueden registrar avances en OFs ACTIVAS o EN PROCESO")
     estados = registrar_avance_bulk(of, body.fase_id, body.cantidad, body.pieza_ids, current_user.id, db)
     return {"registradas": len(estados), "fase_id": body.fase_id, "cantidad_por_pieza": body.cantidad}
 
@@ -175,4 +181,99 @@ def completar_bulk(of_id: int, body: CompletarBulkRequest, db: Session = Depends
     of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
-    estados = completar_fase_bulk
+    if of.estado.value not in ("ACTIVA", "EN_PROCESO"):
+        raise HTTPException(400, "Solo se pueden completar fases en OFs ACTIVAS o EN PROCESO")
+    estados = completar_fase_bulk(of, body.fase_id, body.pieza_ids, current_user.id, db)
+    return {"completadas": len(estados), "fase_id": body.fase_id}
+
+
+# ── Paradas ───────────────────────────────────────────────────
+
+class PausarRequest(PydanticBase):
+    fase_id: str
+    motivo: str
+    of_emergencia_id: int | None = None
+    numero_requerimiento: str | None = None
+    observacion: str | None = None
+
+
+class ReanudarRequest(PydanticBase):
+    parada_id: int
+
+
+@router.post("/api/{of_id}/pausar")
+def pausar(of_id: int, body: PausarRequest, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
+    _check_corte(current_user)
+    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
+    if not of:
+        raise HTTPException(404, "OF no encontrada")
+
+    # Verificar que no haya ya una parada activa en esa fase
+    activa = db.query(OFFaseParada).filter(
+        OFFaseParada.of_id == of_id,
+        OFFaseParada.fase_id == body.fase_id,
+        OFFaseParada.fin_parada.is_(None),
+    ).first()
+    if activa:
+        raise HTTPException(400, f"Ya existe una parada activa en {body.fase_id}")
+
+    from datetime import datetime
+    parada = OFFaseParada(
+        of_id=of_id,
+        fase_id=body.fase_id,
+        motivo=body.motivo,
+        of_emergencia_id=body.of_emergencia_id,
+        numero_requerimiento=body.numero_requerimiento,
+        observacion=body.observacion,
+        inicio_parada=datetime.now(),
+        usuario_id=current_user.id,
+    )
+    db.add(parada)
+    db.commit()
+    db.refresh(parada)
+    return {"ok": True, "parada_id": parada.id}
+
+
+@router.post("/api/{of_id}/reanudar")
+def reanudar(of_id: int, body: ReanudarRequest, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
+    _check_corte(current_user)
+    parada = db.query(OFFaseParada).filter_by(id=body.parada_id, of_id=of_id).first()
+    if not parada:
+        raise HTTPException(404, "Parada no encontrada")
+    if parada.fin_parada is not None:
+        raise HTTPException(400, "La parada ya fue cerrada")
+
+    from datetime import datetime
+    parada.fin_parada = datetime.now()
+    db.commit()
+    return {"ok": True, "mensaje": "Parada cerrada", "duracion_minutos": parada.duracion_minutos}
+
+
+@router.get("/api/{of_id}/paradas")
+def listar_paradas(of_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
+    paradas = db.query(OFFaseParada).filter_by(of_id=of_id).order_by(OFFaseParada.inicio_parada.desc()).all()
+
+    # Resolver número de OF emergencia si aplica
+    of_ids = {p.of_emergencia_id for p in paradas if p.of_emergencia_id}
+    of_map = {}
+    if of_ids:
+        from app.models.of import OrdenFabricacion as OF2
+        ofs = db.query(OF2).filter(OF2.id.in_(of_ids)).all()
+        of_map = {o.id: o.numero_of for o in ofs}
+
+    return [
+        {
+            "id": p.id,
+            "fase_id": p.fase_id,
+            "motivo": p.motivo,
+            "of_emergencia_id": p.of_emergencia_id,
+            "of_emergencia_numero": of_map.get(p.of_emergencia_id) if p.of_emergencia_id else None,
+            "numero_requerimiento": p.numero_requerimiento,
+            "observacion": p.observacion,
+            "inicio_parada": p.inicio_parada.strftime("%d/%m %H:%M") if p.inicio_parada else None,
+            "fin_parada": p.fin_parada.strftime("%d/%m %H:%M") if p.fin_parada else None,
+            "duracion_minutos": p.duracion_minutos,
+            "activa": p.fin_parada is None,
+        }
+        for p in paradas
+    ]

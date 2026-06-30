@@ -4,12 +4,12 @@
 {% block extra_head %}
 <style>
 .piezas-edit-table { width:100%; border-collapse:collapse; font-size:13px; }
-.piezas-edit-table th { background:#0e0e0e; color:#555; font-size:10px; font-weight:600;
+.piezas-edit-table th { background:#0e0e0e; color:#767676; font-size:10px; font-weight:600;
   text-transform:uppercase; letter-spacing:.4px; padding:8px 10px; border-bottom:1px solid #1e1e1e; }
 .piezas-edit-table td { padding:6px 8px; border-bottom:1px solid #161616; vertical-align:middle; }
 .piezas-edit-table tr:hover td { background:#111; }
 .edit-input { background:#0f0f0f; border:1px solid #2a2a2a; border-radius:4px;
-  padding:5px 8px; color:#e0e0e0; font-size:12px; outline:none; width:100%; }
+  padding:5px 8px; color:#e0e0e0; font-size:12px; width:100%; }
 .edit-input:focus { border-color:#4a9fff; }
 .edit-input.sap-ok  { border-color:#1d5f40; }
 .edit-input.sap-err { border-color:#6a1a1a; }
@@ -25,7 +25,7 @@
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
   <div>
     <div class="page-title">Editar Piezas</div>
-    <div style="font-size:12px;color:#555;margin-top:2px">{{ of.numero_of }} — {{ of.cliente }}</div>
+    <div style="font-size:12px;color:#767676;margin-top:2px">{{ of.numero_of }} — {{ of.cliente }}</div>
   </div>
   <a href="/of/{{ of.id }}/detalle" class="btn btn-secondary">← Volver al detalle</a>
 </div>
@@ -37,7 +37,7 @@
 <div class="card">
   <div class="card-header">
     <span class="card-title">Piezas de la OF</span>
-    <span style="font-size:11px;color:#555">{{ of.piezas | length }} pieza(s)</span>
+    <span style="font-size:11px;color:#767676">{{ of.piezas | length }} pieza(s)</span>
   </div>
   <div style="overflow-x:auto">
     <table class="piezas-edit-table" id="piezas-table">
@@ -61,7 +61,7 @@
                  data-field="codigo_sap"
                  value="{{ pieza.codigo_sap or '' }}"
                  placeholder="SAP-0000"
-                 oninput="checkSap(this)">
+                 oninput="checkSap(this)" aria-label="SAP-0000">
         </td>
         <td>
           <input class="edit-input" list="mat-list" data-field="material" value="{{ pieza.material }}">

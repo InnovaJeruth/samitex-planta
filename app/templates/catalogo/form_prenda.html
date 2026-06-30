@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}{% if accion == 'crear' %}Nueva Prenda{% else %}Editar {{ prenda.nombre }}{% endif %} — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+.form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.form-group label { font-size:12px; color:#888; display:block; margin-bottom:5px; }
+.form-group input, .form-group select, .form-group textarea {
+    width:100%; background:#0f0f0f; border:1px solid #333; color:#e0e0e0;
+    padding:8px 12px; border-radius:6px; font-size:13px;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline:none; border-color:#1a6fbe;
+}
+.preview-foto { width:140px; height:180px; border-radius:8px; object-fit:cover; background:#111; border:2px dashed #333; display:flex; align-items:center; justify-content:center; font-size:36px; color:#333; margin-bottom:10px; }
+.preview-foto img { width:100%; height:100%; object-fit:cover; border-radius:6px; }
+.toast{ position:fixed;top:16px;right:16px;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(-8px);transition:all .2s;pointer-events:none; }
+.toast.show{ opacity:1;transform:translateY(0); }
+.toast-success{ background:#0d3320;border:1px solid #1d5f40;color:#4caf7d; }
+.toast-error  { background:#3a0a0a;border:1px solid #6a1a1a;color:#f88; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <span class="page-title">{% if accion == 'crear' %}Nueva Prenda{% else %}Editar: {{ prenda.nombre }}{% endif %}</span>
+    <a href="{% if prenda %}/catalogo/{{ prenda.id }}{% else %}/catalogo/{% endif %}" class="btn btn-secondary">← Cancelar</a>
+</div>
+
+<div style="display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:start">
+    <!-- Foto preview -->
+    <div>
+        <div class="preview-foto" id="foto-preview">
+            {% if prenda and prenda.imagen_ruta %}
+            <img src="/{{ prenda.imagen_ruta }}" id="foto-img" alt="foto">
+            {% else %}
+            <span id="foto-icon">👔</span>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>Foto de la prenda</label>
+            <input type="file" id="imagen-input" name="imagen" accept="image/*" onchange="previsualizarFoto(this)">
+        </div>
+        <p style="font-size:11px;color:#555;margin-top:4px">JPG, PNG o WebP. Máx. 5MB.</p>
+    </div>
+
+    <!-- Formulario -->
+    <div class="card">
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label>Código *</label>
+                <input id="codigo" placeholder="Ej: CAM-001" value="{{ prenda.codigo if prenda else '' }}"
+                       {% if accion == 'editar' %}readonly style="background:#0a0a0a;color:#666"{% endif %}>
+                {% if accion == 'editar' %}<p style="font-size:11px;color:#555;margin-top:3px">El código no se puede modificar</p>{% endif %}
+            </div>
+            <div class="form-group">
+                <label>Tipo base *</label>
+                <select id="tipo_base">
+                    {% for t in tipos_base %}
+                    <option value="{{ t }}" {% if prenda and prenda.tipo_base == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-grid-2" style="margin-bottom:14px">
+            <div class="form-group">
+                <label>Tipo de cliente *</label>
+                <select id="tipo_cliente">
+                    {% for tc in tipos_cliente %}
+                    <option value="{{ tc }}" {% if prenda and prenda.tipo_cliente == tc %}selected{% endif %}>{{ tc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Fit / Corte</label>
+                <select id="fit">
+                    <option value="">Sin especificar</option>
+                    {% for val, label in fits %}
+                    <option value="{{ val }}" {% if prenda and prenda.fit == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px">
+            <label>Nombre de la variante *</label>
+            <input id="nombre" placeholder="Ej: Camisa Manga Larga Colegio" value="{{ prenda.nombre if prenda else '' }}">
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px">
+            <label>Descripción (opcional)</label>
+            <textarea id="descripcion" rows="2" placeholder="Notas sobre la prenda, cliente tipo, etc.">{{ prenda.descripcion if prenda and prenda.descripcion else '' }}</textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom:20px">
+            <label>Composición textil</label>
+            <input id="composicion" placeholder="Ej: 50%COTTON 50%POLYESTER" value="{{ prenda.composicion if prenda and prenda.composicion else '' }}">
+            <p style="font-size:11px;color:#555;margin-top:3px">Composición de la tela principal (especialmente relevante en variantes MARCA/INSTITUCIÓN)</p>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px">
+            <a href="{% if prenda %}/catalogo/{{ prenda.id }}{% else %}/catalogo/{% endif %}" class="btn btn-secondary">Cancelar</a>
+            <button class="btn btn-primary" onclick="guardar()">
+                {% if accion == 'crear' %}💾 Crear prenda{% else %}💾 Guardar cambios{% endif %}
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const ACCION = '{{ accion }}';
+{% if prenda %}const PRENDA_ID = {{ prenda.id }};{% endif %}
+
+function getCsrf(){
+    const m=document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? m[1].split('.')[0] : '';
+}
+
+function toast(msg,tipo='success'){
+    const t=document.getElementById('toast');
+    t.textContent=msg; t.className=`toast toast-${tipo} show`;
+    setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+function previsualizarFoto(input){
+    if(!input.files[0]) return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+        const prev=document.getElementById('foto-preview');
+        prev.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`;
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+async function guardar(){
+    const codigo      = document.getElementById('codigo').value.trim();
+    const nombre      = document.getElementById('nombre').value.trim();
+    const tipo_base    = document.getElementById('tipo_base').value;
+    const tipo_cliente = document.getElementById('tipo_cliente').value;
+    const fit          = document.getElementById('fit').value;
+    const descripcion  = document.getElementById('descripcion').value.trim();
+    const composicion  = document.getElementById('composicion').value.trim();
+    const imagenInput = document.getElementById('imagen-input');
+
+    if(!nombre){ toast('El nombre es obligatorio','error'); return; }
+    if(ACCION==='crear' && !codigo){ toast('El código es obligatorio','error'); return; }
+
+    const fd=new FormData();
+    if(ACCION==='crear') fd.append('codigo', codigo);
+    fd.append('nombre',       nombre);
+    fd.append('tipo_base',   tipo_base);
+    fd.append('tipo_cliente', tipo_cliente);
+    fd.append('fit',         fit);
+    fd.append('descripcion', descripcion);
+    fd.append('composicion', composicion);
+    if(imagenInput.files[0]) fd.append('imagen', imagenInput.files[0]);
+
+    const url = ACCION==='crear'
+        ? '/catalogo/api/crear'
+        : `/catalogo/api/${PRENDA_ID}/editar`;
+
+    const res = await fetch(url, {
+        method: 'POST', body: fd,
+        headers: {'x-csrf-token': getCsrf()}
+    });
+
+    if(!res.ok){
+        const d = await res.json().catch(()=>({}));
+        toast(d.detail || 'Error al guardar','error');
+        return;
+    }
+
+    const data = await res.json();
+    toast(ACCION==='crear' ? 'Prenda creada ✓' : 'Cambios guardados ✓');
+    const destId = ACCION==='crear' ? data.id : PRENDA_ID;
+    setTimeout(()=>window.location.href=`/catalogo/${destId}`, 1000);
+}
+</script>
+{% endblock %}

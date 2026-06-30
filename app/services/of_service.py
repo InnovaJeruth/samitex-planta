@@ -38,9 +38,7 @@ def actualizar_estado_docs(of: OrdenFabricacion, db: Session) -> None:
 
     if ok and of.estado == EstadoOF.BORRADOR:
         of.estado_docs = EstadoDocsEnum.COMPLETA
-        piezas_sin_sap = [p for p in of.piezas if not p.codigo_sap]
-        if not piezas_sin_sap:
-            of.estado = EstadoOF.ACTIVA
+        of.estado = EstadoOF.ACTIVA
 
     db.commit()
 
@@ -64,16 +62,49 @@ def crear_fases_pieza(pieza: OFPieza, of: OrdenFabricacion, db: Session) -> None
 
 
 def auto_generar_piezas(of: OrdenFabricacion, db: Session) -> None:
-    """Genera piezas desde plantilla y crea sus fases. Llámado al subir FICHA_TECNICA."""
-    plantillas = (
-        db.query(PlantillaPieza)
-        .filter_by(tipo_prenda=of.tipo_prenda)
-        .order_by(PlantillaPieza.orden)
-        .all()
-    )
+    """Genera piezas desde plantilla y crea sus fases. Llamado al subir FICHA_TECNICA.
+
+    Prioridad:
+      1. Si la OF tiene prenda_catalogo_id → filtra PlantillaPieza por ese FK.
+      2. Fallback: filtra por tipo_prenda (string) para compatibilidad con prendas base.
+    Guard: si la OF ya tiene piezas, no vuelve a generarlas.
+    """
+    if of.piezas:
+        return  # Guard: evita duplicar piezas
+
+    if of.prenda_catalogo_id:
+        plantillas = (
+            db.query(PlantillaPieza)
+            .filter_by(prenda_catalogo_id=of.prenda_catalogo_id)
+            .order_by(PlantillaPieza.orden)
+            .all()
+        )
+    else:
+        # Fallback: buscar por tipo_base en el catálogo activo
+        from app.models.catalogo import PrendaCatalogo
+        prenda_cat = (
+            db.query(PrendaCatalogo)
+            .filter_by(tipo_base=of.tipo_prenda, activo=True)
+            .order_by(PrendaCatalogo.id)
+            .first()
+        )
+        if prenda_cat:
+            plantillas = (
+                db.query(PlantillaPieza)
+                .filter_by(prenda_catalogo_id=prenda_cat.id)
+                .order_by(PlantillaPieza.orden)
+                .all()
+            )
+            # Vincular la OF al catálogo encontrado
+            of.prenda_catalogo_id = prenda_cat.id
+        else:
+            plantillas = []
+
     for p in plantillas:
         pieza = OFPieza(
             of_id=of.id,
+            codigo_pieza=p.codigo,       # trazabilidad hacia el catálogo
+            codigo_sap=p.codigo,         # heredar código del catálogo como SAP inicial
             nombre=p.nombre,
             material=p.material_default,
             cantidad_x_prenda=p.cantidad_x_prenda,
@@ -230,6 +261,7 @@ def registrar_recepcion(
     db.add(recepcion)
 
     of.juegos_recibidos = ya_recibidos + juegos_recibidos
+    of.fecha_recepcion_real = fecha   # última fecha de recepción registrada
     recepcion_completa = of.juegos_recibidos >= of.total_juegos
     if recepcion_completa:
         of.estado_tercerizado = "RECIBIDA"

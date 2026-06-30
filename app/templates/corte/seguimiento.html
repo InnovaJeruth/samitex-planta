@@ -12,8 +12,8 @@
 .fase-tab   { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid transparent; }
 .fase-tab.completa  { background:#0d3320; color:#4caf7d; border-color:#1d5f40; }
 .fase-tab.en_proceso{ background:#3a2a00; color:#e6a817; border-color:#6a4a00; }
-.fase-tab.pendiente { background:#1a1a1a; color:#555;    border-color:#2a2a2a; }
-.fase-tab.bloqueada { background:#111; color:#333; border-color:#1a1a1a; cursor:not-allowed !important; opacity:.5; }
+.fase-tab.pendiente { background:#1a1a1a; color:#767676;    border-color:#2a2a2a; }
+.fase-tab.bloqueada { background:#111; color:#767676; border-color:#1a1a1a; cursor:not-allowed !important; opacity:.5; }
 
 /* Tabla piezas */
 .pt { width:100%; border-collapse:separate; border-spacing:0; font-size:12px; }
@@ -49,7 +49,7 @@
 .accion-cell { display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .fase-badge  { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700;
                background:#3a2a00; color:#e6a817; border:1px solid #6a4a00; }
-.max-hint    { font-size:10px; color:#555; }
+.max-hint    { font-size:10px; color:#767676; }
 .btn-avance  { padding:3px 10px; font-size:11px; background:#1a3a6f; color:#4a9fff; border:none; border-radius:4px; cursor:pointer; }
 .btn-avance:hover { background:#1a4f9f; }
 .btn-completar{ padding:3px 10px; font-size:11px; background:#0d3320; color:#4caf7d; border:1px solid #1d5f40; border-radius:4px; cursor:pointer; }
@@ -64,13 +64,13 @@
 .bulk-bar label { font-size:12px; color:#888; display:flex; align-items:center; gap:6px; cursor:pointer; }
 .bulk-bar input[type=checkbox] { accent-color:#4a9fff; width:14px; height:14px; cursor:pointer; }
 .bulk-bar input[type=number]   { width:70px; background:#1a1a1a; border:1px solid #333; border-radius:4px;
-                                  padding:3px 6px; color:#e0e0e0; font-size:12px; text-align:center; outline:none; }
+                                  padding:3px 6px; color:#e0e0e0; font-size:12px; text-align:center; }
 .bulk-bar input[type=number]:focus { border-color:#1a6fbe; }
 .btn-bulk-reg  { padding:3px 10px; font-size:11px; background:#1a3a6f; color:#4a9fff; border:none; border-radius:4px; cursor:pointer; }
 .btn-bulk-reg:hover { background:#1a4f9f; }
 .btn-bulk-comp { padding:3px 10px; font-size:11px; background:#0d3320; color:#4caf7d; border:1px solid #1d5f40; border-radius:4px; cursor:pointer; }
 .btn-bulk-comp:hover { background:#0f4a2a; }
-.bulk-hint { font-size:11px; color:#555; margin-left:auto; }
+.bulk-hint { font-size:11px; color:#767676; margin-left:auto; }
 
 /* Modal */
 .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:200; align-items:center; justify-content:center; }
@@ -82,8 +82,7 @@
 .modal-field label { display:block; font-size:11px; color:#888; margin-bottom:4px; }
 .modal-field input, .modal-field textarea {
     width:100%; background:#111; border:1px solid #333; border-radius:6px;
-    padding:8px 10px; color:#e0e0e0; font-size:14px; outline:none;
-}
+    padding:8px 10px; color:#e0e0e0; font-size:14px; }
 .modal-field input:focus, .modal-field textarea:focus { border-color:#1a6fbe; }
 .modal-field input.error { border-color:#8b1a1a; }
 .modal-error { color:#f88; font-size:12px; margin-top:4px; display:none; }
@@ -107,7 +106,7 @@
 .fsc-completada .fsc-nombre { color:#4caf7d; }
 .fsc-en_proceso .fsc-nombre { color:#e6a817; }
 .fsc-pendiente  .fsc-nombre { color:#888; }
-.fsc-times { font-size:10px; color:#555; line-height:1.6; margin-bottom:6px; min-height:28px; }
+.fsc-times { font-size:10px; color:#767676; line-height:1.6; margin-bottom:6px; min-height:28px; }
 .fsc-times .plan { color:#4a7faf; }
 .fsc-times .real { color:#4caf7d; }
 .fsc-pct  { height:2px; background:#1a1a1a; border-radius:1px; margin-bottom:8px; }
@@ -117,7 +116,7 @@
 .btn-iniciar { width:100%; padding:4px 0; font-size:10px; font-weight:700; background:#1a3a6f;
                color:#4a9fff; border:none; border-radius:4px; cursor:pointer; text-transform:uppercase; letter-spacing:.5px; }
 .btn-iniciar:hover { background:#1a4f9f; }
-.btn-iniciar:disabled { background:#111; color:#333; cursor:not-allowed; }
+.btn-iniciar:disabled { background:#111; color:#767676; cursor:not-allowed; }
 
 /* Mobile: hide material column */
 @media (max-width: 900px) {
@@ -199,12 +198,12 @@
 
 <!-- Franja de tarjetas por fase -->
 <div id="fase-strip" class="fase-strip">
-    <div style="font-size:12px;color:#555;padding:10px">Cargando fases...</div>
+    <div style="font-size:12px;color:#767676;padding:10px">Cargando fases...</div>
 </div>
 
 <!-- Tabs resumen (pequeños) -->
 <div id="fase-tabs" class="fase-tabs">
-    <span style="font-size:12px;color:#555">Cargando...</span>
+    <span style="font-size:12px;color:#767676">Cargando...</span>
 </div>
 
 <!-- Tabla avance por piezas -->
@@ -216,15 +215,15 @@
     {% if puede_registrar and not tercerizado %}
     <div class="bulk-bar" id="bulk-bar" style="display:none">
         <label><input type="checkbox" id="bulk-check-all" onchange="toggleBulkAll(this)"> Todas las piezas</label>
-        <span style="font-size:11px;color:#555">Cantidad:</span>
-        <input type="number" id="bulk-cantidad" min="1" placeholder="0">
+        <span style="font-size:11px;color:#767676">Cantidad:</span>
+        <input type="number" id="bulk-cantidad" min="1" placeholder="0" aria-label="Cantidad (bulk)">
         <button class="btn-bulk-reg"  onclick="accionBulkAvance()">+ Registrar selección</button>
         <button class="btn-bulk-comp" onclick="accionBulkCompletar()">✓ Completar selección</button>
         <span class="bulk-hint" id="bulk-hint"></span>
     </div>
     {% endif %}
     <div id="tabla-container">
-        <div style="text-align:center;padding:40px;color:#555">Cargando...</div>
+        <div style="text-align:center;padding:40px;color:#767676">Cargando...</div>
     </div>
     <div style="padding:10px 4px;font-size:11px;color:#444">
         Cada pieza avanza de forma independiente. La OF se completa cuando todas las piezas terminan F7 Habilitado.
@@ -237,7 +236,7 @@
         <span class="card-title" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888">Registros de cantidad</span>
     </div>
     <div id="hist-container">
-        <div style="text-align:center;padding:20px;color:#555;font-size:12px">Sin registros</div>
+        <div style="text-align:center;padding:20px;color:#767676;font-size:12px">Sin registros</div>
     </div>
 </div>
 
@@ -261,7 +260,7 @@
         <div class="modal-restante">Disponible para registrar: <span id="modal-max">—</span> unidades</div>
         <div class="modal-field">
             <label>Cantidad *</label>
-            <input type="number" id="modal-cantidad" min="1" placeholder="Ej: 50" oninput="validarCantidad()">
+            <input type="number" id="modal-cantidad" min="1" placeholder="Ej: 50" oninput="validarCantidad()" aria-label="Cantidad">
             <div class="modal-error" id="modal-error"></div>
         </div>
         <div class="modal-field">
@@ -286,7 +285,7 @@
 
         <div class="modal-field">
             <label>Fase activa *</label>
-            <select id="pausar-fase" style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;outline:none">
+            <select id="pausar-fase" style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;">
                 <option value="">— Seleccionar fase —</option>
                 <option value="F1">F1 Tizado</option>
                 <option value="F2">F2 Tendido</option>
@@ -302,9 +301,10 @@
 
         <div class="modal-field">
             <label>Motivo *</label>
-            <select id="pausar-motivo" onchange="toggleCampoEmergencia()" style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;outline:none">
+            <select id="pausar-motivo" onchange="toggleCampoEmergencia()" style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;">
                 <option value="">— Seleccionar motivo —</option>
                 <option value="EMERGENCIA_OF">🚨 OF de emergencia</option>
+                <option value="REQUERIMIENTO">📄 Requerimiento</option>
                 <option value="MATERIAL">📦 Falta de material</option>
                 <option value="MAQUINA">🔧 Mantenimiento de máquina</option>
                 <option value="ADMIN">📋 Parada administrativa</option>
@@ -314,9 +314,15 @@
 
         <div class="modal-field" id="campo-emergencia" style="display:none">
             <label>N° OF de emergencia (opcional)</label>
-            <input type="text" id="pausar-of-emergencia" placeholder="Ej: OF-2024-089" list="of-sugerencias">
+            <input type="text" id="pausar-of-emergencia" placeholder="Ej: OF-2024-089" list="of-sugerencias" aria-label="N° OF de emergencia">
             <datalist id="of-sugerencias"></datalist>
             <div style="font-size:11px;color:#666;margin-top:4px">Escribe el número de OF que entró como emergencia</div>
+        </div>
+
+        <div class="modal-field" id="campo-requerimiento" style="display:none">
+            <label>Código de requerimiento (opcional)</label>
+            <input type="text" id="pausar-num-requerimiento" placeholder="Ej: REQ-2024-001" aria-label="Código de requerimiento">
+            <div style="font-size:11px;color:#666;margin-top:4px">Escribe el código del requerimiento que generó esta parada</div>
         </div>
 
         <div class="modal-field">
@@ -346,14 +352,25 @@ let _piezaId = null, _faseId = null, _maxRestante = 0;
 
 // ── Carga de datos ────────────────────────────────────────────
 async function cargarEstado() {
-    const [resEstado, resHist] = await Promise.all([
-        fetch(`/corte/api/${OF_ID}/estado`),
-        fetch(`/corte/api/${OF_ID}/historial`),
-    ]);
-    estadoActual = await resEstado.json();
-    const historial = await resHist.json();
-    renderTabla();
-    renderHistorial(historial);
+    try {
+        const [resEstado, resHist] = await Promise.all([
+            fetch(`/corte/api/${OF_ID}/estado`),
+            fetch(`/corte/api/${OF_ID}/historial`),
+        ]);
+        if (!resEstado.ok) {
+            const err = await resEstado.json().catch(() => ({}));
+            document.getElementById('tabla-container').innerHTML =
+                `<div style="text-align:center;padding:40px;color:#e06060">Error al cargar piezas: ${err.detail || resEstado.status}</div>`;
+            return;
+        }
+        estadoActual = await resEstado.json();
+        const historial = await resHist.json().catch(() => []);
+        renderTabla();
+        renderHistorial(historial);
+    } catch(e) {
+        document.getElementById('tabla-container').innerHTML =
+            `<div style="text-align:center;padding:40px;color:#e06060">Error de red: ${e.message}</div>`;
+    }
 }
 
 // ── Render tabla ──────────────────────────────────────────────
@@ -361,8 +378,12 @@ function renderTabla() {
     if (!estadoActual) return;
     const piezas = estadoActual.piezas;
     if (!piezas.length) {
+        const btnGenerar = {{ 'true' if puede_registrar and of.estado.value == "ACTIVA" else 'false' }}
+            ? `<br><br><button class="btn btn-primary btn-sm" onclick="generarPiezas()">🔄 Generar piezas desde catálogo</button>`
+            : '';
         document.getElementById('tabla-container').innerHTML =
-            '<div style="text-align:center;padding:40px;color:#555">Sin piezas en esta OF</div>';
+            `<div style="text-align:center;padding:40px;color:#767676">Sin piezas en esta OF${btnGenerar}</div>`;
+        document.getElementById('fase-tabs').innerHTML = '';
         return;
     }
 
@@ -425,7 +446,7 @@ function renderTabla() {
                 <button class="btn-avance" onclick="abrirModal(${p.id},'${faseActual}','${p.nombre}',${restante})">+ Avance</button>
                 <button class="btn-completar" onclick="completarDirecto(${p.id},'${faseActual}','${p.nombre}')">Completar</button>
                 <button class="btn-rev" onclick="revertirUltimo(${p.id},'${faseActual}','${p.nombre}')" title="Revertir último registro">Rev</button>
-            ` : '<span style="font-size:11px;color:#555">🔒 Solo lectura</span>';
+            ` : '<span style="font-size:11px;color:#767676">🔒 Solo lectura</span>';
             html += `<td><div class="accion-cell">
                 <span class="fase-badge">${FASES_NOMBRES[faseActual]||faseActual}</span>
                 <span class="max-hint">Max ${restante}</span>
@@ -522,7 +543,7 @@ function cambiarFaseBulk(faseId) {
 function renderHistorial(registros) {
     if (!registros.length) {
         document.getElementById('hist-container').innerHTML =
-            '<div style="text-align:center;padding:20px;color:#555;font-size:12px">Sin registros</div>';
+            '<div style="text-align:center;padding:20px;color:#767676;font-size:12px">Sin registros</div>';
         return;
     }
     let html = `<div style="overflow-x:auto"><table class="hist-table"><thead><tr>
@@ -792,7 +813,7 @@ function renderStrip(fases) {
         const cls = f.puede_iniciar ? f.estado : (f.estado === 'pendiente' ? 'bloqueada' : f.estado);
         const tiemposPlan = f.inicio_programado
             ? `<span class="plan">▷ ${f.inicio_programado}${f.fin_programado ? ' → '+f.fin_programado : ''}</span>`
-            : `<span style="color:#333">Sin programar</span>`;
+            : `<span style="color:#767676">Sin programar</span>`;
         const tiemposReal = f.inicio_real
             ? `<span class="real">● ${f.inicio_real}${f.fin_real ? ' → '+f.fin_real : ' (en curso)'}</span>`
             : '';
@@ -833,6 +854,7 @@ async function iniciarFase(faseId) {
 // ── Paradas ───────────────────────────────────────────────────
 const MOTIVOS_LABELS = {
     EMERGENCIA_OF: '🚨 OF Emergencia',
+    REQUERIMIENTO: '📄 Requerimiento',
     MATERIAL:      '📦 Falta material',
     MAQUINA:       '🔧 Mantenimiento',
     ADMIN:         '📋 Administrativo',
@@ -846,6 +868,23 @@ async function cargarParadas() {
         const paradas = await res.json();
         renderParadas(paradas);
     } catch(e) { console.warn('paradas error', e); }
+}
+
+async function reanudarParada(paradaId) {
+    try {
+        const r = await fetch(`/corte/api/${OF_ID}/reanudar`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'x-csrf-token': _getCsrfToken()},
+            body: JSON.stringify({parada_id: paradaId})
+        });
+        const d = await r.json();
+        if (r.ok) {
+            showToast('Parada cerrada — reanudando producción', 'success');
+            await cargarParadas();
+        } else {
+            showToast(d.detail || 'Error al reanudar', 'error');
+        }
+    } catch(e) { showToast('Error de red: ' + e.message, 'error'); }
 }
 
 function renderParadas(paradas) {
@@ -868,7 +907,8 @@ function renderParadas(paradas) {
             <span style="color:#e0e0e0;font-weight:600">${FASES_NOMBRES[p.fase_id]||p.fase_id}</span>
             <span style="color:#888">${MOTIVOS_LABELS[p.motivo]||p.motivo}</span>
             ${p.of_emergencia_numero ? `<span style="color:#c084fc">→ OF ${p.of_emergencia_numero}</span>` : ''}
-            <span style="color:#555;font-size:11px">desde ${p.inicio_parada}</span>
+            ${p.numero_requerimiento ? `<span style="color:#60a5fa">→ REQ ${p.numero_requerimiento}</span>` : ''}
+            <span style="color:#767676;font-size:11px">desde ${p.inicio_parada}</span>
             ${p.observacion ? `<span style="color:#666;font-size:11px">${p.observacion}</span>` : ''}
             <button class="btn-reanudar" onclick="reanudarParada(${p.id})">▶ Reanudar</button>
         </div>
@@ -888,8 +928,10 @@ function abrirModalPausar() {
     }
     document.getElementById('pausar-motivo').value = '';
     document.getElementById('pausar-of-emergencia').value = '';
+    document.getElementById('pausar-num-requerimiento').value = '';
     document.getElementById('pausar-obs').value = '';
     document.getElementById('campo-emergencia').style.display = 'none';
+    document.getElementById('campo-requerimiento').style.display = 'none';
     document.getElementById('modal-pausar').classList.add('show');
 }
 
@@ -901,6 +943,8 @@ function toggleCampoEmergencia() {
     const motivo = document.getElementById('pausar-motivo').value;
     document.getElementById('campo-emergencia').style.display =
         motivo === 'EMERGENCIA_OF' ? 'block' : 'none';
+    document.getElementById('campo-requerimiento').style.display =
+        motivo === 'REQUERIMIENTO' ? 'block' : 'none';
 }
 
 async function confirmarPausa() {
@@ -922,10 +966,12 @@ async function confirmarPausa() {
         }
     }
 
+    const numReq = document.getElementById('pausar-num-requerimiento').value.trim();
     const body = {
         fase_id: faseId,
         motivo,
         of_emergencia_id: ofEmergenciaId,
+        numero_requerimiento: (motivo === 'REQUERIMIENTO' && numReq) ? numReq : null,
         observacion: document.getElementById('pausar-obs').value.trim() || null,
     };
 
@@ -945,25 +991,28 @@ async function confirmarPausa() {
     }
 }
 
-async function reanudarParada(paradaId) {
-    const res = await fetch(`/corte/api/${OF_ID}/reanudar`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ parada_id: paradaId }),
-    });
-    if (res.ok) {
-        const d = await res.json();
-        mostrarToast(d.mensaje || 'Reanudado', 'success');
-        await cargarParadas();
+async function generarPiezas() {
+    const r = await fetch(`/of/api/${OF_ID}/piezas/plantilla`, {method: 'POST'});
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) {
+        const n = (d.piezas_creadas || []).length;
+        if (n > 0) {
+            mostrarToast(`${n} piezas generadas`, 'success');
+            await cargarEstado();
+            await cargarStrip();
+        } else {
+            mostrarToast('La plantilla del catálogo no tiene piezas. Define las piezas en Catálogo primero.', 'warning');
+        }
     } else {
-        const d = await res.json();
-        mostrarToast(d.detail || 'Error al reanudar', 'error');
+        mostrarToast(d.detail || 'Error al generar piezas', 'error');
     }
 }
 
-// ── Init ──────────────────────────────────────────────────────
-cargarEstado();
-cargarStrip();
-cargarParadas();
+// Inicializacion
+document.addEventListener('DOMContentLoaded', function() {
+    cargarEstado();
+    cargarStrip();
+    cargarParadas();
+});
 </script>
 {% endblock %}

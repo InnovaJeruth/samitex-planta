@@ -26,7 +26,6 @@ async def send_message(chat_id: int, text: str):
         await client.post(f"{TELEGRAM_API}/sendMessage", json={
             "chat_id": chat_id,
             "text": text,
-            "parse_mode": "Markdown"
         })
 
 # ── Consultas internas a la BD ───────────────────────────────
@@ -290,3 +289,69 @@ def bot_of_detalle(numero_of: str, x_bot_key: str = Header(None)):
         }
     finally:
         db.close()
+
+# ── Webhook principal ────────────────────────────────────────
+import re
+
+def _extract_numero_of(text: str):
+    """Extrae número de OF del mensaje. Ej: 'estado of 1555555' → '1555555'"""
+    m = re.search(r'\b(\d{5,})\b', text)
+    return m.group(1) if m else None
+
+@router.post("/telegram/webhook")
+async def telegram_webhook(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": True})
+
+    message = body.get("message") or body.get("edited_message")
+    if not message:
+        return JSONResponse({"ok": True})
+
+    chat_id  = message["chat"]["id"]
+    text     = message.get("text", "").strip()
+    username = message.get("from", {}).get("first_name", "Usuario")
+
+    # Verificar acceso
+    if ALLOWED_IDS and chat_id not in ALLOWED_IDS:
+        await send_message(chat_id, "⛔ No tienes acceso a este bot.")
+        return JSONResponse({"ok": True})
+
+    # /start
+    if text.startswith("/start"):
+        msg = (
+            f"Hola {username}! Soy el asistente de Samitex Planta.\n\n"
+            f"Tu Chat ID es: {chat_id}\n\n"
+            "Puedes preguntarme:\n"
+            "- Como va la OF 343\n"
+            "- Cuantas OFs estan activas\n"
+            "- Estado de la OF 411444"
+        )
+        await send_message(chat_id, msg)
+        return JSONResponse({"ok": True})
+
+    # Detectar consulta de OF específica
+    numero_of = _extract_numero_of(text)
+    kw_of = any(k in text.lower() for k in ["of ", "orden", "estado", "cómo va", "como va"])
+
+    if numero_of and kw_of:
+        await send_message(chat_id, "⏳ Consultando...")
+        data = await buscar_of_por_numero(numero_of)
+        if "error" in data:
+            await send_message(chat_id, f"❌ No encontré la OF *{numero_of}*\\. Verifica el número\\.")
+        else:
+            # Adaptar estructura de respuesta
+            of_info = data.get("of", data.get("of_info", {}))
+            estado_data = {"piezas": data.get("piezas", [])}
+            formatted = formatear_estado_of(numero_of, {"of_info": of_info, "estado": estado_data})
+            await send_message(chat_id, formatted)
+        return JSONResponse({"ok": True})
+
+    # Consulta general con Gemini
+    await send_message(chat_id, "⏳ Consultando...")
+    ofs_data = await listar_ofs_activas()
+    context = json.dumps(ofs_data, ensure_ascii=False, indent=2)[:3000]
+    respuesta = await get_gemini_response(text, context)
+    await send_message(chat_id, respuesta)
+    return JSONResponse({"ok": True})

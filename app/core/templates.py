@@ -7,4 +7,4 @@ Importar desde aquí en lugar de instanciar Jinja2Templates en cada router:
 """
 from fastapi.templating import Jinja2Templates
 
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory="app/templates", auto_reload=True)

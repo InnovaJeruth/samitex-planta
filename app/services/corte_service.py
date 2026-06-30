@@ -514,6 +514,7 @@ def completar_fase_bulk(
     for e in estados:
         db.refresh(e)
 
-    _verificar_fase_completa(fase_id, of, db)
+    _verificar_fase_completa(of, fase_id, db)
     _verificar_of_completada(of, db)
+    db.commit()
     return estados

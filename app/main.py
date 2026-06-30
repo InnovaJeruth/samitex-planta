@@ -7,13 +7,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
 from app.database.connection import engine, Base
-from app.routers import auth, dashboard, of, corte, piezas, admin, ws, plantas, comercial, supervisor, telegram_bot
+from app.routers import auth, dashboard, of, corte, piezas, admin, ws, plantas, comercial, supervisor, telegram_bot, pdf_report
+from app.routers import ingenieria, catalogo, curvas
 from app.core.csrf import (
     new_token, sign_token, verify_signed, is_exempt,
     CSRF_COOKIE, CSRF_HEADER,
 )
 
-# ── Logging ───────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -21,42 +21,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Crear tablas si no existen (desarrollo)
-# En producción usar Alembic: alembic upgrade head
 Base.metadata.create_all(bind=engine)
 
 
-# ── CSRF Middleware ───────────────────────────────────────────
 class CSRFMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path   = request.url.path
         method = request.method
 
-        # Leer o generar token
         signed = request.cookies.get(CSRF_COOKIE, "")
         token  = verify_signed(signed, settings.SECRET_KEY) if signed else None
         if not token:
             token  = new_token()
             signed = sign_token(token, settings.SECRET_KEY)
 
-        # Validar en métodos mutantes no exentos
         if not is_exempt(path, method):
             submitted = request.headers.get(CSRF_HEADER, "")
             if submitted != token:
-                logger.warning("CSRF token inválido en %s %s", method, path)
+                logger.warning("CSRF token invalido en %s %s", method, path)
                 return JSONResponse(
-                    {"detail": "Token CSRF inválido o ausente. Recarga la página."},
+                    {"detail": "Token CSRF invalido o ausente. Recarga la pagina."},
                     status_code=403,
                 )
 
         response = await call_next(request)
 
-        # ── Headers de seguridad HTTP ─────────────────────────
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"]        = "DENY"
         response.headers["Referrer-Policy"]        = "strict-origin-when-cross-origin"
 
-        # Refrescar cookie CSRF
         response.set_cookie(
             key=CSRF_COOKIE,
             value=signed,
@@ -67,7 +60,6 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         return response
 
 
-# ── Aplicación FastAPI ────────────────────────────────────────
 app = FastAPI(
     title="Sistema de seguimiento de Ordenes de Fabricacion - Area de Planta",
     version="1.0.0",
@@ -78,7 +70,6 @@ app = FastAPI(
 app.add_middleware(CSRFMiddleware)
 
 
-# ── Exception handlers ────────────────────────────────────────
 @app.exception_handler(401)
 async def redirect_to_login(request: Request, exc):
     if "text/html" in request.headers.get("accept", "") and "/api/" not in request.url.path:
@@ -93,17 +84,14 @@ async def forbidden_handler(request: Request, exc):
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError):
-    # Login: campo vacío → tratar como credenciales incorrectas
     if request.url.path.endswith("/login"):
         return JSONResponse({"detail": "Usuario o contrasena incorrectos"}, status_code=401)
     return JSONResponse({"detail": exc.errors()}, status_code=422)
 
 
-# ── Archivos estáticos ────────────────────────────────────────
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# ── Routers ───────────────────────────────────────────────────
 app.include_router(auth.router,         prefix="/auth",       tags=["Autenticacion"])
 app.include_router(dashboard.router,                          tags=["Dashboard"])
 app.include_router(of.router,           prefix="/of",         tags=["Ordenes de Fabricacion"])
@@ -115,3 +103,7 @@ app.include_router(plantas.router,      prefix="/plantas",    tags=["Plantas Ext
 app.include_router(comercial.router,    prefix="/comercial",  tags=["Comercial"])
 app.include_router(supervisor.router,   prefix="/supervisor", tags=["Supervisor"])
 app.include_router(telegram_bot.router,                       tags=["Telegram"])
+app.include_router(pdf_report.router,                         tags=["Reportes"])
+app.include_router(ingenieria.router,                         tags=["Ingenieria"])
+app.include_router(catalogo.router,   prefix="/catalogo",    tags=["Catalogo de Prendas"])
+app.include_router(curvas.router,     prefix="/curvas",      tags=["Curvas de Tallas"])

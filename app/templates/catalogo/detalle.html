@@ -1,0 +1,1137 @@
+{% extends "base.html" %}
+{% block title %}{{ prenda.nombre }} — Catálogo Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+.det-layout { display:grid; grid-template-columns:280px 1fr; gap:20px; }
+@media(max-width:700px){ .det-layout{ grid-template-columns:1fr; } }
+.prenda-foto { width:100%; aspect-ratio:3/4; object-fit:cover; border-radius:8px; background:#111; }
+.prenda-foto-none { width:100%; aspect-ratio:3/4; background:#111; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:60px; color:#333; border:2px dashed #2a2a2a; }
+.piezas-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:12px; }
+.pieza-card  { background:#111; border:1px solid #2a2a2a; border-radius:8px; overflow:hidden; }
+.pieza-img   { width:100%; height:120px; background:#0a0a0a; display:flex; align-items:center; justify-content:center; font-size:28px; color:#333; }
+.pieza-img img { width:100%; height:100%; object-fit:cover; }
+.pieza-body  { padding:10px; }
+.pieza-nombre{ font-size:13px; font-weight:600; color:#e0e0e0; }
+.pieza-meta  { font-size:11px; color:#666; margin-top:4px; line-height:1.6; }
+.pieza-fusionado { display:inline-block; font-size:10px; background:#1a3a6f; color:#4a9fff; border-radius:10px; padding:1px 7px; margin-top:4px; }
+.tab-bar { display:flex; gap:0; border-bottom:1px solid #2a2a2a; flex-wrap:wrap; }
+.tab-btn { padding:9px 18px; font-size:13px; font-weight:500; color:#666; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.tab-btn:hover { color:#aaa; }
+.tab-btn.active { color:#4a9fff; border-bottom-color:#4a9fff; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* Filas de ítems */
+.item-row { display:flex; align-items:center; gap:10px; padding:9px 8px; border-bottom:1px solid #141414; border-radius:4px; transition:background .1s; }
+.item-row-base { cursor:default; }
+.item-row-clickable { cursor:pointer; }
+.item-row-clickable:hover { background:#141414; }
+.item-row.is-excluded { opacity:.45; }
+.item-row.is-excluded .item-nombre { text-decoration:line-through; }
+.item-info { flex:1; min-width:0; }
+.item-nombre { font-size:13px; color:#d0d0d0; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.item-sub    { font-size:11px; color:#555; margin-top:2px; }
+.item-badges { display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; }
+
+/* Badges de estado */
+.badge { font-size:10px; border-radius:10px; padding:1px 7px; font-weight:600; white-space:nowrap; }
+.badge-noapl  { background:#2a1212; color:#f06060; }
+.badge-cod    { background:#0d2a1a; color:#4caf7d; font-family:monospace; }
+.badge-var    { background:#2a1a4a; color:#c084f5; }
+
+/* Sección específicos variante */
+.seccion-hdr-var { font-size:11px; font-weight:700; color:#c084f5; letter-spacing:.06em; text-transform:uppercase; margin:18px 0 8px; padding:8px 0 6px; border-top:1px solid #2a1a4a; border-bottom:1px solid #2a1a4a; display:flex; justify-content:space-between; align-items:center; }
+.seccion-hdr { font-size:11px; font-weight:700; color:#555; letter-spacing:.06em; text-transform:uppercase; margin:14px 0 8px; padding-bottom:4px; border-bottom:1px solid #1e1e1e; }
+
+/* Menú contextual flotante */
+.ctx-menu { position:fixed; z-index:500; background:#1e1e1e; border:1px solid #333; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.6); min-width:220px; overflow:hidden; display:none; }
+.ctx-menu.open { display:block; }
+.ctx-item { display:flex; align-items:center; gap:10px; padding:11px 16px; font-size:13px; color:#ccc; cursor:pointer; transition:background .1s; border:none; background:none; width:100%; text-align:left; }
+.ctx-item:hover { background:#2a2a2a; color:#fff; }
+.ctx-item .ctx-icon { font-size:16px; width:20px; text-align:center; }
+.ctx-item.ctx-danger { color:#f06060; }
+.ctx-item.ctx-danger:hover { background:#2a1212; }
+.ctx-item.ctx-create { color:#c084f5; }
+.ctx-item.ctx-create:hover { background:#1e0f33; }
+.ctx-sep { height:1px; background:#2a2a2a; margin:4px 0; }
+
+/* Mini input código cliente dentro del menú */
+.ctx-cod-row { padding:8px 16px 12px; display:none; }
+.ctx-cod-row.open { display:block; }
+.ctx-cod-input { width:100%; background:#0f0f0f; border:1px solid #444; color:#e0e0e0; padding:7px 10px; border-radius:6px; font-size:13px; font-family:monospace; }
+.ctx-cod-input:focus { outline:none; border-color:#4caf7d; }
+.ctx-cod-btn { margin-top:6px; width:100%; }
+
+/* SKU table */
+.sku-table { width:100%; border-collapse:collapse; font-size:13px; }
+.sku-table th { font-size:11px; color:#555; font-weight:600; text-align:left; padding:6px 8px; border-bottom:1px solid #2a2a2a; }
+.sku-table td { padding:8px; border-bottom:1px solid #141414; vertical-align:middle; }
+.sku-table tr:hover td { background:#0c0c0c; }
+.sku-talla  { font-weight:700; color:#e0e0e0; font-size:14px; }
+.sku-codigo { font-family:monospace; font-size:12px; }
+.sku-override { font-size:12px; color:#e6a817; font-family:monospace; }
+.sku-expand-btn { background:none; border:1px solid #2a2a2a; color:#666; border-radius:5px; padding:2px 8px; cursor:pointer; font-size:11px; }
+.sku-expand-btn:hover { border-color:#4a9fff; color:#4a9fff; }
+.sku-detail-row { display:none; background:#090909; }
+.sku-detail-row.open { display:table-row; }
+.sku-detail-inner { padding:10px 12px; }
+.override-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.override-card { background:#111; border:1px solid #1e1e1e; border-radius:6px; padding:10px; }
+.override-title { font-size:11px; color:#555; font-weight:700; text-transform:uppercase; margin-bottom:8px; }
+.override-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.override-label { font-size:12px; color:#888; flex:1; }
+.override-input { font-size:12px; font-family:monospace; background:#0a0a0a; border:1px solid #2a2a2a; color:#e0e0e0; padding:4px 7px; border-radius:4px; width:90px; }
+.override-input:focus { outline:none; border-color:#e6a817; }
+.override-input.saved { border-color:#1d5f40; }
+.cod-input { font-size:12px; font-family:monospace; background:#0f0f0f; border:1px solid #2a2a2a; color:#e0e0e0; padding:5px 8px; border-radius:5px; width:100%; }
+.cod-input:focus { outline:none; border-color:#1a6fbe; }
+.cod-input.saved { border-color:#1d5f40; }
+
+.modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:center;justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto; }
+.modal-box h3 { font-size:15px;font-weight:600;margin-bottom:16px;color:#fff; }
+.form-group label { font-size:12px; color:#888; display:block; margin-bottom:4px; }
+.form-group input, .form-group select, .form-group textarea { width:100%; background:#0f0f0f; border:1px solid #333; color:#e0e0e0; padding:8px 10px; border-radius:6px; font-size:13px; }
+.form-group input:focus, .form-group select:focus { outline:none; border-color:#1a6fbe; }
+.form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.toast { position:fixed;top:16px;right:16px;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(-8px);transition:all .2s;pointer-events:none; }
+.toast.show { opacity:1;transform:translateY(0); }
+.toast-success { background:#0d3320;border:1px solid #1d5f40;color:#4caf7d; }
+.toast-error   { background:#3a0a0a;border:1px solid #6a1a1a;color:#f88; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <a href="/catalogo/" class="btn btn-secondary">← Catálogo</a>
+    <span class="page-title">{{ prenda.nombre }}</span>
+    <span style="font-size:11px;padding:2px 10px;background:#1a3a6f;color:#4a9fff;border-radius:12px">{{ prenda.tipo_base }}</span>
+    {% if prenda.color %}<span style="font-size:11px;padding:2px 10px;background:#2a1a00;color:#e6a817;border-radius:12px">🎨 {{ prenda.color }}</span>{% endif %}
+  </div>
+  {% if puede_editar %}
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/catalogo/{{ prenda.id }}/editar" class="btn btn-secondary">✏️ Editar prenda</a>
+    {% if prenda.tipo_cliente != 'BASE' %}
+    <button class="btn btn-secondary" onclick="vincularMuestra()" title="Vincular MUESTRA_APROBADA a OFs activas">📋 Vincular muestra a OFs</button>
+    {% endif %}
+    <button class="btn btn-primary" id="btn-add-main" onclick="tabAddAction()">+ Agregar pieza</button>
+  </div>
+  {% endif %}
+</div>
+
+<div class="det-layout">
+  <!-- Columna izquierda -->
+  <div>
+    {% if prenda.imagen_ruta %}
+    <img src="/{{ prenda.imagen_ruta }}" alt="{{ prenda.nombre }}" class="prenda-foto">
+    {% else %}
+    <div class="prenda-foto-none">👔</div>
+    {% endif %}
+    {% if puede_editar %}
+    <form enctype="multipart/form-data" style="margin-top:10px">
+      <label style="font-size:12px;color:#666;display:block;margin-bottom:6px">Cambiar foto:</label>
+      <input type="file" accept="image/*" onchange="subirFotoPrenda(this)" style="font-size:12px;color:#888">
+    </form>
+    {% endif %}
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><span class="card-title">Información</span></div>
+      <table>
+        <tr><td style="color:#888;font-size:12px">Código</td><td style="font-family:monospace">{{ prenda.codigo }}</td></tr>
+        <tr><td style="color:#888;font-size:12px">Tipo base</td><td>{{ prenda.tipo_base }}</td></tr>
+        <tr><td style="color:#888;font-size:12px">Cliente</td><td>
+          {% if prenda.tipo_cliente == 'INSTITUCION' %}<span style="color:#6fcf6f">Institución</span>
+          {% elif prenda.tipo_cliente == 'MARCA' %}<span style="color:#f0a040">Marca</span>
+          {% else %}<span style="color:#666">Base</span>{% endif %}
+        </td></tr>
+        {% if prenda.color %}<tr><td style="color:#888;font-size:12px">Color</td><td style="color:#e6a817">{{ prenda.color }}</td></tr>{% endif %}
+        {% if prenda.composicion %}<tr><td style="color:#888;font-size:12px">Composición</td><td style="color:#c084f5">{{ prenda.composicion }}</td></tr>{% endif %}
+        <tr><td style="color:#888;font-size:12px">Fit</td><td>{% if prenda.fit %}{{ fits.get(prenda.fit, prenda.fit) }}{% else %}<span style="color:#555">—</span>{% endif %}</td></tr>
+        <tr><td style="color:#888;font-size:12px">Estado</td><td>{% if prenda.activo %}<span style="color:#4caf7d">● Activa</span>{% else %}<span style="color:#888">● Archivada</span>{% endif %}</td></tr>
+        <tr><td style="color:#888;font-size:12px">Creado por</td><td>{{ prenda.creado_por_rol or '—' }}</td></tr>
+        {% if prenda.descripcion %}<tr><td colspan="2" style="color:#888;font-size:12px;padding-top:8px">{{ prenda.descripcion }}</td></tr>{% endif %}
+      </table>
+    </div>
+    {% if puede_editar %}
+    <div style="margin-top:12px;padding:10px;background:#111;border:1px solid #1e1e1e;border-radius:6px;font-size:11px;color:#555">
+      {% if prenda.tipo_cliente != 'BASE' %}
+      💡 Clic en cualquier material o avío heredado para configurarlo.
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if puede_editar and prenda.activo %}
+    <button class="btn btn-danger" style="width:100%;margin-top:10px;font-size:12px" onclick="archivarPrenda({{ prenda.id }})">🗃️ Archivar prenda</button>
+    {% endif %}
+  </div>
+
+  <!-- Columna derecha: 4 tabs -->
+  <div>
+    <div class="card">
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-piezas-btn" onclick="switchTab('piezas')">🧩 Piezas <span style="font-size:11px;color:#555">({{ piezas|length }})</span></button>
+        <button class="tab-btn" id="tab-mp-btn" onclick="switchTab('mp')">🧶 Mat. Prima <span style="font-size:11px;color:#555">({{ materiales|length + materiales_propios|length }})</span></button>
+        <button class="tab-btn" id="tab-avios-btn" onclick="switchTab('avios')">🧵 Avíos <span style="font-size:11px;color:#555">({{ avios|length + avios_propios|length }})</span></button>
+        <button class="tab-btn" id="tab-skus-btn" onclick="switchTab('skus')">📐 SKUs / Tallas <span style="font-size:11px;color:#555">({{ tallas|length }})</span></button>
+      </div>
+
+      <!-- Tab Piezas -->
+      <div class="tab-panel active" id="tab-piezas" style="padding:16px">
+        {% if piezas %}
+        <div class="piezas-grid" id="piezas-grid">
+          {% for pieza in piezas %}
+          <div class="pieza-card" id="pieza-card-{{ pieza.id }}">
+            <div class="pieza-img">{% if pieza.imagen_ruta %}<img src="/{{ pieza.imagen_ruta }}" alt="{{ pieza.nombre }}">{% else %}🧩{% endif %}</div>
+            <div class="pieza-body">
+              {% if pieza.codigo %}
+              <div style="font-size:10px;color:#555;font-family:monospace;margin-bottom:2px">{{ pieza.codigo }}</div>
+              {% elif prenda.tipo_cliente != 'BASE' and puede_editar %}
+              <div style="margin-bottom:4px"><span style="font-size:10px;background:#3a1212;color:#f88;border-radius:10px;padding:1px 8px;font-weight:600">Sin código</span></div>
+              <div style="display:flex;gap:4px;margin-bottom:6px;align-items:center">
+                <input id="cod-{{ pieza.id }}" style="font-size:11px;font-family:monospace;background:#0f0f0f;border:1px solid #444;color:#e0e0e0;padding:3px 6px;border-radius:4px;flex:1;min-width:0" placeholder="Código único" onkeydown="if(event.key==='Enter') guardarCodigo({{ pieza.id }}, '{{ pieza.nombre|e }}')">
+                <button class="btn btn-primary btn-sm" style="padding:3px 8px;font-size:11px" onclick="guardarCodigo({{ pieza.id }}, '{{ pieza.nombre|e }}')">✓</button>
+              </div>
+              {% endif %}
+              <div class="pieza-nombre">{{ pieza.nombre }}</div>
+              <div class="pieza-meta">Material: {{ pieza.material_default }}<br>Cantidad: {{ pieza.cantidad_x_prenda }} x prenda</div>
+              {% if pieza.fusionado_default %}<span class="pieza-fusionado">Fusionado</span>{% endif %}
+              {% if puede_editar %}
+              <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm" onclick="editarPieza({{ pieza.id }},'{{ pieza.nombre|e }}','{{ pieza.codigo or '' }}','{{ pieza.material_default }}',{{ pieza.cantidad_x_prenda }},{{ 'true' if pieza.fusionado_default else 'false' }},{{ pieza.orden }})">✏️</button>
+                <label class="btn btn-secondary btn-sm" style="cursor:pointer">📷 <input type="file" accept="image/*" style="display:none" onchange="subirFotoPieza({{ pieza.id }}, this)"></label>
+                <button class="btn btn-danger btn-sm" onclick="eliminarPieza({{ pieza.id }})">🗑️</button>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div id="empty-piezas" style="text-align:center;padding:40px;color:#555">
+          <div style="font-size:36px;margin-bottom:8px">🧩</div>
+          <p>No hay piezas definidas aún.</p>
+          {% if puede_editar %}
+            {% if prenda.tipo_cliente != 'BASE' %}
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap">
+              <button class="btn btn-secondary" onclick="heredarBase()">📋 Heredar de BASE</button>
+              <button class="btn btn-primary" onclick="abrirModalPieza()">➕ Empezar desde cero</button>
+            </div>
+            {% else %}
+            <button class="btn btn-primary" style="margin-top:10px" onclick="abrirModalPieza()">+ Agregar primera pieza</button>
+            {% endif %}
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ═══ Tab Materia Prima ═══ -->
+      <div class="tab-panel" id="tab-mp" style="padding:16px">
+
+        {% if prenda.tipo_cliente != 'BASE' and prenda_base_nombre %}
+        <div style="font-size:11px;color:#555;margin-bottom:12px">
+          📋 Materiales heredados de <strong style="color:#4a9fff">{{ prenda_base_nombre }}</strong>
+          {% if puede_editar %}<span style="color:#3a3a3a"> · Clic en un ítem para configurarlo</span>{% endif %}
+        </div>
+        {% endif %}
+
+        {% if materiales %}
+          {% for mat in materiales %}
+          {% if prenda.tipo_cliente == 'BASE' %}
+          {# — BASE: fila simple con botones editar/borrar — #}
+          <div class="item-row item-row-base" id="mp-row-{{ mat.id }}">
+            <div class="item-info">
+              <div class="item-nombre">{{ mat.nombre }}</div>
+              <div class="item-sub">{{ mat.tipo }} · {{ mat.unidad_medida }} · consumo {{ mat.consumo_unitario }}{% if mat.codigo_interno %} · <span style="font-family:monospace">{{ mat.codigo_interno }}</span>{% endif %}{% if mat.ancho_referencia %} · ancho {{ mat.ancho_referencia }}cm{% endif %}</div>
+            </div>
+            {% if puede_editar %}
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="btn btn-secondary btn-sm" onclick="abrirModalMp({{ mat.id }},'{{ mat.nombre|e }}','{{ mat.tipo }}',{{ mat.ancho_referencia or 0 }},{{ mat.consumo_unitario }},{{ mat.pct_adicional }},'{{ mat.unidad_medida }}','{{ mat.codigo_interno or '' }}','{{ mat.proveedor or '' }}','{{ mat.moneda or '' }}',{{ mat.precio_referencia or 0 }},{{ mat.orden }})">✏️</button>
+              <button class="btn btn-danger btn-sm" onclick="eliminarMp({{ mat.id }})">🗑️</button>
+            </div>
+            {% endif %}
+          </div>
+
+          {% else %}
+          {# — VARIANTE: fila clickable → menú contextual — #}
+          {% set cfg = mp_configs_map.get(mat.id) %}
+          {% set excluido = cfg.excluido if cfg else false %}
+          {% set cod_cli  = cfg.codigo_cliente if cfg and cfg.codigo_cliente else '' %}
+          <div class="item-row item-row-clickable {% if excluido %}is-excluded{% endif %}"
+               id="mp-row-{{ mat.id }}"
+               onclick="{% if puede_editar %}abrirCtxMp(event,{{ mat.id }},'{{ mat.nombre|e }}','{{ mat.tipo }}',{{ mat.ancho_referencia or 0 }},{{ mat.consumo_unitario }},{{ mat.pct_adicional }},'{{ mat.unidad_medida }}','{{ mat.codigo_interno or '' }}','{{ mat.proveedor or '' }}','{{ mat.moneda or '' }}',{{ mat.precio_referencia or 0 }},{{ mat.orden }},{{ 'true' if excluido else 'false' }},'{{ cod_cli }}'){% endif %}">
+            <div class="item-info">
+              <div class="item-nombre">{{ mat.nombre }}</div>
+              <div class="item-sub">{{ mat.tipo }} · {{ mat.unidad_medida }} · consumo {{ mat.consumo_unitario }}{% if mat.codigo_interno %} · <span style="font-family:monospace;color:#444">BASE: {{ mat.codigo_interno }}</span>{% endif %}</div>
+              <div class="item-badges" id="mp-badges-{{ mat.id }}">
+                {% if excluido %}<span class="badge badge-noapl">✗ No aplica</span>{% endif %}
+                {% if cod_cli %}<span class="badge badge-cod">{{ cod_cli }}</span>{% endif %}
+              </div>
+            </div>
+            {% if puede_editar %}
+            <div style="flex-shrink:0;color:#333;font-size:18px">›</div>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% endfor %}
+
+        {% else %}
+        <div style="{% if prenda.tipo_cliente != 'BASE' %}padding:8px 0{% else %}text-align:center;padding:40px{% endif %};color:#555">
+          {% if prenda.tipo_cliente == 'BASE' %}
+          <div style="font-size:36px;margin-bottom:8px">🧶</div>
+          <p>No hay materiales definidos.</p>
+          {% if puede_editar %}<button class="btn btn-primary" style="margin-top:10px" onclick="abrirModalMp()">+ Agregar material</button>{% endif %}
+          {% else %}
+          <p style="font-size:12px">La prenda BASE no tiene materiales registrados.</p>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {# ── Sección materiales propios de variante ── #}
+        {% if prenda.tipo_cliente != 'BASE' %}
+        <div style="margin-top:18px">
+          <div class="seccion-hdr-var">
+            <span>🔵 Materiales específicos de esta variante</span>
+            {% if puede_editar %}<button class="btn btn-primary btn-sm" onclick="abrirModalMpVariante()">➕ Agregar específico</button>{% endif %}
+          </div>
+          {% if materiales_propios %}
+            {% for mat in materiales_propios %}
+            <div class="item-row item-row-base" id="mp-propio-row-{{ mat.id }}">
+              <div class="item-info">
+                <div class="item-nombre">{{ mat.nombre }} <span class="badge badge-var">Específico</span></div>
+                <div class="item-sub">{{ mat.tipo }} · {{ mat.unidad_medida }} · consumo {{ mat.consumo_unitario }}{% if mat.codigo_interno %} · <span style="font-family:monospace">{{ mat.codigo_interno }}</span>{% endif %}{% if mat.codigo_base %} · ref.BASE: <span style="font-family:monospace;color:#888">{{ mat.codigo_base }}</span>{% endif %}{% if mat.proveedor %} · {{ mat.proveedor }}{% endif %}</div>
+              </div>
+              {% if puede_editar %}
+              <div style="display:flex;gap:4px;flex-shrink:0">
+                <button class="btn btn-secondary btn-sm" onclick="abrirModalMpVariante({{ mat.id }},'{{ mat.nombre|e }}','{{ mat.tipo }}',{{ mat.ancho_referencia or 0 }},{{ mat.consumo_unitario }},{{ mat.pct_adicional }},'{{ mat.unidad_medida }}','{{ mat.codigo_interno or '' }}','{{ mat.proveedor or '' }}','{{ mat.moneda or '' }}',{{ mat.precio_referencia or 0 }},{{ mat.orden }},'{{ mat.codigo_base or '' }}')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarMpVariante({{ mat.id }})">🗑️</button>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="text-align:center;padding:20px;color:#555;font-size:12px">
+            Ningún material específico todavía. Usa "➕ Agregar específico" o clic en un material heredado → "Crear versión específica".
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>{# /tab-mp #}
+
+      <!-- ═══ Tab Avíos ═══ -->
+      <div class="tab-panel" id="tab-avios" style="padding:16px">
+
+        {% if prenda.tipo_cliente != 'BASE' and prenda_base_nombre %}
+        <div style="font-size:11px;color:#555;margin-bottom:12px">
+          📋 Avíos heredados de <strong style="color:#4a9fff">{{ prenda_base_nombre }}</strong>
+          {% if puede_editar %}<span style="color:#3a3a3a"> · Clic en un ítem para configurarlo</span>{% endif %}
+        </div>
+        {% endif %}
+
+        {% if avios %}
+          {% set ns = namespace(sec='') %}
+          {% for avio in avios %}
+            {% if avio.seccion != ns.sec %}{% set ns.sec = avio.seccion %}<div class="seccion-hdr">{{ avio.seccion }}</div>{% endif %}
+
+            {% if prenda.tipo_cliente == 'BASE' %}
+            <div class="item-row item-row-base" id="avio-row-{{ avio.id }}">
+              <div class="item-info">
+                <div class="item-nombre">{{ avio.nombre }}</div>
+                <div class="item-sub">{{ avio.unidad_medida }} · consumo {{ avio.consumo_unitario }}{% if avio.codigo_interno %} · <span style="font-family:monospace">{{ avio.codigo_interno }}</span>{% endif %}{% if avio.precio %} · {{ avio.moneda or '' }} {{ avio.precio }}{% endif %}</div>
+              </div>
+              {% if puede_editar %}
+              <div style="display:flex;gap:4px;flex-shrink:0">
+                <button class="btn btn-secondary btn-sm" onclick="abrirModalAvio({{ avio.id }},'{{ avio.seccion }}','{{ avio.nombre|e }}','{{ avio.codigo_interno or '' }}','{{ avio.proveedor or '' }}','{{ avio.procedencia or '' }}','{{ avio.unidad_medida }}',{{ avio.consumo_unitario }},{{ avio.pct_adicional }},'{{ avio.unidad_compra or '' }}','{{ avio.moneda or '' }}',{{ avio.precio or 0 }},{{ avio.orden }})">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarAvio({{ avio.id }})">🗑️</button>
+              </div>
+              {% endif %}
+            </div>
+
+            {% else %}
+            {% set cfg = avio_configs_map.get(avio.id) %}
+            {% set excluido = cfg.excluido if cfg else false %}
+            {% set cod_cli  = cfg.codigo_cliente if cfg and cfg.codigo_cliente else '' %}
+            <div class="item-row item-row-clickable {% if excluido %}is-excluded{% endif %}"
+                 id="avio-row-{{ avio.id }}"
+                 onclick="{% if puede_editar %}abrirCtxAvio(event,{{ avio.id }},'{{ avio.seccion }}','{{ avio.nombre|e }}','{{ avio.codigo_interno or '' }}','{{ avio.proveedor or '' }}','{{ avio.procedencia or '' }}','{{ avio.unidad_medida }}',{{ avio.consumo_unitario }},{{ avio.pct_adicional }},'{{ avio.unidad_compra or '' }}','{{ avio.moneda or '' }}',{{ avio.precio or 0 }},{{ avio.orden }},{{ 'true' if excluido else 'false' }},'{{ cod_cli }}'){% endif %}">
+              <div class="item-info">
+                <div class="item-nombre">{{ avio.nombre }}</div>
+                <div class="item-sub">{{ avio.unidad_medida }} · consumo {{ avio.consumo_unitario }}{% if avio.codigo_interno %} · <span style="font-family:monospace;color:#444">BASE: {{ avio.codigo_interno }}</span>{% endif %}{% if avio.precio %} · {{ avio.moneda or '' }} {{ avio.precio }}{% endif %}</div>
+                <div class="item-badges" id="avio-badges-{{ avio.id }}">
+                  {% if excluido %}<span class="badge badge-noapl">✗ No aplica</span>{% endif %}
+                  {% if cod_cli %}<span class="badge badge-cod">{{ cod_cli }}</span>{% endif %}
+                </div>
+              </div>
+              {% if puede_editar %}
+              <div style="flex-shrink:0;color:#333;font-size:18px">›</div>
+              {% endif %}
+            </div>
+            {% endif %}
+          {% endfor %}
+
+        {% else %}
+        <div style="{% if prenda.tipo_cliente != 'BASE' %}padding:8px 0{% else %}text-align:center;padding:40px{% endif %};color:#555">
+          {% if prenda.tipo_cliente == 'BASE' %}
+          <div style="font-size:36px;margin-bottom:8px">🧵</div>
+          <p>No hay avíos definidos.</p>
+          {% if puede_editar %}<button class="btn btn-primary" style="margin-top:10px" onclick="abrirModalAvio()">+ Agregar avío</button>{% endif %}
+          {% else %}
+          <p style="font-size:12px">La BASE no tiene avíos registrados.</p>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {# ── Sección avíos propios de variante ── #}
+        {% if prenda.tipo_cliente != 'BASE' %}
+        <div style="margin-top:18px">
+          <div class="seccion-hdr-var">
+            <span>🔵 Avíos específicos de esta variante</span>
+            {% if puede_editar %}<button class="btn btn-primary btn-sm" onclick="abrirModalAvioVariante()">➕ Agregar específico</button>{% endif %}
+          </div>
+          {% if avios_propios %}
+            {% set ns2 = namespace(sec2='') %}
+            {% for avio in avios_propios %}
+            {% if avio.seccion != ns2.sec2 %}{% set ns2.sec2 = avio.seccion %}<div class="seccion-hdr" style="color:#7a4fbf">{{ avio.seccion }}</div>{% endif %}
+            <div class="item-row item-row-base" id="avio-propio-row-{{ avio.id }}">
+              <div class="item-info">
+                <div class="item-nombre">{{ avio.nombre }} <span class="badge badge-var">Específico</span></div>
+                <div class="item-sub">{{ avio.unidad_medida }} · consumo {{ avio.consumo_unitario }}{% if avio.codigo_interno %} · <span style="font-family:monospace">{{ avio.codigo_interno }}</span>{% endif %}{% if avio.codigo_base %} · ref.BASE: <span style="font-family:monospace;color:#888">{{ avio.codigo_base }}</span>{% endif %}{% if avio.precio %} · {{ avio.moneda or '' }} {{ avio.precio }}{% endif %}</div>
+              </div>
+              {% if puede_editar %}
+              <div style="display:flex;gap:4px;flex-shrink:0">
+                <button class="btn btn-secondary btn-sm" onclick="abrirModalAvioVariante({{ avio.id }},'{{ avio.seccion }}','{{ avio.nombre|e }}','{{ avio.codigo_interno or '' }}','{{ avio.proveedor or '' }}','{{ avio.procedencia or '' }}','{{ avio.unidad_medida }}',{{ avio.consumo_unitario }},{{ avio.pct_adicional }},'{{ avio.unidad_compra or '' }}','{{ avio.moneda or '' }}',{{ avio.precio or 0 }},{{ avio.orden }},'{{ avio.codigo_base or '' }}')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarAvioVariante({{ avio.id }})">🗑️</button>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="text-align:center;padding:20px;color:#555;font-size:12px">
+            Ningún avío específico todavía. Clic en un avío heredado → "Crear versión específica".
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>{# /tab-avios #}
+
+      <!-- Tab SKUs -->
+      <div class="tab-panel" id="tab-skus" style="padding:16px">
+        <div style="font-size:11px;color:#555;margin-bottom:14px">
+          Cada SKU representa una talla. Los overrides de consumo aplican por talla específica.
+        </div>
+        {% if tallas %}
+        <table class="sku-table" id="sku-table">
+          <thead><tr>
+            <th>Talla</th><th>Código SKU</th><th>Override MP</th><th>Override avíos</th>
+            {% if puede_editar %}<th></th>{% endif %}<th></th>
+          </tr></thead>
+          <tbody>
+          {% for sku in tallas %}
+          <tr id="sku-tr-{{ sku.id }}">
+            <td class="sku-talla">{{ sku.talla }}</td>
+            <td class="sku-codigo">
+              {% if sku.codigo_sku %}<span style="color:#4caf7d">{{ sku.codigo_sku }}</span>
+              {% elif puede_editar %}<input class="cod-input" id="sku-cod-{{ sku.id }}" placeholder="Ej: CAM-MAN-AZ-S" style="width:140px" onchange="guardarSkuCodigo({{ sku.id }})">
+              {% else %}<span style="color:#444">—</span>{% endif %}
+            </td>
+            <td class="sku-override">
+              {% if sku.mp_configs %}{% for c in sku.mp_configs %}<div>{{ c.consumo_override }} mt.</div>{% endfor %}
+              {% else %}<span style="color:#333;font-size:11px">heredado</span>{% endif %}
+            </td>
+            <td class="sku-override">
+              {% if sku.avio_configs %}{% for c in sku.avio_configs %}<div style="font-size:11px">{{ c.codigo_override or '—' }}</div>{% endfor %}
+              {% else %}<span style="color:#333;font-size:11px">heredado</span>{% endif %}
+            </td>
+            {% if puede_editar %}<td><button class="btn btn-danger btn-sm" onclick="eliminarSku({{ sku.id }})">🗑️</button></td>{% endif %}
+            <td><button class="sku-expand-btn" onclick="toggleSkuDetail({{ sku.id }})">⚙️ overrides</button></td>
+          </tr>
+          <tr class="sku-detail-row" id="sku-detail-{{ sku.id }}">
+            <td colspan="6">
+              <div class="sku-detail-inner">
+                <div class="override-grid">
+                  <div class="override-card">
+                    <div class="override-title">🧶 Consumo Mat. Prima por talla</div>
+                    {% for mat in materiales %}
+                    {% set mp_cfg = None %}{% for c in sku.mp_configs %}{% if c.mp_id == mat.id %}{% set mp_cfg = c %}{% endif %}{% endfor %}
+                    <div class="override-row">
+                      <span class="override-label">{{ mat.nombre }}</span>
+                      <input class="override-input {% if mp_cfg %}saved{% endif %}" id="sku-mp-{{ sku.id }}-{{ mat.id }}" type="number" step="0.001" min="0" value="{{ mp_cfg.consumo_override if mp_cfg else mat.consumo_unitario }}" onchange="guardarSkuMpConfig({{ sku.id }}, {{ mat.id }}, this.value)">
+                      <span style="font-size:11px;color:#555">{{ mat.unidad_medida }}</span>
+                    </div>
+                    {% else %}<div style="color:#555;font-size:12px">Sin materiales en BASE</div>{% endfor %}
+                    {% for mat in materiales_propios %}
+                    {% set mp_cfg = None %}{% for c in sku.mp_configs %}{% if c.mp_id == mat.id %}{% set mp_cfg = c %}{% endif %}{% endfor %}
+                    <div class="override-row">
+                      <span class="override-label" style="color:#c084f5">{{ mat.nombre }}</span>
+                      <input class="override-input {% if mp_cfg %}saved{% endif %}" id="sku-mp-{{ sku.id }}-{{ mat.id }}" type="number" step="0.001" min="0" value="{{ mp_cfg.consumo_override if mp_cfg else mat.consumo_unitario }}" onchange="guardarSkuMpConfig({{ sku.id }}, {{ mat.id }}, this.value)">
+                      <span style="font-size:11px;color:#555">{{ mat.unidad_medida }}</span>
+                    </div>
+                    {% endfor %}
+                  </div>
+                  <div class="override-card">
+                    <div class="override-title">🏷️ Código avíos por talla</div>
+                    {% set avios_talla = avios | selectattr('seccion', 'in', ['ACABADOS', 'EMBALAJE']) | list %}
+                    {% for avio in avios_talla %}
+                    {% set av_cfg = None %}{% for c in sku.avio_configs %}{% if c.avio_id == avio.id %}{% set av_cfg = c %}{% endif %}{% endfor %}
+                    <div class="override-row">
+                      <span class="override-label">{{ avio.nombre }}</span>
+                      <input class="override-input {% if av_cfg %}saved{% endif %}" id="sku-av-{{ sku.id }}-{{ avio.id }}" type="text" style="width:110px;font-size:11px" value="{{ av_cfg.codigo_override if av_cfg else '' }}" onchange="guardarSkuAvioConfig({{ sku.id }}, {{ avio.id }}, this.value)">
+                    </div>
+                    {% else %}<div style="color:#555;font-size:12px">Sin avíos de acabados/embalaje</div>{% endfor %}
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div id="empty-skus" style="text-align:center;padding:30px;color:#555">
+          <div style="font-size:32px;margin-bottom:8px">📐</div>
+          <p>No hay SKUs definidos para esta prenda.</p>
+        </div>
+        {% endif %}
+        {% if puede_editar %}
+        {% if prenda.tipo_cliente != 'BASE' %}
+        <div style="margin-top:12px">
+          <button class="btn btn-secondary" style="font-size:12px" onclick="publicarTallas()">📤 Publicar tallas a OFs</button>
+          <span style="font-size:11px;color:#555;margin-left:8px">Marca el gate REPORTE_TALLAS</span>
+        </div>
+        {% endif %}
+        <div style="display:flex;gap:8px;align-items:center;margin-top:14px;border-top:1px solid #1e1e1e;padding-top:14px">
+          <input id="nueva-talla-input" placeholder='Ej: 14", S, 38...' style="background:#0f0f0f;border:1px solid #333;color:#e0e0e0;padding:7px 10px;border-radius:6px;font-size:13px;flex:1" onkeydown="if(event.key==='Enter') agregarSku()">
+          <input id="nuevo-sku-codigo" placeholder="Código SKU (opcional)" style="background:#0f0f0f;border:1px solid #333;color:#e0e0e0;padding:7px 10px;border-radius:6px;font-size:13px;width:200px;font-family:monospace" onkeydown="if(event.key==='Enter') agregarSku()">
+          <button class="btn btn-primary" onclick="agregarSku()">+ Agregar</button>
+        </div>
+        {% endif %}
+
+        {% if prenda.tipo_cliente != 'BASE' %}
+        <div style="margin-top:20px;border-top:1px solid #1e1e1e;padding-top:16px;">
+          <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Historial de curvas de tallas</div>
+          <div id="historial-curvas-wrap">
+            <div style="font-size:11px;color:#555;text-align:center;padding:12px;" id="historial-curvas-msg">Cargando...</div>
+          </div>
+          <div style="margin-top:8px;">
+            <a href="/curvas/?prenda={{ prenda.id }}" style="font-size:11px;color:#4a9fff;text-decoration:none;">Ver todas las curvas de esta prenda →</a>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Documentos -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <span class="card-title">📎 Documentos ({{ documentos|length }})</span>
+        {% if puede_editar %}<button class="btn btn-primary btn-sm" onclick="abrirModalDoc()">+ Subir documento</button>{% endif %}
+      </div>
+      {% if documentos %}
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <thead><tr style="color:#666;font-size:11px;border-bottom:1px solid #222">
+          <th style="padding:8px 6px">Tipo</th><th style="padding:8px 6px">Archivo</th>
+          <th style="padding:8px 6px">Descripción</th><th style="padding:8px 6px">Subido</th>
+          <th style="padding:8px 6px">Fecha</th>{% if puede_editar %}<th></th>{% endif %}
+        </tr></thead>
+        <tbody>
+        {% for doc in documentos %}
+        <tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:8px 6px"><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:{% if doc.tipo=='FICHA_TECNICA' %}#0d2a3a{% elif doc.tipo=='MOLDE' %}#1a2a0d{% else %}#2a1a2a{% endif %};color:{% if doc.tipo=='FICHA_TECNICA' %}#4a9fff{% elif doc.tipo=='MOLDE' %}#7ec87e{% else %}#c084f5{% endif %}">{{ doc.tipo.replace('_',' ') }}</span></td>
+          <td style="padding:8px 6px"><a href="/{{ doc.ruta_archivo }}" target="_blank" style="color:#4a9fff;text-decoration:none;font-size:12px">📄 {{ doc.nombre_archivo }}</a></td>
+          <td style="padding:8px 6px;color:#888;font-size:12px">{{ doc.descripcion or '—' }}</td>
+          <td style="padding:8px 6px;color:#666;font-size:12px">{{ doc.subido_por.nombre if doc.subido_por else '—' }}</td>
+          <td style="padding:8px 6px;color:#555;font-size:11px">{{ doc.created_at.strftime('%d/%m/%Y') if doc.created_at else '—' }}</td>
+          <td style="padding:8px 6px;white-space:nowrap">
+            {% if prenda.tipo_cliente != 'BASE' and doc.tipo in ['FICHA_TECNICA','MUESTRA_APROBADA','MOLDE'] %}
+            <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;margin-right:4px" onclick="vincularDocumento('{{ doc.tipo }}')">📤 Enviar a OFs</button>
+            {% endif %}
+            {% if puede_editar %}<button class="btn btn-danger btn-sm" onclick="eliminarDoc({{ doc.id }}, this)">🗑️</button>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="text-align:center;padding:30px;color:#555"><div style="font-size:32px;margin-bottom:8px">📎</div><p>No hay documentos.</p></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Menú contextual flotante ═══ -->
+<div class="ctx-menu" id="ctx-menu">
+  <button class="ctx-item" id="ctx-btn-noaplica" onclick="ctxToggleNoAplica()">
+    <span class="ctx-icon">✗</span>
+    <span id="ctx-label-noaplica">No aplica para esta variante</span>
+  </button>
+  <button class="ctx-item" id="ctx-btn-codigo" onclick="ctxToggleCodigo()">
+    <span class="ctx-icon">🏷️</span>
+    <span>Asignar código cliente</span>
+  </button>
+  <div class="ctx-cod-row" id="ctx-cod-row">
+    <input class="ctx-cod-input" id="ctx-cod-input" placeholder="Código cliente / SAP" onkeydown="if(event.key==='Enter')ctxGuardarCodigo()">
+    <button class="btn btn-primary btn-sm ctx-cod-btn" onclick="ctxGuardarCodigo()">Guardar código</button>
+  </div>
+  <div class="ctx-sep"></div>
+  <button class="ctx-item ctx-create" onclick="ctxCrearVariante()">
+    <span class="ctx-icon">🎨</span>
+    <span>Crear versión específica</span>
+  </button>
+</div>
+
+<!-- Modal vincular documento a OFs -->
+<div class="modal-overlay" id="modal-vincular">
+  <div class="modal-box" style="max-width:520px">
+    <h3 id="vincular-titulo">📋 Vincular documento a OFs</h3>
+    <p id="vincular-desc" style="font-size:12px;color:#888;margin-bottom:14px">Selecciona las OFs a las que quieres copiar el documento.</p>
+    <div id="vincular-lista" style="max-height:300px;overflow-y:auto;margin-bottom:16px">
+      <div style="text-align:center;padding:20px;color:#555;font-size:12px">Cargando OFs...</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <label style="font-size:12px;color:#666;cursor:pointer;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="vincular-check-all" onchange="toggleTodas(this)"> Seleccionar todas
+      </label>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="cerrarModalVincular()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-vincular-ok" onclick="confirmarVincular()">Vincular seleccionadas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal documento -->
+<div class="modal-overlay" id="modal-doc">
+  <div class="modal-box">
+    <h3>Subir documento</h3>
+    <div class="form-group" style="margin-bottom:10px"><label>Tipo *</label><select id="doc-tipo">{% for t in tipos_doc %}<option value="{{ t }}">{{ t.replace('_',' ') }}</option>{% endfor %}</select></div>
+    <div class="form-group" style="margin-bottom:10px"><label>Archivo *</label><input type="file" id="doc-archivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.dxf"></div>
+    <div class="form-group" style="margin-bottom:16px"><label>Descripción</label><input id="doc-descripcion" placeholder="Opcional"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="cerrarModalDoc()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-subir-doc" onclick="subirDoc()">📤 Subir</button>
+    </div>
+    <div id="panel-ofs-borrador" style="display:none;margin-top:16px;border-top:1px solid #333;padding-top:14px">
+      <p style="font-size:12px;color:#e6a817;margin-bottom:10px">⚠️ OFs en BORRADOR con esta prenda. ¿Copiar la ficha técnica?</p>
+      <div id="lista-ofs-borrador" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-secondary btn-sm" onclick="cerrarModalDoc()">Solo guardar</button>
+        <button class="btn btn-primary btn-sm" onclick="copiarAOfs()">📋 Copiar seleccionadas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal pieza -->
+<div class="modal-overlay" id="modal-pieza">
+  <div class="modal-box">
+    <h3 id="modal-pieza-titulo">Agregar pieza</h3>
+    <input type="hidden" id="mp-pieza-id" value="">
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Código *</label>
+      <input id="mp-codigo" placeholder="Ej: CAM-001-DEL" style="font-family:monospace">
+      <p id="mp-codigo-hint" style="font-size:11px;color:#555;margin-top:3px;display:none">Se genera automáticamente para prendas BASE</p>
+    </div>
+    <div class="form-group" style="margin-bottom:10px"><label>Nombre *</label><input id="mp-nombre" placeholder="Ej: Delantero Izquierdo"></div>
+    <div class="form-grid-2" style="margin-bottom:10px">
+      <div class="form-group"><label>Material</label><select id="mp-material"><option>TELA</option><option>ENTRETELA</option><option>FORRO</option><option>ACCESORIO</option></select></div>
+      <div class="form-group"><label>Cantidad x prenda</label><input id="mp-cantidad" type="number" min="1" value="1"></div>
+    </div>
+    <div class="form-grid-2" style="margin-bottom:10px">
+      <div class="form-group"><label>Orden visual</label><input id="mp-orden" type="number" min="0" value="0"></div>
+      <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:2px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input id="mp-fusionado" type="checkbox"> Lleva fusionado</label></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn btn-secondary" onclick="cerrarModalPieza()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPieza()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal materia prima -->
+<div class="modal-overlay" id="modal-mp">
+  <div class="modal-box">
+    <h3 id="modal-mp-titulo">Agregar material</h3>
+    <input type="hidden" id="ma-mp-id" value="">
+    <input type="hidden" id="ma-mp-es-variante" value="0">
+    <div class="form-grid-2" style="margin-bottom:10px">
+      <div class="form-group"><label>Tipo *</label><select id="ma-mp-tipo">{% for t in tipos_mp %}<option value="{{ t }}">{{ t.replace('_',' ') }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label>Orden visual</label><input id="ma-mp-orden" type="number" min="0" value="0"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px"><label>Nombre *</label><input id="ma-mp-nombre" placeholder="Ej: Tela principal"></div>
+    <div class="form-group" id="ma-mp-codbase-row" style="margin-bottom:10px;display:none">
+      <label>Código BASE / referencia trazabilidad</label>
+      <input id="ma-mp-codbase" placeholder="Cód. SAP del ítem BASE equivalente" style="font-family:monospace">
+      <p style="font-size:11px;color:#555;margin-top:3px">Opcional — mantiene trazabilidad con el catálogo BASE</p>
+    </div>
+    <div class="form-grid-3" style="margin-bottom:10px">
+      <div class="form-group"><label>Unidad</label><select id="ma-mp-unidad">{% for u in unidades_mp %}<option value="{{ u }}">{{ u }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label>Consumo unitario</label><input id="ma-mp-consumo" type="number" min="0" step="0.001" value="1"></div>
+      <div class="form-group"><label>% Merma</label><input id="ma-mp-pct" type="number" min="0" step="0.001" value="0.02"></div>
+    </div>
+    <div class="form-grid-2" style="margin-bottom:10px">
+      <div class="form-group"><label>Ancho referencia (cm)</label><input id="ma-mp-ancho" type="number" min="0" step="0.1" placeholder="Ej: 150"></div>
+      <div class="form-group"><label>Código interno (SAP)</label><input id="ma-mp-codigo" placeholder="Código SAP" style="font-family:monospace"></div>
+    </div>
+    <div class="form-grid-3" style="margin-bottom:10px">
+      <div class="form-group"><label>Proveedor</label><input id="ma-mp-proveedor" placeholder="Nombre"></div>
+      <div class="form-group"><label>Procedencia</label><select id="ma-mp-procedencia"><option value="">— No especificado —</option><option value="LOCAL">🏭 Local</option><option value="IMPORTADO">✈️ Importado</option></select></div>
+      <div class="form-group"></div>
+    </div>
+    <div class="form-grid-2" style="margin-bottom:16px">
+      <div class="form-group"><label>Moneda</label><select id="ma-mp-moneda"><option value="">—</option><option>SO</option><option>DO</option><option>EU</option></select></div>
+      <div class="form-group"><label>Precio ref.</label><input id="ma-mp-precio" type="number" min="0" step="0.01" placeholder="0.00"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="cerrarModalMp()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMp()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal avío -->
+<div class="modal-overlay" id="modal-avio">
+  <div class="modal-box">
+    <h3 id="modal-avio-titulo">Agregar avío</h3>
+    <input type="hidden" id="ma-avio-id" value="">
+    <input type="hidden" id="ma-avio-es-variante" value="0">
+    <div class="form-grid-2" style="margin-bottom:10px">
+      <div class="form-group"><label>Sección *</label><select id="ma-seccion">{% for s in secciones_avio %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label>Orden visual</label><input id="ma-orden" type="number" min="0" value="0"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px"><label>Nombre *</label><input id="ma-nombre" placeholder="Ej: Botón delantero 4 hoyos"></div>
+    <div class="form-group" id="ma-avio-codbase-row" style="margin-bottom:10px;display:none">
+      <label>Código BASE / referencia trazabilidad</label>
+      <input id="ma-avio-codbase" placeholder="Cód. SAP del avío BASE equivalente" style="font-family:monospace">
+      <p style="font-size:11px;color:#555;margin-top:3px">Opcional — mantiene trazabilidad con el catálogo BASE</p>
+    </div>
+    <div class="form-grid-2" style="margin-bottom:10px">
+      <div class="form-group"><label>Código interno</label><input id="ma-codigo-interno" placeholder="Cód. SAP" style="font-family:monospace"></div>
+      <div class="form-group"><label>Proveedor</label><input id="ma-proveedor" placeholder="Nombre proveedor"></div>
+    </div>
+    <div class="form-grid-2" style="margin-bottom:10px">
+      <div class="form-group"><label>Procedencia</label><select id="ma-procedencia"><option value="">— No especificado —</option><option value="LOCAL">🏭 Local</option><option value="IMPORTADO">✈️ Importado</option></select></div>
+      <div class="form-group"></div>
+    </div>
+    <div class="form-grid-3" style="margin-bottom:10px">
+      <div class="form-group"><label>Unidad medida</label><select id="ma-unidad-medida">{% for u in unidades_medida %}<option value="{{ u }}">{{ u }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label>Consumo unitario</label><input id="ma-consumo" type="number" min="0" step="0.001" value="1"></div>
+      <div class="form-group"><label>% Adicional</label><input id="ma-pct" type="number" min="0" step="0.001" value="0.01"></div>
+    </div>
+    <div class="form-grid-3" style="margin-bottom:16px">
+      <div class="form-group"><label>Unidad compra</label><input id="ma-unidad-compra" placeholder="Ej: Cono"></div>
+      <div class="form-group"><label>Moneda</label><select id="ma-moneda"><option value="">—</option>{% for m in monedas_avio %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label>Precio</label><input id="ma-precio" type="number" min="0" step="0.01" placeholder="0.00"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="cerrarModalAvio()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarAvio()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PRENDA_ID = {{ prenda.id }};
+const ES_BASE   = '{{ prenda.tipo_cliente }}' === 'BASE';
+
+function toast(msg, tipo='success'){
+  const t=document.getElementById('toast'); t.textContent=msg; t.className=`toast toast-${tipo} show`;
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+function getCsrf(){ const m=document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/); return m?m[1].split('.')[0]:''; }
+async function apiFetch(url,opts={}){
+  const h={'x-csrf-token':getCsrf(),...(opts.headers||{})};
+  const res=await fetch(url,{...opts,headers:h});
+  if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||'Error');}
+  return res.json();
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+const TABS=['piezas','mp','avios','skus'];
+function switchTab(tab){
+  TABS.forEach(t=>{
+    document.getElementById(`tab-${t}`).classList.toggle('active',t===tab);
+    document.getElementById(`tab-${t}-btn`).classList.toggle('active',t===tab);
+  });
+  hideCtxMenu();
+  const btn=document.getElementById('btn-add-main');
+  if(!btn) return;
+  if(tab==='piezas'){btn.textContent='+ Agregar pieza';btn.onclick=()=>abrirModalPieza();btn.style.display='';}
+  else if(tab==='mp'&&ES_BASE){btn.textContent='+ Agregar material';btn.onclick=()=>abrirModalMp();btn.style.display='';}
+  else if(tab==='mp'&&!ES_BASE){btn.textContent='+ Material específico';btn.onclick=()=>abrirModalMpVariante();btn.style.display='';}
+  else if(tab==='avios'&&ES_BASE){btn.textContent='+ Agregar avío';btn.onclick=()=>abrirModalAvio();btn.style.display='';}
+  else if(tab==='avios'&&!ES_BASE){btn.textContent='+ Avío específico';btn.onclick=()=>abrirModalAvioVariante();btn.style.display='';}
+  else if(tab==='skus'){btn.textContent='+ Agregar SKU';btn.onclick=()=>document.getElementById('nueva-talla-input')?.focus();btn.style.display='';cargarHistorialCurvas();}
+  else{btn.style.display='none';}
+}
+function tabAddAction(){
+  const a=document.querySelector('.tab-btn.active');
+  if(!a) return abrirModalPieza();
+  const t=a.id.replace('tab-','').replace('-btn','');
+  if(t==='mp'&&ES_BASE) abrirModalMp();
+  else if(t==='mp'&&!ES_BASE) abrirModalMpVariante();
+  else if(t==='avios'&&ES_BASE) abrirModalAvio();
+  else if(t==='avios'&&!ES_BASE) abrirModalAvioVariante();
+  else if(t==='skus') document.getElementById('nueva-talla-input')?.focus();
+  else abrirModalPieza();
+}
+
+// ── Menú contextual ───────────────────────────────────────────────────────────
+let _ctx = null; // {type:'mp'|'avio', id, data:{}, excluido, cod_cli}
+
+function _posicionarMenu(e){
+  const m=document.getElementById('ctx-menu');
+  m.style.display='block'; // momentáneo para medir
+  const mw=m.offsetWidth, mh=m.offsetHeight;
+  m.style.display='';
+  const vw=window.innerWidth, vh=window.innerHeight;
+  let x=e.clientX, y=e.clientY+8;
+  if(x+mw>vw-8) x=vw-mw-8;
+  if(y+mh>vh-8) y=e.clientY-mh-4;
+  m.style.left=x+'px'; m.style.top=y+'px';
+}
+
+function abrirCtxMp(e,id,nombre,tipo,ancho,consumo,pct,unidad,codInt,prov,moneda,precio,orden,excluido,codCli){
+  e.stopPropagation();
+  _ctx={
+    type:'mp', id,
+    data:{nombre,tipo,ancho,consumo,pct,unidad,codInt,prov,moneda,precio,orden},
+    excluido, codCli
+  };
+  _actualizarCtxMenu();
+  _posicionarMenu(e);
+  document.getElementById('ctx-menu').classList.add('open');
+  // pre-cargar código en input
+  document.getElementById('ctx-cod-input').value=codCli||'';
+  document.getElementById('ctx-cod-row').classList.remove('open');
+}
+
+function abrirCtxAvio(e,id,sec,nombre,codInt,prov,proc,unidM,consumo,pct,unidC,moneda,precio,orden,excluido,codCli){
+  e.stopPropagation();
+  _ctx={
+    type:'avio', id,
+    data:{sec,nombre,codInt,prov,proc,unidM,consumo,pct,unidC,moneda,precio,orden},
+    excluido, codCli
+  };
+  _actualizarCtxMenu();
+  _posicionarMenu(e);
+  document.getElementById('ctx-menu').classList.add('open');
+  document.getElementById('ctx-cod-input').value=codCli||'';
+  document.getElementById('ctx-cod-row').classList.remove('open');
+}
+
+function _actualizarCtxMenu(){
+  const lbl=document.getElementById('ctx-label-noaplica');
+  if(_ctx.excluido){
+    lbl.textContent='Restaurar (vuelve a aplicar)';
+    document.getElementById('ctx-btn-noaplica').classList.add('ctx-danger');
+  } else {
+    lbl.textContent='No aplica para esta variante';
+    document.getElementById('ctx-btn-noaplica').classList.remove('ctx-danger');
+  }
+}
+
+function hideCtxMenu(){
+  document.getElementById('ctx-menu').classList.remove('open');
+  document.getElementById('ctx-cod-row').classList.remove('open');
+}
+
+async function ctxToggleNoAplica(){
+  if(!_ctx) return;
+  const nuevoExcluido=!_ctx.excluido;
+  const body={codigo_cliente:_ctx.codCli||null,excluido:nuevoExcluido,consumo_override:null,notas:null};
+  const url=_ctx.type==='mp'
+    ?`/catalogo/api/${PRENDA_ID}/mp-config/${_ctx.id}`
+    :`/catalogo/api/${PRENDA_ID}/avio-config/${_ctx.id}`;
+  try{
+    await apiFetch(url,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'application/json'}});
+    const row=document.getElementById(`${_ctx.type}-row-${_ctx.id}`);
+    const badges=document.getElementById(`${_ctx.type}-badges-${_ctx.id}`);
+    if(nuevoExcluido){
+      row?.classList.add('is-excluded');
+      if(badges&&!badges.querySelector('.badge-noapl')){
+        const b=document.createElement('span');
+        b.className='badge badge-noapl'; b.textContent='✗ No aplica';
+        badges.prepend(b);
+      }
+    } else {
+      row?.classList.remove('is-excluded');
+      badges?.querySelector('.badge-noapl')?.remove();
+    }
+    _ctx.excluido=nuevoExcluido;
+    _actualizarCtxMenu();
+    toast(nuevoExcluido?'Marcado como No aplica':'Restaurado');
+  }catch(e){toast(e.message,'error');}
+  hideCtxMenu();
+}
+
+function ctxToggleCodigo(){
+  const row=document.getElementById('ctx-cod-row');
+  row.classList.toggle('open');
+  if(row.classList.contains('open')) document.getElementById('ctx-cod-input').focus();
+}
+
+async function ctxGuardarCodigo(){
+  if(!_ctx) return;
+  const codigo=document.getElementById('ctx-cod-input').value.trim();
+  const body={codigo_cliente:codigo||null,excluido:_ctx.excluido,consumo_override:null,notas:null};
+  const url=_ctx.type==='mp'
+    ?`/catalogo/api/${PRENDA_ID}/mp-config/${_ctx.id}`
+    :`/catalogo/api/${PRENDA_ID}/avio-config/${_ctx.id}`;
+  try{
+    await apiFetch(url,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'application/json'}});
+    const badges=document.getElementById(`${_ctx.type}-badges-${_ctx.id}`);
+    if(badges){
+      badges.querySelector('.badge-cod')?.remove();
+      if(codigo){
+        const b=document.createElement('span');
+        b.className='badge badge-cod'; b.textContent=codigo;
+        badges.appendChild(b);
+      }
+    }
+    _ctx.codCli=codigo;
+    toast(codigo?`Código "${codigo}" guardado`:'Código removido');
+  }catch(e){toast(e.message,'error');}
+  hideCtxMenu();
+}
+
+// Almacena el ítem heredado pendiente de marcar como "No aplica"
+// Solo se ejecuta DESPUÉS de que el usuario guarda exitosamente
+let _pendienteExcluir = null; // {type:'mp'|'avio', id, excluido, codCli}
+
+function ctxCrearVariante(){
+  if(!_ctx) return;
+  hideCtxMenu();
+  // Guardar referencia del heredado — se marcará como No aplica SOLO al guardar
+  if(!_ctx.excluido){
+    _pendienteExcluir = {type:_ctx.type, id:_ctx.id, codCli:_ctx.codCli||null};
+  } else {
+    _pendienteExcluir = null;
+  }
+  if(_ctx.type==='mp'){
+    const d=_ctx.data;
+    abrirModalMpVariante(null,d.nombre,d.tipo,d.ancho,d.consumo,d.pct,d.unidad,null,d.prov,d.moneda,d.precio,d.orden,d.codInt);
+  } else {
+    const d=_ctx.data;
+    abrirModalAvioVariante(null,d.sec,d.nombre,null,d.prov,d.proc,d.unidM,d.consumo,d.pct,d.unidC,d.moneda,d.precio,d.orden,d.codInt);
+  }
+}
+
+// Cerrar menú al clic fuera
+document.addEventListener('click', function(e){
+  const m=document.getElementById('ctx-menu');
+  if(m.classList.contains('open')&&!m.contains(e.target)) hideCtxMenu();
+});
+
+// ── SKUs ──────────────────────────────────────────────────────────────────────
+function toggleSkuDetail(id){document.getElementById(`sku-detail-${id}`)?.classList.toggle('open');}
+async function guardarSkuCodigo(skuId){
+  const input=document.getElementById(`sku-cod-${skuId}`);const cod=(input?.value||'').trim();
+  const fd=new FormData();fd.append('codigo_sku',cod);fd.append('orden',0);
+  try{await fetch(`/catalogo/api/skus/${skuId}`,{method:'PATCH',body:fd,headers:{'x-csrf-token':getCsrf()}});
+    if(input){input.classList.add('saved');setTimeout(()=>input.classList.remove('saved'),2000);}toast('Código guardado');}
+  catch(e){toast(e.message,'error');}
+}
+async function guardarSkuMpConfig(skuId,mpId,valor){
+  const consumo=parseFloat(valor);if(isNaN(consumo)||consumo<=0){toast('Valor inválido','error');return;}
+  try{await apiFetch(`/catalogo/api/skus/${skuId}/mp-config?mp_id=${mpId}`,{method:'POST',body:JSON.stringify({consumo_override:consumo,notas:null}),headers:{'Content-Type':'application/json'}});
+    const inp=document.getElementById(`sku-mp-${skuId}-${mpId}`);if(inp){inp.classList.add('saved');setTimeout(()=>inp.classList.remove('saved'),2000);}toast('Override guardado');}
+  catch(e){toast(e.message,'error');}
+}
+async function guardarSkuAvioConfig(skuId,avioId,valor){
+  try{await apiFetch(`/catalogo/api/skus/${skuId}/avio-config?avio_id=${avioId}`,{method:'POST',body:JSON.stringify({codigo_override:valor.trim()||null,notas:null}),headers:{'Content-Type':'application/json'}});
+    const inp=document.getElementById(`sku-av-${skuId}-${avioId}`);if(inp){inp.classList.add('saved');setTimeout(()=>inp.classList.remove('saved'),2000);}toast('Override guardado');}
+  catch(e){toast(e.message,'error');}
+}
+async function agregarSku(){
+  const ti=document.getElementById('nueva-talla-input'),ci=document.getElementById('nuevo-sku-codigo');
+  const talla=(ti?.value||'').trim(),cod=(ci?.value||'').trim();
+  if(!talla){toast('Ingresa una talla','error');return;}
+  const fd=new FormData();fd.append('talla',talla);fd.append('codigo_sku',cod);fd.append('orden',0);
+  try{await apiFetch(`/catalogo/api/${PRENDA_ID}/skus/agregar`,{method:'POST',body:fd});
+    ti.value='';if(ci)ci.value='';toast(`SKU "${talla}" agregado`);setTimeout(()=>location.reload(),800);}
+  catch(e){toast(e.message,'error');}
+}
+async function eliminarSku(id){if(!confirm('¿Eliminar este SKU?'))return;try{await apiFetch(`/catalogo/api/skus/${id}/eliminar`,{method:'POST'});document.getElementById(`sku-tr-${id}`)?.remove();document.getElementById(`sku-detail-${id}`)?.remove();toast('SKU eliminado');}catch(e){toast(e.message,'error');}}
+
+// ── Fotos ─────────────────────────────────────────────────────────────────────
+async function subirFotoPrenda(input){if(!input.files[0])return;const fd=new FormData();fd.append('imagen',input.files[0]);try{await fetch(`/catalogo/api/${PRENDA_ID}/editar`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});toast('Foto actualizada');setTimeout(()=>location.reload(),1200);}catch(e){toast('Error','error');}}
+async function subirFotoPieza(id,input){if(!input.files[0])return;const fd=new FormData();fd.append('imagen',input.files[0]);try{await fetch(`/catalogo/api/piezas/${id}/imagen`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});toast('Foto actualizada');setTimeout(()=>location.reload(),1200);}catch(e){toast('Error','error');}}
+
+// ── Modal pieza ───────────────────────────────────────────────────────────────
+function _configurarCampoCodigo(cod){const i=document.getElementById('mp-codigo'),h=document.getElementById('mp-codigo-hint');if(ES_BASE){i.value=cod||'';i.readOnly=true;i.style.color='#555';h.style.display='block';}else{i.value=cod||'';i.readOnly=false;i.style.color='';h.style.display='none';}}
+function abrirModalPieza(){document.getElementById('modal-pieza-titulo').textContent='Agregar pieza';document.getElementById('mp-pieza-id').value='';document.getElementById('mp-nombre').value='';document.getElementById('mp-material').value='TELA';document.getElementById('mp-cantidad').value='1';document.getElementById('mp-orden').value='0';document.getElementById('mp-fusionado').checked=false;_configurarCampoCodigo('');document.getElementById('modal-pieza').classList.add('open');}
+function editarPieza(id,nombre,codigo,material,cantidad,fusionado,orden){document.getElementById('modal-pieza-titulo').textContent='Editar pieza';document.getElementById('mp-pieza-id').value=id;document.getElementById('mp-nombre').value=nombre;document.getElementById('mp-material').value=material;document.getElementById('mp-cantidad').value=cantidad;document.getElementById('mp-orden').value=orden;document.getElementById('mp-fusionado').checked=fusionado;_configurarCampoCodigo(codigo);document.getElementById('modal-pieza').classList.add('open');}
+function cerrarModalPieza(){document.getElementById('modal-pieza').classList.remove('open');}
+async function guardarPieza(){
+  const piezaId=document.getElementById('mp-pieza-id').value,nombre=document.getElementById('mp-nombre').value.trim(),codigo=document.getElementById('mp-codigo').value.trim();
+  if(!nombre){toast('El nombre es obligatorio','error');return;}if(!ES_BASE&&!codigo){toast('El código es obligatorio','error');return;}
+  const fd=new FormData();fd.append('nombre',nombre);fd.append('codigo',codigo);fd.append('material_default',document.getElementById('mp-material').value);fd.append('cantidad_x_prenda',document.getElementById('mp-cantidad').value);fd.append('fusionado_default',document.getElementById('mp-fusionado').checked);fd.append('orden',document.getElementById('mp-orden').value);
+  const url=piezaId?`/catalogo/api/piezas/${piezaId}/editar`:`/catalogo/api/${PRENDA_ID}/piezas/agregar`;
+  try{await fetch(url,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});toast(piezaId?'Pieza actualizada':'Pieza agregada');setTimeout(()=>location.reload(),1000);}catch(e){toast('Error','error');}
+}
+let _pendingPiezas=[];
+async function heredarBase(){try{const d=await apiFetch(`/catalogo/api/${PRENDA_ID}/piezas/base`);_pendingPiezas=d.piezas;_renderPendientes(d.prenda_base,d.piezas);}catch(e){toast(e.message,'error');}}
+function _renderPendientes(nb,piezas){const empty=document.getElementById('empty-piezas');if(empty)empty.style.display='none';let grid=document.getElementById('piezas-grid');if(!grid){grid=document.createElement('div');grid.className='piezas-grid';grid.id='piezas-grid';empty.parentNode.insertBefore(grid,empty);}grid.innerHTML=piezas.map((p,i)=>`<div class="pieza-card" id="pending-${i}" style="border-color:#2a3a4a"><div class="pieza-img">🧩</div><div class="pieza-body"><div style="margin-bottom:4px"><span style="font-size:10px;background:#0d2233;color:#4a9fff;border-radius:10px;padding:1px 8px;font-weight:600">De BASE</span></div><div class="pieza-nombre">${p.nombre}</div><div class="pieza-meta">Material: ${p.material_default}<br>Cantidad: ${p.cantidad_x_prenda} x prenda</div><div style="margin-top:8px"><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">Código único *</label><div style="display:flex;gap:4px;align-items:center"><input id="pcod-${i}" style="font-size:11px;font-family:monospace;background:#0f0f0f;border:1px solid #444;color:#e0e0e0;padding:4px 6px;border-radius:4px;flex:1;min-width:0" placeholder="Ej: CAM-ELEC-DEL" onkeydown="if(event.key==='Enter')guardarPendiente(${i})"><button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:11px" onclick="guardarPendiente(${i})">Guardar</button></div></div></div></div>`).join('');}
+async function guardarPendiente(i){const p=_pendingPiezas[i];const codigo=(document.getElementById(`pcod-${i}`)?.value||'').trim().toUpperCase();if(!codigo){toast('El código es obligatorio','error');return;}const fd=new FormData();fd.append('nombre',p.nombre);fd.append('codigo',codigo);fd.append('material_default',p.material_default);fd.append('cantidad_x_prenda',p.cantidad_x_prenda);fd.append('fusionado_default',p.fusionado_default);fd.append('orden',p.orden);try{const res=await fetch(`/catalogo/api/${PRENDA_ID}/piezas/agregar`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||'Error');}const data=await res.json();const card=document.getElementById(`pending-${i}`);card.id=`pieza-card-${data.id}`;card.style.borderColor='';card.innerHTML=`<div class="pieza-img">🧩</div><div class="pieza-body"><div style="font-size:10px;color:#555;font-family:monospace;margin-bottom:2px">${codigo}</div><div class="pieza-nombre">${p.nombre}</div><div class="pieza-meta">Material: ${p.material_default}<br>Cantidad: ${p.cantidad_x_prenda} x prenda</div></div>`;toast(`"${p.nombre}" guardada`);}catch(e){toast(e.message,'error');}}
+async function guardarCodigo(piezaId,nombre){const input=document.getElementById(`cod-${piezaId}`);const codigo=(input?.value||'').trim();if(!codigo){toast('Ingresa un código','error');return;}const fd=new FormData();fd.append('nombre',nombre);fd.append('codigo',codigo);try{const res=await fetch(`/catalogo/api/piezas/${piezaId}/editar`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||'Error');}toast('Código guardado');setTimeout(()=>location.reload(),1000);}catch(e){toast(e.message,'error');}}
+async function eliminarPieza(id){if(!confirm('¿Eliminar esta pieza?'))return;try{await apiFetch(`/catalogo/api/piezas/${id}/eliminar`,{method:'POST'});document.getElementById(`pieza-card-${id}`)?.remove();toast('Pieza eliminada');}catch(e){toast(e.message,'error');}}
+async function archivarPrenda(id){if(!confirm('¿Archivar esta prenda?'))return;try{await apiFetch(`/catalogo/api/${id}/archivar`,{method:'POST'});toast('Archivada');setTimeout(()=>window.location.href='/catalogo/',1200);}catch(e){toast(e.message,'error');}}
+
+// ── Modal MP ──────────────────────────────────────────────────────────────────
+function _resetModalMp(){
+  document.getElementById('ma-mp-id').value='';document.getElementById('ma-mp-es-variante').value='0';
+  document.getElementById('ma-mp-tipo').value='TELA_PRINCIPAL';document.getElementById('ma-mp-nombre').value='';
+  document.getElementById('ma-mp-ancho').value='';document.getElementById('ma-mp-consumo').value='1';
+  document.getElementById('ma-mp-pct').value='0.02';document.getElementById('ma-mp-unidad').value='mt.';
+  document.getElementById('ma-mp-codigo').value='';document.getElementById('ma-mp-proveedor').value='';
+  document.getElementById('ma-mp-procedencia').value='';
+  document.getElementById('ma-mp-moneda').value='';document.getElementById('ma-mp-precio').value='';
+  document.getElementById('ma-mp-orden').value='0';document.getElementById('ma-mp-codbase').value='';
+  document.getElementById('ma-mp-codbase-row').style.display='none';
+}
+function abrirModalMp(id,nombre,tipo,ancho,consumo,pct,unidad,codInt,prov,moneda,precio,orden){
+  _resetModalMp();document.getElementById('modal-mp-titulo').textContent=id?'Editar material':'Agregar material';
+  if(id){document.getElementById('ma-mp-id').value=id;document.getElementById('ma-mp-tipo').value=tipo||'TELA_PRINCIPAL';document.getElementById('ma-mp-nombre').value=nombre||'';document.getElementById('ma-mp-ancho').value=ancho||'';document.getElementById('ma-mp-consumo').value=consumo||1;document.getElementById('ma-mp-pct').value=pct||0.02;document.getElementById('ma-mp-unidad').value=unidad||'mt.';document.getElementById('ma-mp-codigo').value=codInt||'';document.getElementById('ma-mp-proveedor').value=prov||'';document.getElementById('ma-mp-moneda').value=moneda||'';document.getElementById('ma-mp-precio').value=precio||'';document.getElementById('ma-mp-orden').value=orden||0;}
+  document.getElementById('modal-mp').classList.add('open');
+}
+function abrirModalMpVariante(id,nombre,tipo,ancho,consumo,pct,unidad,codInt,prov,moneda,precio,orden,codBase){
+  _resetModalMp();document.getElementById('ma-mp-es-variante').value='1';document.getElementById('ma-mp-codbase-row').style.display='block';
+  document.getElementById('modal-mp-titulo').textContent=(id?'Editar':'Agregar')+' material específico de variante';
+  if(nombre!==undefined&&nombre!==null){document.getElementById('ma-mp-nombre').value=nombre||'';}
+  if(id){document.getElementById('ma-mp-id').value=id;}
+  if(tipo)document.getElementById('ma-mp-tipo').value=tipo;
+  if(ancho)document.getElementById('ma-mp-ancho').value=ancho;
+  if(consumo)document.getElementById('ma-mp-consumo').value=consumo;
+  if(pct)document.getElementById('ma-mp-pct').value=pct;
+  if(unidad)document.getElementById('ma-mp-unidad').value=unidad;
+  if(codInt)document.getElementById('ma-mp-codigo').value=codInt;
+  if(prov)document.getElementById('ma-mp-proveedor').value=prov;
+  if(moneda)document.getElementById('ma-mp-moneda').value=moneda;
+  if(precio)document.getElementById('ma-mp-precio').value=precio;
+  if(orden!==undefined)document.getElementById('ma-mp-orden').value=orden||0;
+  if(codBase)document.getElementById('ma-mp-codbase').value=codBase;
+  document.getElementById('modal-mp').classList.add('open');
+}
+function cerrarModalMp(){document.getElementById('modal-mp').classList.remove('open');_pendienteExcluir=null;}
+async function guardarMp(){
+  const mpId=document.getElementById('ma-mp-id').value,nombre=document.getElementById('ma-mp-nombre').value.trim();
+  if(!nombre){toast('El nombre es obligatorio','error');return;}
+  const esVariante=document.getElementById('ma-mp-es-variante').value==='1';
+  const body={nombre,tipo:document.getElementById('ma-mp-tipo').value,ancho_referencia:parseFloat(document.getElementById('ma-mp-ancho').value)||null,consumo_unitario:parseFloat(document.getElementById('ma-mp-consumo').value)||1,pct_adicional:parseFloat(document.getElementById('ma-mp-pct').value)||0.02,unidad_medida:document.getElementById('ma-mp-unidad').value,codigo_interno:document.getElementById('ma-mp-codigo').value.trim()||null,codigo_base:esVariante?(document.getElementById('ma-mp-codbase').value.trim()||null):null,proveedor:document.getElementById('ma-mp-proveedor').value.trim()||null,procedencia:document.getElementById('ma-mp-procedencia').value||null,moneda:document.getElementById('ma-mp-moneda').value||null,precio_referencia:parseFloat(document.getElementById('ma-mp-precio').value)||null,orden:parseInt(document.getElementById('ma-mp-orden').value)||0};
+  const url=mpId?`/catalogo/api/mp/${mpId}`:`/catalogo/api/${PRENDA_ID}/mp/agregar`;
+  try{
+    await apiFetch(url,{method:mpId?'PATCH':'POST',body:JSON.stringify(body),headers:{'Content-Type':'application/json'}});
+    // Si viene de "Crear versión específica", marcar el heredado como No aplica AHORA que el guardado fue exitoso
+    if(_pendienteExcluir&&_pendienteExcluir.type==='mp'){
+      const pe=_pendienteExcluir;_pendienteExcluir=null;
+      apiFetch(`/catalogo/api/${PRENDA_ID}/mp-config/${pe.id}`,{method:'POST',body:JSON.stringify({codigo_cliente:pe.codCli,excluido:true,consumo_override:null,notas:null}),headers:{'Content-Type':'application/json'}})
+        .then(()=>{
+          document.getElementById(`mp-row-${pe.id}`)?.classList.add('is-excluded');
+          const badges=document.getElementById(`mp-badges-${pe.id}`);
+          if(badges&&!badges.querySelector('.badge-noapl')){const b=document.createElement('span');b.className='badge badge-noapl';b.textContent='✗ No aplica';badges.prepend(b);}
+        }).catch(()=>{});
+    }
+    toast(mpId?'Material actualizado':'Material agregado');setTimeout(()=>location.reload(),1000);
+  }catch(e){toast(e.message,'error');}
+}
+async function eliminarMp(id){if(!confirm('¿Eliminar?'))return;try{await apiFetch(`/catalogo/api/mp/${id}/eliminar`,{method:'POST'});document.getElementById(`mp-row-${id}`)?.remove();toast('Eliminado');}catch(e){toast(e.message,'error');}}
+async function eliminarMpVariante(id){if(!confirm('¿Eliminar este material específico?'))return;try{await apiFetch(`/catalogo/api/${PRENDA_ID}/mp/${id}/eliminar-variante`,{method:'POST'});document.getElementById(`mp-propio-row-${id}`)?.remove();toast('Eliminado');}catch(e){toast(e.message,'error');}}
+
+// ── Modal Avío ────────────────────────────────────────────────────────────────
+function _resetModalAvio(){
+  document.getElementById('ma-avio-id').value='';document.getElementById('ma-avio-es-variante').value='0';
+  document.getElementById('ma-seccion').value='COSTURA';document.getElementById('ma-nombre').value='';
+  document.getElementById('ma-codigo-interno').value='';document.getElementById('ma-proveedor').value='';
+  document.getElementById('ma-procedencia').value='';
+  document.getElementById('ma-consumo').value='1';document.getElementById('ma-pct').value='0.01';
+  document.getElementById('ma-unidad-medida').value='Unid';document.getElementById('ma-unidad-compra').value='';
+  document.getElementById('ma-moneda').value='';document.getElementById('ma-precio').value='';
+  document.getElementById('ma-orden').value='0';document.getElementById('ma-avio-codbase').value='';
+  document.getElementById('ma-avio-codbase-row').style.display='none';
+}
+function abrirModalAvio(id,sec,nombre,codInt,prov,proc,unidM,consumo,pct,unidC,moneda,precio,orden){
+  _resetModalAvio();document.getElementById('modal-avio-titulo').textContent=id?'Editar avío':'Agregar avío';
+  if(id){document.getElementById('ma-avio-id').value=id;document.getElementById('ma-seccion').value=sec||'COSTURA';document.getElementById('ma-nombre').value=nombre||'';document.getElementById('ma-codigo-interno').value=codInt||'';document.getElementById('ma-proveedor').value=prov||'';document.getElementById('ma-consumo').value=consumo||1;document.getElementById('ma-pct').value=pct||0.01;document.getElementById('ma-unidad-medida').value=unidM||'Unid';document.getElementById('ma-unidad-compra').value=unidC||'';document.getElementById('ma-moneda').value=moneda||'';document.getElementById('ma-precio').value=precio||'';document.getElementById('ma-orden').value=orden||0;}
+  document.getElementById('modal-avio').classList.add('open');
+}
+function abrirModalAvioVariante(id,sec,nombre,codInt,prov,proc,unidM,consumo,pct,unidC,moneda,precio,orden,codBase){
+  _resetModalAvio();document.getElementById('ma-avio-es-variante').value='1';document.getElementById('ma-avio-codbase-row').style.display='block';
+  document.getElementById('modal-avio-titulo').textContent=(id?'Editar':'Agregar')+' avío específico de variante';
+  if(nombre!==undefined&&nombre!==null)document.getElementById('ma-nombre').value=nombre||'';
+  if(id)document.getElementById('ma-avio-id').value=id;
+  if(sec)document.getElementById('ma-seccion').value=sec;
+  if(codInt)document.getElementById('ma-codigo-interno').value=codInt;
+  if(prov)document.getElementById('ma-proveedor').value=prov;
+  if(consumo)document.getElementById('ma-consumo').value=consumo;
+  if(pct)document.getElementById('ma-pct').value=pct;
+  if(unidM)document.getElementById('ma-unidad-medida').value=unidM;
+  if(unidC)document.getElementById('ma-unidad-compra').value=unidC;
+  if(moneda)document.getElementById('ma-moneda').value=moneda;
+  if(precio)document.getElementById('ma-precio').value=precio;
+  if(orden!==undefined)document.getElementById('ma-orden').value=orden||0;
+  if(codBase)document.getElementById('ma-avio-codbase').value=codBase;
+  document.getElementById('modal-avio').classList.add('open');
+}
+function cerrarModalAvio(){document.getElementById('modal-avio').classList.remove('open');_pendienteExcluir=null;}
+async function guardarAvio(){
+  const avioId=document.getElementById('ma-avio-id').value,nombre=document.getElementById('ma-nombre').value.trim();
+  if(!nombre){toast('El nombre es obligatorio','error');return;}
+  const esVariante=document.getElementById('ma-avio-es-variante').value==='1';
+  const body={seccion:document.getElementById('ma-seccion').value,nombre,codigo_interno:document.getElementById('ma-codigo-interno').value.trim()||null,codigo_base:esVariante?(document.getElementById('ma-avio-codbase').value.trim()||null):null,proveedor:document.getElementById('ma-proveedor').value.trim()||null,procedencia:document.getElementById('ma-procedencia').value||null,unidad_medida:document.getElementById('ma-unidad-medida').value,consumo_unitario:parseFloat(document.getElementById('ma-consumo').value)||1,pct_adicional:parseFloat(document.getElementById('ma-pct').value)||0.01,unidad_compra:document.getElementById('ma-unidad-compra').value.trim()||null,moneda:document.getElementById('ma-moneda').value||null,precio:parseFloat(document.getElementById('ma-precio').value)||null,orden:parseInt(document.getElementById('ma-orden').value)||0};
+  const url=avioId?`/catalogo/api/avios/${avioId}`:`/catalogo/api/${PRENDA_ID}/avios/agregar`;
+  try{
+    await apiFetch(url,{method:avioId?'PATCH':'POST',body:JSON.stringify(body),headers:{'Content-Type':'application/json'}});
+    // Si viene de "Crear versión específica", marcar el heredado como No aplica AHORA que el guardado fue exitoso
+    if(_pendienteExcluir&&_pendienteExcluir.type==='avio'){
+      const pe=_pendienteExcluir;_pendienteExcluir=null;
+      apiFetch(`/catalogo/api/${PRENDA_ID}/avio-config/${pe.id}`,{method:'POST',body:JSON.stringify({codigo_cliente:pe.codCli,excluido:true,consumo_override:null,notas:null}),headers:{'Content-Type':'application/json'}})
+        .then(()=>{
+          document.getElementById(`avio-row-${pe.id}`)?.classList.add('is-excluded');
+          const badges=document.getElementById(`avio-badges-${pe.id}`);
+          if(badges&&!badges.querySelector('.badge-noapl')){const b=document.createElement('span');b.className='badge badge-noapl';b.textContent='✗ No aplica';badges.prepend(b);}
+        }).catch(()=>{});
+    }
+    toast(avioId?'Avío actualizado':'Avío agregado');setTimeout(()=>location.reload(),1000);
+  }catch(e){toast(e.message,'error');}
+}
+async function eliminarAvio(id){
+  if(!confirm('¿Eliminar este avío?'))return;
+  try{
+    await apiFetch(`/catalogo/api/avios/${id}/eliminar`,{method:'POST'});
+    const row=document.getElementById(`avio-row-${id}`);
+    if(row) row.remove();
+    toast('Avío eliminado');
+    setTimeout(()=>location.reload(),800);
+  }catch(e){toast(e.message,'error');}
+}
+
+async function cargarHistorialCurvas(){
+  const wrap = document.getElementById('historial-curvas-wrap');
+  if(!wrap) return;
+  try {
+    const data = await apiFetch(`/curvas/api/historial-prenda/${PRENDA_ID}`);
+    if(!data||!data.length){
+      wrap.innerHTML = '<div style="font-size:11px;color:#555;text-align:center;padding:12px;">Sin curvas de tallas registradas.</div>';
+      return;
+    }
+    wrap.innerHTML = data.map(c => `
+      <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #1a1a1a;font-size:11px;align-items:flex-start;">
+        <div style="color:#555;min-width:70px;">${c.created_at||'—'}</div>
+        <div style="flex:1;">
+          <div style="color:#e0e0e0;font-weight:500;">${c.nombre||'Sin nombre'}</div>
+          <div style="color:#555;margin-top:2px;">${c.tallas.join(' · ')} · ${c.total_unidades} ud.</div>
+          ${c.of_numeros&&c.of_numeros.length?`<div style="color:#4caf7d;margin-top:2px;">OFs: ${c.of_numeros.join(', ')}</div>`:''}
+        </div>
+        <a href="/curvas/${c.id}" style="color:#4a9fff;font-size:10px;white-space:nowrap;">Ver →</a>
+      </div>`).join('');
+  } catch(e) {
+    wrap.innerHTML = `<div style="font-size:11px;color:#f06060;padding:8px;">Error al cargar historial</div>`;
+  }
+}
+</script>
+{% endblock %}

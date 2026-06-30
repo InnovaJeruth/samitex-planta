@@ -7,13 +7,14 @@ from app.database.connection import Base
 
 class FaseCatalogo(Base):
     __tablename__ = "fases_catalogo"
-    id          = Column(Integer, primary_key=True)
-    fase_id     = Column(String(5),   unique=True, nullable=False)
-    nombre      = Column(String(50),  nullable=False)
-    proceso     = Column(String(50),  default="CORTE")
-    orden       = Column(Integer,     nullable=False)
-    obligatoria = Column(Boolean,     default=True)
-    descripcion = Column(String(255), nullable=True)
+    id                 = Column(Integer, primary_key=True)
+    fase_id            = Column(String(5),   unique=True, nullable=False)
+    nombre             = Column(String(50),  nullable=False)
+    proceso            = Column(String(50),  default="CORTE")
+    orden              = Column(Integer,     nullable=False)
+    obligatoria        = Column(Boolean,     default=True)
+    descripcion        = Column(String(255), nullable=True)
+    duracion_horas_std = Column(Float,       nullable=True, default=8.0)
 
 
 class OFFaseEstado(Base):
@@ -60,8 +61,9 @@ class OFFaseParada(Base):
     inicio_parada     = Column(DateTime,  nullable=False, server_default=func.now())
     fin_parada        = Column(DateTime,  nullable=True)
     motivo            = Column(String(30), nullable=False)
-    of_emergencia_id  = Column(Integer,   ForeignKey("ordenes_fabricacion.id"), nullable=True)
-    observacion       = Column(Text,      nullable=True)
+    of_emergencia_id      = Column(Integer,   ForeignKey("ordenes_fabricacion.id"), nullable=True)
+    numero_requerimiento  = Column(String(50), nullable=True)
+    observacion           = Column(Text,      nullable=True)
     usuario_id        = Column(Integer,   ForeignKey("usuarios.id"), nullable=True)
     created_at        = Column(DateTime,  server_default=func.now())
     of            = relationship("OrdenFabricacion", back_populates="fase_paradas",

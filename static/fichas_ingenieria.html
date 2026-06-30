@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fichas Corte — Samitex</title>
+<style>
+:root {
+  --ground:    #080c18;
+  --surface:   rgba(255,255,255,0.055);
+  --surface-hover: rgba(255,255,255,0.085);
+  --border:    rgba(255,255,255,0.09);
+  --border-active: rgba(99,102,241,0.55);
+  --text:      #e2e8f6;
+  --muted:     #94a3b8;
+  --muted2:    #475569;
+  --accent:    #6366f1;
+  --accent-h:  #4f46e5;
+  --cyan:      #22d3ee;
+  --purple:    #a78bfa;
+  --green:     #10b981;
+  --red:       #f43f5e;
+  --amber:     #f59e0b;
+  --radius:    14px;
+  --radius-sm: 8px;
+  --mono:      'Courier New', monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--ground);color:var(--text);line-height:1.5;min-height:100vh;overflow-x:hidden}
+
+/* ── Aurora background ── */
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.aurora::before,.aurora::after{content:'';position:absolute;border-radius:50%}
+.aurora::before{
+  width:90vw;height:90vw;max-width:800px;max-height:800px;
+  top:-20%;left:-10%;
+  background:radial-gradient(ellipse,rgba(99,102,241,0.18) 0%,transparent 70%);
+  animation:aurora-drift1 14s ease-in-out infinite alternate;
+}
+.aurora::after{
+  width:70vw;height:70vw;max-width:640px;max-height:640px;
+  bottom:-15%;right:-10%;
+  background:radial-gradient(ellipse,rgba(34,211,238,0.14) 0%,transparent 70%);
+  animation:aurora-drift2 18s ease-in-out infinite alternate;
+}
+.aurora-mid{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 60% 40% at 60% 50%,rgba(167,139,250,0.08) 0%,transparent 70%);
+  animation:aurora-drift3 22s ease-in-out infinite alternate;
+}
+@keyframes aurora-drift1{from{transform:translate(0,0) scale(1)}to{transform:translate(8vw,6vh) scale(1.12)}}
+@keyframes aurora-drift2{from{transform:translate(0,0) scale(1)}to{transform:translate(-6vw,-8vh) scale(1.08)}}
+@keyframes aurora-drift3{from{opacity:.6}to{opacity:1}}
+
+/* ── Stacking ── */
+.app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── Header ── */
+.header{
+  background:rgba(8,12,24,0.75);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:14px 20px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;
+  position:sticky;top:0;z-index:50;
+}
+.header-brand{display:flex;flex-direction:column;gap:2px}
+.header-eyebrow{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);opacity:.9}
+.header-title{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.header-sub{font-size:11px;color:var(--muted);letter-spacing:.01em}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 16px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:background 150ms ease-out,border-color 150ms ease-out,transform 120ms ease-out,box-shadow 150ms ease-out;letter-spacing:.02em}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-h);box-shadow:0 0 16px rgba(99,102,241,0.4)}
+.btn-ghost{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.btn-ghost:hover{background:var(--surface-hover)}
+.btn-danger{background:transparent;border:1px solid rgba(244,63,94,0.4);color:var(--red)}
+.btn-danger:hover{background:rgba(244,63,94,0.08)}
+.btn-sm{min-height:32px;padding:0 12px;font-size:11px}
+
+/* ── Tabs ── */
+.tabs-wrap{
+  background:rgba(8,12,24,0.6);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:57px;z-index:40;
+}
+.tabs{
+  display:flex;
+  overflow-x:auto;
+  scrollbar-width:none;
+  position:relative;
+  -webkit-overflow-scrolling:touch;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{
+  flex-shrink:0;
+  min-height:44px;
+  padding:0 18px;
+  background:transparent;
+  border:none;border-bottom:2px solid transparent;
+  color:var(--muted);
+  font-family:inherit;font-size:12px;font-weight:600;
+  cursor:pointer;white-space:nowrap;
+  transition:color 200ms ease-out;
+  letter-spacing:.03em;
+  position:relative;
+}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--text)}
+.tab-pill{
+  position:absolute;bottom:-1px;left:0;height:2px;width:0;
+  background:linear-gradient(90deg,var(--accent),var(--cyan));
+  border-radius:2px 2px 0 0;
+  transition:left 260ms cubic-bezier(.4,0,.2,1),width 260ms cubic-bezier(.4,0,.2,1);
+  pointer-events:none;
+}
+
+/* ── Main ── */
+.main{padding:20px;flex:1}
+
+/* ── Panels ── */
+.panel{display:none}
+.panel.active{display:block;animation:panel-in 220ms ease-out}
+@keyframes panel-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Panel grid ── */
+.panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media(max-width:900px){.panel-grid{grid-template-columns:1fr}}
+
+/* ── Cards ── */
+.card{
+  background:var(--surface);
+  backdrop-filter:blur(16px);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px;
+  transition:border-color 200ms;
+}
+.card:hover{border-color:rgba(255,255,255,0.13)}
+.card-title{
+  font-size:13px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);
+  margin-bottom:16px;
+}
+
+/* ── Form ── */
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.form-grid.c1{grid-template-columns:1fr}
+.form-grid.c3{grid-template-columns:repeat(3,1fr)}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.s2{grid-column:span 2}
+.field.sfull{grid-column:1/-1}
+@media(max-width:600px){
+  .form-grid,.form-grid.c3{grid-template-columns:1fr}
+  .field.s2{grid-column:span 1}
+}
+label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+input,select,textarea{
+  min-height:44px;
+  padding:10px 12px;
+  background:rgba(0,0,0,0.35);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  color:var(--text);
+  font-family:inherit;font-size:13px;
+  width:100%;
+  transition:border-color 150ms,box-shadow 150ms;
+  appearance:none;-webkit-appearance:none;
+}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,0.2)}
+textarea{min-height:76px;resize:vertical;line-height:1.5}
+input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.7)}
+
+/* ── Time grid ── */
+.time-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media(max-width:600px){.time-grid{grid-template-columns:repeat(2,1fr)}}
+.time-grid .field label{font-size:10px}
+
+/* ── Calc box ── */
+.calc-box{
+  margin-top:14px;
+  padding:14px 16px;
+  background:rgba(99,102,241,0.07);
+  border:1px solid rgba(99,102,241,0.22);
+  border-radius:var(--radius-sm);
+  display:flex;flex-wrap:wrap;gap:20px;
+}
+.calc-item{display:flex;flex-direction:column;gap:3px}
+.calc-item > span:first-child{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.calc-val{font-size:22px;font-weight:700;color:var(--cyan);font-family:var(--mono);letter-spacing:-.02em;transition:color 200ms}
+.calc-val.pulse{animation:val-pulse 300ms ease-out}
+@keyframes val-pulse{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+
+/* ── Form actions ── */
+.form-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+
+/* ── Tables ── */
+.table-wrap{overflow-x:auto;overflow-y:auto;max-height:500px;border:1px solid var(--border);border-radius:var(--radius-sm);-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{position:sticky;top:0;z-index:2}
+th{background:rgba(8,12,24,.95);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:10px;font-weight:700;padding:10px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap;color:var(--text)}
+tbody tr:hover{background:var(--surface-hover)}
+.empty-td{text-align:center;color:var(--muted2);padding:32px !important;font-size:12px}
+
+/* ── Summary block (muestreo) ── */
+.summary-block{margin-top:16px}
+.summary-block h3{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+
+/* ── Dictionary ── */
+.dict-intro{max-width:600px;margin-bottom:24px}
+.dict-intro p{font-size:13px;color:var(--muted);line-height:1.65}
+.dict-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.dict-card{
+  background:var(--surface);
+  backdrop-filter:blur(16px);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px 18px 16px;
+  transition:border-color 200ms,transform 200ms;
+  cursor:default;
+}
+.dict-card:hover{border-color:var(--border-active);transform:translateY(-2px)}
+.dict-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin-bottom:10px}
+.cat-tiempo{background:rgba(99,102,241,0.18);color:var(--accent)}
+.cat-calidad{background:rgba(16,185,129,0.18);color:var(--green)}
+.cat-eficiencia{background:rgba(34,211,238,0.18);color:var(--cyan)}
+.cat-proceso{background:rgba(167,139,250,0.18);color:var(--purple)}
+.cat-gestion{background:rgba(245,158,11,0.18);color:var(--amber)}
+.dict-term{font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-bottom:2px}
+.dict-full{font-size:11px;color:var(--muted);margin-bottom:10px;font-style:italic}
+.dict-def{font-size:12px;line-height:1.65;color:var(--text);opacity:.9;margin-bottom:10px}
+.dict-formula{
+  background:rgba(0,0,0,.35);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:8px 10px;
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--cyan);
+  margin-bottom:10px;
+  word-break:break-word;
+}
+.dict-when-label{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.dict-when{font-size:12px;color:var(--muted);line-height:1.55}
+.dict-note{font-size:11px;color:var(--muted);background:rgba(255,255,255,.04);border-left:2px solid var(--accent);padding:6px 10px;border-radius:0 4px 4px 0;margin-top:8px;line-height:1.55}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;right:24px;background:rgba(8,12,24,.92);backdrop-filter:blur(12px);border:1px solid var(--green);color:var(--green);padding:10px 16px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;opacity:0;transform:translateY(8px);transition:opacity 200ms ease-out,transform 200ms ease-out;pointer-events:none;z-index:200;letter-spacing:.02em}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.error{border-color:var(--red);color:var(--red)}
+
+/* ── Ishikawa ── */
+.ishi-banner{background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.25);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ishi-badge{flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;background:rgba(99,102,241,0.2);color:var(--accent);padding:4px 10px;border-radius:4px}
+.ishi-banner p{font-size:12px;color:var(--muted);line-height:1.55}
+.ishi-banner strong{color:var(--text)}
+.ishi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:900px){.ishi-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.ishi-grid{grid-template-columns:1fr}}
+.ishi-card{background:var(--surface);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:10px}
+.ishi-card-header{display:flex;align-items:center;gap:8px}
+.ishi-m-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ishi-m-label{font-size:12px;font-weight:700;letter-spacing:.04em}
+.ishi-causa-list{display:flex;flex-direction:column;gap:6px;min-height:32px}
+.ishi-causa-item{border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.ishi-causa-row{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:default}
+.ishi-causa-text{flex:1;font-size:12px;color:var(--text)}
+.ishi-causa-actions{display:flex;gap:4px;flex-shrink:0}
+.ishi-btn{background:transparent;border:none;cursor:pointer;font-size:11px;padding:3px 6px;border-radius:4px;color:var(--muted);transition:background 150ms,color 150ms;font-family:inherit;white-space:nowrap}
+.ishi-btn:hover{background:var(--surface-hover);color:var(--text)}
+.ishi-btn.validado{color:var(--green)}
+.ishi-btn.del:hover{color:var(--red)}
+.ishi-porques{background:rgba(0,0,0,0.25);border-top:1px solid var(--border);padding:10px 10px 12px;display:none;flex-direction:column;gap:6px}
+.ishi-porques.open{display:flex}
+.ishi-pq-field{display:flex;flex-direction:column;gap:3px}
+.ishi-pq-field label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.ishi-pq-field input{min-height:36px;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:inherit;width:100%;transition:border-color 150ms}
+.ishi-pq-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(99,102,241,0.18)}
+.ishi-raiz{font-size:11px;color:var(--cyan);font-style:italic;padding:4px 0 0}
+.ishi-pq-save{align-self:flex-start;margin-top:4px}
+.ishi-add-row{display:flex;gap:6px}
+.ishi-add-row input{flex:1;min-height:38px;padding:8px 10px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:inherit;transition:border-color 150ms}
+.ishi-add-row input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(99,102,241,0.18)}
+.ishi-add-row button{min-height:38px;padding:0 14px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 150ms;white-space:nowrap}
+.ishi-add-row button:hover{background:var(--surface-hover)}
+.ishi-catalogo-wrap{background:var(--surface);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.ishi-catalogo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.ishi-cat-empty{font-size:12px;color:var(--muted2);padding:12px 0}
+.ishi-cat-group{margin-bottom:14px}
+.ishi-cat-group-label{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.ishi-cat-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.ishi-cat-num{font-size:11px;color:var(--accent);font-family:var(--mono);min-width:20px}
+.ishi-cat-desc{flex:1}
+.ishi-cat-causa{font-size:12px;color:var(--text)}
+.ishi-cat-raiz{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ── Reduced motion ── */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div class="aurora" aria-hidden="true"></div>
+<div class="aurora-mid" aria-hidden="true"></div>
+
+<div class="app">
+
+<header class="header">
+  <div class="header-brand">
+    <span class="header-eyebrow">Samitex · Ingeniería Industrial</span>
+    <span class="header-title">Fichas de Levantamiento — Corte</span>
+    <span class="header-sub">Planta de Corte · Conectado al servidor</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost btn-sm" id="btn-export">↓ Exportar JSON</button>
+  </div>
+</header>
+
+<div class="tabs-wrap">
+  <nav class="tabs" role="tablist" aria-label="Fichas de corte" id="tabs-nav">
+    <button class="tab-btn active" data-tab="sam" role="tab">SAM · Tiempos</button>
+    <button class="tab-btn" data-tab="paradas" role="tab">Paradas</button>
+    <button class="tab-btn" data-tab="muestreo" role="tab">Muestreo</button>
+    <button class="tab-btn" data-tab="tendido" role="tab">Tendido</button>
+    <button class="tab-btn" data-tab="calidad" role="tab">Calidad</button>
+    <button class="tab-btn" data-tab="ole" role="tab">OLE</button>
+    <button class="tab-btn" data-tab="fusionado" role="tab">Fusionado</button>
+    <button class="tab-btn" data-tab="habilitado" role="tab">Habilitado</button>
+    <button class="tab-btn" data-tab="ishikawa" role="tab">Ishikawa</button>
+    <button class="tab-btn" data-tab="dict" role="tab">Diccionario</button>
+    <span class="tab-pill" id="tab-pill" aria-hidden="true"></span>
+  </nav>
+</div>
+
+<main class="main">
+
+<!-- 1. SAM -->
+<section class="panel active" id="panel-sam" role="tabpanel">
+  <div class="panel-grid">
+    <div class="card">
+      <p class="card-title">Nuevo registro SAM</p>
+      <form id="form-sam">
+        <div class="form-grid">
+          <div class="field s2"><label for="s-of">N° OF</label><input type="text" id="s-of" placeholder="Ej: OF-2026-001" required></div>
+          <div class="field"><label for="s-fecha">Fecha</label><input type="date" id="s-fecha" required></div>
+          <div class="field"><label for="s-op">Operario</label><input type="text" id="s-op" placeholder="Nombre" required></div>
+          <div class="field"><label for="s-fase">Fase</label><select id="s-fase" required><option value="">— Seleccionar —</option><option>Tizado</option><option>Tendido</option><option>Corte</option><option>Numerado</option><option>Fusionado</option><option>Calidad</option><option>Habilitado</option></select></div>
+          <div class="field"><label for="s-elem">Elemento</label><input type="text" id="s-elem" placeholder="Ej: Posicionar pieza" required></div>
+          <div class="field sfull">
+            <label>Lecturas de tiempo (seg) — mínimo 10 ciclos</label>
+            <div class="time-grid" id="sam-tgrid"></div>
+          </div>
+          <div class="field"><label for="s-fv">Factor valoración (%)</label><input type="number" id="s-fv" min="0" max="150" step="1" value="100"></div>
+          <div class="field"><label for="s-sup">Suplementos (%)</label><input type="number" id="s-sup" min="0" max="50" step="0.1" value="15"></div>
+        </div>
+        <div class="calc-box">
+          <div class="calc-item"><span>Tiempo Normal</span><span class="calc-val" id="s-tn">—</span></div>
+          <div class="calc-item"><span>SAM</span><span class="calc-val" id="s-sam">—</span></div>
+          <div class="calc-item"><span>Lecturas válidas</span><span class="calc-val" id="s-n">0</span></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar registro</button>
+          <button type="button" class="btn btn-danger btn-sm" data-clear="sam">Limpiar tabla</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <p class="card-title">Últimos 20 registros</p>
+      <div class="table-wrap"><table><thead id="th-sam"></thead><tbody id="tb-sam"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Paradas -->
+<section class="panel" id="panel-paradas" role="tabpanel">
+  <div class="panel-grid">
+    <div class="card">
+      <p class="card-title">Nueva parada</p>
+      <form id="form-paradas">
+        <div class="form-grid">
+          <div class="field s2"><label for="p-of">N° OF</label><input type="text" id="p-of" placeholder="Ej: OF-2026-001" required></div>
+          <div class="field"><label for="p-fecha">Fecha</label><input type="date" id="p-fecha" required></div>
+          <div class="field"><label for="p-turno">Turno</label><select id="p-turno" required><option value="">—</option><option>M — Mañana</option><option>T — Tarde</option><option>N — Noche</option></select></div>
+          <div class="field"><label for="p-fase">Fase</label><select id="p-fase" required><option value="">—</option><option>Tizado</option><option>Tendido</option><option>Corte</option><option>Numerado</option><option>Fusionado</option><option>Calidad</option><option>Habilitado</option></select></div>
+          <div class="field"><label for="p-dur">Duración (min)</label><input type="number" id="p-dur" min="1" step="1" required></div>
+          <div class="field s2"><label for="p-causa">Causa</label>
+            <select id="p-causa" required><option value="">— Seleccionar causa —</option>
+              <option>Falta de tela</option><option>Falla de máquina</option><option>Falta de instrucciones</option>
+              <option>Cambio de referencia</option><option>Falta de personal</option><option>Espera de insumos</option>
+              <option>Problema de calidad</option><option>Mantenimiento preventivo</option><option>Falta de avíos</option>
+              <option>Error de tizado</option><option>Parada programada</option><option>Otro</option>
+            </select>
+          </div>
+          <div class="field sfull"><label for="p-obs">Observación</label><textarea id="p-obs" placeholder="Detalle adicional (opcional)"></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar parada</button>
+          <button type="button" class="btn btn-danger btn-sm" data-clear="paradas">Limpiar tabla</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <p class="card-title">Últimos 20 registros</p>
+      <div class="table-wrap"><table><thead id="th-paradas"></thead><tbody id="tb-paradas"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Muestreo -->
+<section class="panel" id="panel-muestreo" role="tabpanel">
+  <div class="panel-grid">
+    <div class="card">
+      <p class="card-title">Nueva observación</p>
+      <form id="form-muestreo">
+        <div class="form-grid">
+          <div class="field s2"><label for="m-of">N° OF</label><input type="text" id="m-of" placeholder="Ej: OF-2026-001" required></div>
+          <div class="field"><label for="m-fecha">Fecha</label><input type="date" id="m-fecha" required></div>
+          <div class="field"><label for="m-hora">Hora</label><input type="time" id="m-hora" required></div>
+          <div class="field"><label for="m-fase">Fase</label><select id="m-fase" required><option value="">—</option><option>Tizado</option><option>Tendido</option><option>Corte</option><option>Numerado</option><option>Fusionado</option><option>Calidad</option><option>Habilitado</option></select></div>
+          <div class="field"><label for="m-estado">Estado</label><select id="m-estado" required><option value="">—</option><option>Activo</option><option>En espera</option><option>Parado</option></select></div>
+          <div class="field sfull"><label for="m-obs">Observación</label><textarea id="m-obs" placeholder="Opcional"></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Registrar observación</button>
+          <button type="button" class="btn btn-danger btn-sm" data-clear="muestreo">Limpiar tabla</button>
+        </div>
+      </form>
+      <div class="summary-block">
+        <h3>Resumen por fase</h3>
+        <div class="table-wrap"><table><thead id="th-mue-res"></thead><tbody id="tb-mue-res"></tbody></table></div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="card-title">Últimos 20 registros</p>
+      <div class="table-wrap"><table><thead id="th-muestreo"></thead><tbody id="tb-muestreo"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Tendido -->
+<section class="panel" id="panel-tendido" role="tabpanel">
+  <div class="panel-grid">
+    <div class="card">
+      <p class="card-title">Nueva ficha de tendido</p>
+      <form id="form-tendido">
+        <div class="form-grid">
+          <div class="field"><label for="t-fecha">Fecha</label><input type="date" id="t-fecha" required></div>
+          <div class="field"><label for="t-of">N° OF</label><input type="text" id="t-of" placeholder="Ej: OF-2026-001" required></div>
+          <div class="field"><label for="t-prenda">Tipo de prenda</label><input type="text" id="t-prenda" required></div>
+          <div class="field"><label for="t-tela">Tela / Partida</label><input type="text" id="t-tela" required></div>
+          <div class="field"><label for="t-largo">Largo tender (m)</label><input type="number" id="t-largo" step="0.01" min="0" required></div>
+          <div class="field"><label for="t-capas">N° capas</label><input type="number" id="t-capas" min="1" step="1" required></div>
+          <div class="field"><label for="t-ancho">Ancho tela (m)</label><input type="number" id="t-ancho" step="0.001" min="0" required></div>
+          <div class="field"><label for="t-prendas">N° prendas a cortar</label><input type="number" id="t-prendas" min="1" step="1" required></div>
+          <div class="field"><label for="t-retazo">Retazo pesado (kg)</label><input type="number" id="t-retazo" step="0.01" min="0" value="0"></div>
+          <div class="field"><label for="t-area">Área de tizado (m²)</label><input type="number" id="t-area" step="0.01" min="0" required></div>
+        </div>
+        <div class="calc-box">
+          <div class="calc-item"><span>% Aprovechamiento</span><span class="calc-val" id="t-aprov">—</span></div>
+          <div class="calc-item"><span>Área tendida (m²)</span><span class="calc-val" id="t-area-tot">—</span></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar tendido</button>
+          <button type="button" class="btn btn-danger btn-sm" data-clear="tendido">Limpiar tabla</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <p class="card-title">Últimos 20 registros</p>
+      <div class="table-wrap"><table><thead id="th-tendido"></thead><tbody id="tb-tendido"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Calidad -->
+<section class="panel" id="panel-calidad" role="tabpanel">
+  <div class="panel-grid">
+    <div class="card">
+      <p class="card-title">Nueva inspección de calidad</p>
+      <form id="form-calidad">
+        <div class="form-grid">
+          <div class="field"><label for="c-fecha">Fecha</label><input type="date" id="c-fecha" required></div>
+          <div class="field"><label for="c-of">N° OF</label><input type="text" id="c-of" required></div>
+          <div class="field s2"><label for="c-prenda">Tipo de prenda</label><input type="text" id="c-prenda" required></div>
+          <div class="field"><label for="c-total">Total inspeccionado</label><input type="number" id="c-total" min="1" step="1" required></div>
+          <div class="field"><label for="c-mc">Mal corte</label><input type="number" id="c-mc" min="0" step="1" value="0"></div>
+          <div class="field"><label for="c-fus">Fusionado deficiente</label><input type="number" id="c-fus" min="0" step="1" value="0"></div>
+          <div class="field"><label for="c-num">Numeración incorrecta</label><input type="number" id="c-num" min="0" step="1" value="0"></div>
+          <div class="field"><label for="c-tel">Tela con falla</label><input type="number" id="c-tel" min="0" step="1" value="0"></div>
+          <div class="field"><label for="c-med">Medida fuera de rango</label><input type="number" id="c-med" min="0" step="1" value="0"></div>
+          <div class="field"><label for="c-otro">Otro defecto</label><input type="number" id="c-otro" min="0" step="1" value="0"></div>
+        </div>
+        <div class="calc-box">
+          <div class="calc-item"><span>FPY</span><span class="calc-val" id="c-fpy">—</span></div>
+          <div class="calc-item"><span>Aprobadas</span><span class="calc-val" id="c-aprobadas">—</span></div>
+          <div class="calc-item"><span>Total defectos</span><span class="calc-val" id="c-defectos">—</span></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar inspección</button>
+          <button type="button" class="btn btn-danger btn-sm" data-clear="calidad">Limpiar tabla</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <p class="card-title">Últimos 20 registros</p>
+      <div class="table-wrap"><table><thead id="th-calidad"></thead><tbody id="tb-calidad"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. OLE -->
+<section class="panel" id="panel-ole" role="tabpanel">
+  <div class="panel-grid">
+    <div class="card">
+      <p class="card-title">Nuevo parte diario</p>
+      <form id="form-ole">
+        <div class="form-grid">
+          <div class="field s2"><label for="o-of">N° OF</label><input type="text" id="o-of" placeholder="Ej: OF-2026-001" required></div>
+          <div class="field"><label for="o-fecha">Fecha</label><input type="date" id="o-fecha" required></div>
+          <div class="field"><label for="o-turno">Turno</label><select id="o-turno" required><option value="">—</option><option>M — Mañana</option><option>T — Tarde</option><option>N — Noche</option></select></div>
+          <div class="field"><label for="o-fase">Fase</label><select id="o-fase" required><option value="">—</option><option>Tizado</option><option>Tendido</option><option>Corte</option><option>Numerado</option><option>Fusionado</option><option>Calidad</option><option>Habilitado</option></select></div>
+          <div class="field"><label for="o-ops">N° operarios activos</label><input type="number" id="o-ops" min="1" step="1" required></div>
+          <div class="field"><label for="o-hprog">Horas programadas</label><input type="number" id="o-hprog" step="0.5" min="0" required></div>
+          <div class="field"><label for="o-htrab">Horas trabajadas</label><input type="number" id="o-htrab" step="0.5" min="0" required></div>
+          <div class="field"><label for="o-preal">Producción real (pzas)</label><input type="number" id="o-preal" min="0" step="1" required></div>
+          <div class="field"><label for="o-pstd">Producción estándar (pzas)</label><input type="number" id="o-pstd" min="0" step="1" required></div>
+          <div class="field"><label for="o-pbue">Piezas buenas (calidad)</label><input type="number" id="o-pbue" min="0" step="1" required></div>
+        </div>
+        <div class="calc-box">
+          <div class="calc-item"><span>Disponibilidad</span><span class="calc-val" id="o-d">—</span></div>
+          <div class="calc-item"><span>Rendimiento</span><span class="calc-val" id="o-r">—</span></div>
+          <div class="calc-item"><span>Calidad</span><span class="calc-val" id="o-c">—</span></div>
+          <div class="calc-item"><span>OLE</span><span class="calc-val" id="o-ole" style="color:var(--accent)">—</span></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar parte diario</button>
+          <button type="button" class="btn btn-danger btn-sm" data-clear="ole">Limpiar tabla</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <p class="card-title">Últimos 20 registros</p>
+      <div class="table-wrap"><table><thead id="th-ole"></thead><tbody id="tb-ole"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. Fusionado -->
+<section class="panel" id="panel-fusionado" role="tabpanel">
+  <div class="panel-grid">
+    <div class="card">
+      <p class="card-title">Parámetros de fusionado</p>
+      <form id="form-fusionado">
+        <div class="form-grid">
+          <div class="field s2"><label for="f-of">N° OF</label><input type="text" id="f-of" placeholder="Ej: OF-2026-001" required></div>
+          <div class="field"><label for="f-fecha">Fecha</label><input type="date" id="f-fecha" required></div>
+          <div class="field"><label for="f-turno">Turno</label><select id="f-turno" required><option value="">—</option><option>M — Mañana</option><option>T — Tarde</option><option>N — Noche</option></select></div>
+          <div class="field s2"><label for="f-ref">Referencia / Prenda</label><input type="text" id="f-ref" placeholder="Ej: Camisa Oxford talla M" required></div>
+          <div class="field"><label for="f-temp">Temperatura (°C)</label><input type="number" id="f-temp" step="0.5" min="0" max="250" required></div>
+          <div class="field"><label for="f-pres">Presión (kg/cm²)</label><input type="number" id="f-pres" step="0.1" min="0" required></div>
+          <div class="field"><label for="f-tiem">Tiempo de prensa (seg)</label><input type="number" id="f-tiem" step="1" min="0" required></div>
+          <div class="field"><label for="f-pzas">N° piezas fusionadas</label><input type="number" id="f-pzas" step="1" min="1" required></div>
+          <div class="field sfull"><label for="f-obs">Observación</label><textarea id="f-obs" placeholder="Ej: Se ajustó temperatura por cambio de entretela"></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar registro</button>
+          <button type="button" class="btn btn-danger btn-sm" data-clear="fusionado">Limpiar tabla</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <p class="card-title">Últimos 20 registros</p>
+      <div class="table-wrap"><table><thead id="th-fusionado"></thead><tbody id="tb-fusionado"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. Habilitado -->
+<section class="panel" id="panel-habilitado" role="tabpanel">
+  <div class="panel-grid">
+    <div class="card">
+      <p class="card-title">Cierre de OF — Habilitado</p>
+      <form id="form-habilitado">
+        <div class="form-grid">
+          <div class="field s2"><label for="h-of">N° OF</label><input type="text" id="h-of" placeholder="Ej: OF-2026-001" required></div>
+          <div class="field"><label for="h-fecha">Fecha</label><input type="date" id="h-fecha" required></div>
+          <div class="field"><label for="h-turno">Turno</label><select id="h-turno" required><option value="">—</option><option>M — Mañana</option><option>T — Tarde</option><option>N — Noche</option></select></div>
+          <div class="field s2"><label for="h-sup">Supervisor / Responsable</label><input type="text" id="h-sup" placeholder="Nombre" required></div>
+          <div class="field"><label for="h-cort">Prendas cortadas (total OF)</label><input type="number" id="h-cort" step="1" min="1" required></div>
+          <div class="field"><label for="h-entr">Prendas entregadas a costura</label><input type="number" id="h-entr" step="1" min="0" required></div>
+          <div class="field s2"><label for="h-kit">Kit completo (avíos + piezas)</label><select id="h-kit" required><option value="">—</option><option>Sí</option><option>No — falta avíos</option><option>No — falta piezas</option><option>No — otro</option></select></div>
+          <div class="field sfull"><label for="h-obs">Observación</label><textarea id="h-obs" placeholder="Detallar faltantes o incidencias de entrega"></textarea></div>
+        </div>
+        <div class="calc-box">
+          <div class="calc-item"><span>% Entrega</span><span class="calc-val" id="h-pct">—</span></div>
+          <div class="calc-item"><span>Diferencia</span><span class="calc-val" id="h-dif">—</span></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar cierre</button>
+          <button type="button" class="btn btn-danger btn-sm" data-clear="habilitado">Limpiar tabla</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <p class="card-title">Últimos 20 registros</p>
+      <div class="table-wrap"><table><thead id="th-habilitado"></thead><tbody id="tb-habilitado"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9. Ishikawa -->
+<section class="panel" id="panel-ishikawa" role="tabpanel">
+  <div class="ishi-banner">
+    <span class="ishi-badge">⚡ Taller Semana 1</span>
+    <p>Completa este análisis <strong>una vez</strong> con tus supervisores (4 horas). El resultado es el catálogo de causas que usarás en la Ficha de Paradas cada turno.</p>
+  </div>
+  <div class="ishi-grid" id="ishi-grid"></div>
+  <div class="ishi-catalogo-wrap">
+    <div class="ishi-catalogo-header">
+      <span class="card-title" style="margin:0">Catálogo de causas validadas</span>
+      <button class="btn btn-ghost btn-sm" id="ishi-export">↓ Exportar catálogo</button>
+    </div>
+    <div id="ishi-catalogo"></div>
+  </div>
+</section>
+
+<!-- 10. Diccionario -->
+<section class="panel" id="panel-dict" role="tabpanel">
+  <div class="dict-intro">
+    <p>Referencia rápida de los términos y herramientas utilizados en las fichas de levantamiento. Si tienes dudas sobre qué medir o cómo interpretar un cálculo, esta sección es tu punto de partida.</p>
+  </div>
+  <div class="dict-grid" id="dict-grid"></div>
+</section>
+
+</main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ── CSRF: lee la cookie firmada y extrae el token puro (antes del primer punto) ── */
+function getCsrfToken(){
+  const m=document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  if(!m)return '';
+  return m[1].split('.')[0];
+}
+
+/* ── Fetch helper ── */
+async function apiFetch(url, opts={}){
+  const method=(opts.method||'GET').toUpperCase();
+  const headers={'Content-Type':'application/json',...(opts.headers||{})};
+  if(['POST','PUT','PATCH','DELETE'].includes(method)){
+    headers['x-csrf-token']=getCsrfToken();
+  }
+  const res=await fetch(url,{...opts,headers});
+  if(!res.ok){
+    let msg='Error '+res.status;
+    try{const e=await res.json();msg=e.detail||msg;}catch{}
+    throw new Error(msg);
+  }
+  if(res.status===204)return null;
+  return res.json();
+}
+
+const DICT = [
+  {term:'SAM',full:'Standard Allowed Minutes',cat:'tiempo',catLabel:'Tiempo & Capacidad',
+   def:'Tiempo estándar en minutos (o segundos) que debería tardar un operario calificado, trabajando a ritmo normal, en completar una operación. Es la base de todo el planeamiento de producción.',
+   formula:'SAM = Tiempo Normal × (1 + % Suplementos)',
+   note:'El estándar internacional en confección es que los operarios trabajen al 80–85% del SAM calculado.',
+   when:'Para programar órdenes de fabricación, calcular la capacidad de cada fase y medir la eficiencia real vs. el estándar.'},
+  {term:'OLE',full:'Overall Labor Effectiveness',cat:'eficiencia',catLabel:'Eficiencia',
+   def:'Eficiencia Global de la Mano de Obra. Adapta el concepto de OEE (equipos) a la gestión de personas en confección. Mide qué tan bien se aprovecha el tiempo disponible de los operarios.',
+   formula:'OLE = Disponibilidad × Rendimiento × Calidad',
+   note:'Un OLE entre 55% y 65% es el promedio de una planta de confección eficiente bien gestionada.',
+   when:'Para comparar fases, detectar cuellos de botella y tomar decisiones de reasignación de personal sin depender del criterio subjetivo del supervisor.'},
+  {term:'FPY',full:'First Pass Yield',cat:'calidad',catLabel:'Calidad',
+   def:'Porcentaje de prendas que superan la inspección de calidad a la primera vez, sin retrabajos ni reparaciones. Indica cuánto del proceso sale bien desde el origen.',
+   formula:'FPY = (Piezas aprobadas a la primera ÷ Total inspeccionado) × 100',
+   note:'Meta estándar: FPY > 95%. Por debajo de ese valor, el costo oculto del retrabajo impacta significativamente la rentabilidad.',
+   when:'En cada Orden de Fabricación para medir la calidad del proceso y priorizar en qué fases actuar para reducir defectos.'},
+  {term:'Muestreo de Trabajo',full:'Work Sampling — Método Tippett',cat:'tiempo',catLabel:'Tiempo & Capacidad',
+   def:'Técnica estadística que estima cómo se distribuye el tiempo de una estación (activo, en espera, parado) mediante observaciones rápidas tomadas en intervalos aleatorios, sin necesidad de cronómetro.',
+   formula:'n ≥ 400 observaciones para confianza del 95% con error ±5%',
+   note:'Cada observación solo registra el estado en ese instante exacto. La suma de observaciones da el porcentaje de tiempo en cada estado.',
+   when:'Como primer diagnóstico para medir la capacidad real de cada fase antes de hacer un estudio de tiempos formal.'},
+  {term:'Cronometraje OIT',full:'Estudio de Tiempos — Organización Internacional del Trabajo',cat:'tiempo',catLabel:'Tiempo & Capacidad',
+   def:'Método estándar para medir el tiempo que tarda un operario en completar cada elemento de una operación. Se cronometran mínimo 10 ciclos y se aplica un factor de valoración para obtener el tiempo normal.',
+   formula:'Tiempo Normal = Promedio medido × (Factor de valoración ÷ 100)',
+   note:'Nunca usar al operario más rápido ni al más lento. Promediar con al menos 3 operarios distintos.',
+   when:'Para calcular el SAM de cada fase del proceso de corte. Se repite cada 6 meses o cuando cambia el método de trabajo.'},
+  {term:'Factor de Valoración',full:'Rating Factor',cat:'tiempo',catLabel:'Tiempo & Capacidad',
+   def:'Número entre 60 y 140 que describe la velocidad real del operario observado comparada con el ritmo normal (100). Permite convertir el tiempo medido de un operario específico al tiempo de un operario promedio calificado.',
+   formula:'80 = lento · 100 = ritmo normal · 120 = rápido',
+   note:'El ingeniero asigna el factor en el momento de la observación, basándose en su criterio profesional sobre el ritmo del operario.',
+   when:'Durante el cronometraje. Es el ajuste que hace que el SAM sea válido para cualquier operario, no solo para el observado.'},
+  {term:'OF',full:'Orden de Fabricación',cat:'gestion',catLabel:'Gestión',
+   def:'Documento que autoriza y describe la producción de un lote: cliente, referencia, cantidad por talla, tela asignada y fecha de entrega comprometida. Es la unidad de trabajo que agrupa todos los registros.',
+   formula:null,
+   note:'Cada registro en todas las fichas debe asociarse a una OF para que los datos sean trazables y útiles para el análisis.',
+   when:'Siempre. Sin el número de OF los datos quedan desconectados de la planificación de producción.'},
+  {term:'Tizado',full:'Marcado de Moldes · Fase 1',cat:'proceso',catLabel:'Proceso de Corte',
+   def:'Primera fase. Consiste en distribuir los moldes de la prenda sobre el papel kraft o directamente sobre la tela, buscando minimizar el espacio desperdiciado entre piezas.',
+   formula:'% Aprovechamiento = (Área de moldes ÷ Área tendida total) × 100',
+   note:'El estándar internacional de aprovechamiento en confección industrial es 82–88%. Por debajo hay oportunidad de mejora en el diseño del tizado.',
+   when:'Registrar el % de aprovechamiento en cada tizado para controlar el costo real de materia prima por prenda.'},
+  {term:'Tendido',full:'Extendido de Tela · Fase 2',cat:'proceso',catLabel:'Proceso de Corte',
+   def:'Segunda fase. Consiste en extender capas de tela sobre la mesa de corte de forma uniforme, en el número de capas y el largo indicados por la OF.',
+   formula:'Área tendida (m²) = Largo × Ancho × N° capas',
+   note:'El contador de metros de la mesa es la fuente principal del dato. Si no hay contador, medir con cinta métrica al inicio y al final del tender.',
+   when:'Registrar en cada tender para calcular el % de aprovechamiento y la merma real en kilogramos.'},
+  {term:'Fusionado',full:'Aplicación de Entretela · Fase 5',cat:'proceso',catLabel:'Proceso de Corte',
+   def:'Fase en la que se aplica entretela termoadhesiva a las piezas cortadas usando una prensa fusionadora con temperatura, presión y tiempo controlados. Da rigidez y forma a zonas específicas de la prenda.',
+   formula:null,
+   note:'Temperatura o presión incorrectas son las principales causas de rechazo en calidad relacionadas con esta fase. Requiere calibración periódica de la fusionadora.',
+   when:'Registrar defectos de fusionado en el Check Sheet de Calidad para identificar si el problema es de proceso (máquina) o de operario.'},
+  {term:'Habilitado',full:'Preparación y Entrega a Costura · Fase 7',cat:'proceso',catLabel:'Proceso de Corte',
+   def:'Última fase del área de corte. Consiste en reunir, contar, ordenar por tallas y empaquetar las piezas cortadas y numeradas junto con sus avíos para entregar al área de costura.',
+   formula:null,
+   note:'La precisión del conteo en esta fase evita faltantes en costura que detienen la línea. Un kit incompleto genera una parada costosa.',
+   when:'Al cierre de cada Orden de Fabricación para garantizar la entrega completa y ordenada al siguiente proceso.'},
+  {term:'Ishikawa + 5 Porqués',full:'Análisis de Causa Raíz — Taller Semana 1',cat:'calidad',catLabel:'Calidad',
+   def:'Herramienta de taller (no de captura diaria) que permite construir el catálogo oficial de causas de parada del área de corte. El Diagrama de Ishikawa organiza las causas en 6 categorías (6M); los 5 Porqués profundiza en cada una hasta llegar a la raíz real. Su resultado — el catálogo de causas — es lo que alimenta la Ficha de Paradas cada turno.',
+   formula:'6M: Máquina · Método · Material · Mano de obra · Medio ambiente · Medición',
+   note:'⚡ Acción Semana 1 — Pasos: (1) Convocar supervisores de todos los turnos, 4 horas. (2) Dibujar el diagrama con las 6M en pizarra. (3) Listar todas las causas de parada conocidas en cada categoría. (4) Aplicar 5 Porqués a las 3 causas más frecuentes. (5) Cerrar el listado en 10–15 categorías concretas y accionables. (6) Validar en planta durante 2 semanas antes de usar oficialmente en la Ficha de Paradas.',
+   when:'Una vez al inicio del proyecto (Semana 1) y luego cada vez que aparezca una causa nueva recurrente que no esté en el catálogo. Revisión mensual en reunión de planta para hacer Pareto de causas acumuladas.'}
+];
+
+const TABS = {
+  sam:{cols:['of','fecha','operario','fase','elemento','tn','sam','factor','sup'],labels:['OF','Fecha','Operario','Fase','Elemento','TN (seg)','SAM (seg)','FV %','Sup %']},
+  paradas:{cols:['of','fecha','turno','fase','causa','duracion','obs'],labels:['OF','Fecha','Turno','Fase','Causa','Min','Obs.']},
+  muestreo:{cols:['of','fecha','hora','fase','estado','obs'],labels:['OF','Fecha','Hora','Fase','Estado','Obs.']},
+  tendido:{cols:['fecha','of','prenda','tela','largo','capas','ancho','prendas','retazo','areaMoldes','aprov'],labels:['Fecha','OF','Prenda','Tela','Largo','Capas','Ancho','Prendas','Retazo','Área m²','% Aprov.']},
+  calidad:{cols:['fecha','of','prenda','total','fpy','mc','fus','num','tel','med','otro'],labels:['Fecha','OF','Prenda','Total','FPY %','Mal corte','Fusion.','Num.','Tela','Medida','Otro']},
+  ole:{cols:['of','fecha','turno','fase','ops','hprog','htrab','preal','pstd','pbue','D','R','C','ole'],labels:['OF','Fecha','Turno','Fase','Ops','H.Prog','H.Trab','P.Real','P.Std','P.Buenas','D%','R%','C%','OLE%']},
+  fusionado:{cols:['of','fecha','turno','referencia','temp','presion','tiempo','piezas','obs'],labels:['OF','Fecha','Turno','Referencia','Temp °C','Presión','Tiempo seg','Piezas','Obs.']},
+  habilitado:{cols:['of','fecha','turno','supervisor','cortadas','entregadas','kit','pctEntrega','obs'],labels:['OF','Fecha','Turno','Supervisor','P.Cortadas','P.Entregadas','Kit OK','% Entrega','Obs.']}
+};
+const FASES=['Tizado','Tendido','Corte','Numerado','Fusionado','Calidad','Habilitado'];
+const ESTADOS=['Activo','En espera','Parado'];
+const MAX=20;
+
+/* ── Normaliza respuesta API al formato de columnas que espera la tabla ── */
+function normalize(k, r){
+  if(k==='sam')     return {of:r.of_numero,fecha:r.fecha,operario:r.operario,fase:r.fase,elemento:r.elemento,tn:r.tiempo_normal,sam:r.sam,factor:r.factor_valoracion,sup:r.suplementos_pct};
+  if(k==='paradas') return {of:r.of_numero,fecha:r.fecha,turno:r.turno,fase:r.fase,causa:r.causa,duracion:r.duracion_min,obs:r.observacion};
+  if(k==='muestreo')return {of:r.of_numero,fecha:r.fecha,hora:r.hora,fase:r.fase,estado:r.estado,obs:r.observacion};
+  if(k==='tendido') return {fecha:r.fecha,of:r.of_numero,prenda:r.tipo_prenda,tela:r.tela_partida,largo:r.largo_tender_m,capas:r.num_capas,ancho:r.ancho_tela_m,prendas:r.num_prendas,retazo:r.retazo_kg,areaMoldes:r.area_tizado_m2,aprov:r.pct_aprovechamiento};
+  if(k==='calidad') return {fecha:r.fecha,of:r.of_numero,prenda:r.tipo_prenda,total:r.total_inspeccionado,fpy:r.fpy,mc:r.def_mal_corte,fus:r.def_fusionado,num:r.def_numeracion,tel:r.def_tela,med:r.def_medida,otro:r.def_otro};
+  if(k==='ole')     return {of:r.of_numero,fecha:r.fecha,turno:r.turno,fase:r.fase,ops:r.num_operarios,hprog:r.horas_programadas,htrab:r.horas_trabajadas,preal:r.produccion_real,pstd:r.produccion_std,pbue:r.piezas_buenas,D:r.disponibilidad,R:r.rendimiento,C:r.calidad_pct,ole:r.ole};
+  if(k==='fusionado')return {of:r.of_numero,fecha:r.fecha,turno:r.turno,referencia:r.referencia,temp:r.temperatura_c,presion:r.presion_kgcm2,tiempo:r.tiempo_seg,piezas:r.num_piezas,obs:r.observacion};
+  if(k==='habilitado')return {of:r.of_numero,fecha:r.fecha,turno:r.turno,supervisor:r.supervisor,cortadas:r.prendas_cortadas,entregadas:r.prendas_entregadas,kit:r.kit_completo,pctEntrega:r.pct_entrega,obs:r.observacion};
+  return r;
+}
+
+/* ── Payload para POST ── */
+function toPayload(k, r){
+  if(k==='sam')      return {of_numero:r.of,fecha:r.fecha,operario:r.operario,fase:r.fase,elemento:r.elemento,tiempos:r.tiempos||[],factor_valoracion:r.factor,suplementos_pct:r.sup,tiempo_normal:r.tn,sam:r.sam};
+  if(k==='paradas')  return {of_numero:r.of,fecha:r.fecha,turno:r.turno,fase:r.fase,causa:r.causa,duracion_min:r.duracion,observacion:r.obs||null};
+  if(k==='muestreo') return {of_numero:r.of,fecha:r.fecha,hora:r.hora,fase:r.fase,estado:r.estado,observacion:r.obs||null};
+  if(k==='tendido')  return {fecha:r.fecha,of_numero:r.of,tipo_prenda:r.prenda,tela_partida:r.tela,largo_tender_m:r.largo,num_capas:r.capas,ancho_tela_m:r.ancho,num_prendas:r.prendas,retazo_kg:r.retazo||0,area_tizado_m2:r.areaMoldes,pct_aprovechamiento:r.aprov??null,area_tendida_m2:r.largo*r.capas*r.ancho||null};
+  if(k==='calidad')  return {fecha:r.fecha,of_numero:r.of,tipo_prenda:r.prenda,total_inspeccionado:r.total,fpy:r.fpy??null,def_mal_corte:r.mc||0,def_fusionado:r.fus||0,def_numeracion:r.num||0,def_tela:r.tel||0,def_medida:r.med||0,def_otro:r.otro||0,total_defectos:(r.mc+r.fus+r.num+r.tel+r.med+r.otro)||0,aprobadas:r.total-(r.mc+r.fus+r.num+r.tel+r.med+r.otro)||null};
+  if(k==='ole')      return {of_numero:r.of,fecha:r.fecha,turno:r.turno,fase:r.fase,num_operarios:r.ops,horas_programadas:r.hprog,horas_trabajadas:r.htrab,produccion_real:r.preal,produccion_std:r.pstd,piezas_buenas:r.pbue,disponibilidad:r.D??null,rendimiento:r.R??null,calidad_pct:r.C??null,ole:r.ole??null};
+  if(k==='fusionado')return {of_numero:r.of,fecha:r.fecha,turno:r.turno,referencia:r.referencia,temperatura_c:r.temp,presion_kgcm2:r.presion,tiempo_seg:r.tiempo,num_piezas:r.piezas,observacion:r.obs||null};
+  if(k==='habilitado')return {of_numero:r.of,fecha:r.fecha,turno:r.turno,supervisor:r.supervisor,prendas_cortadas:r.cortadas,prendas_entregadas:r.entregadas,kit_completo:r.kit,pct_entrega:r.pctEntrega??null,observacion:r.obs||null};
+  return r;
+}
+
+let _tt;
+function showToast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show'+(type?' '+type:'');clearTimeout(_tt);_tt=setTimeout(()=>el.className='toast',2400);}
+
+function pulse(id){const el=document.getElementById(id);if(!el)return;el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse');}
+function setCalc(id,val){const el=document.getElementById(id);if(!el)return;const txt=val!==null?val:'—';if(el.textContent!==txt){el.textContent=txt;pulse(id);}}
+
+const pill=document.getElementById('tab-pill');
+function movePill(btn){const nav=document.getElementById('tabs-nav');pill.style.left=(btn.offsetLeft-nav.scrollLeft)+'px';pill.style.width=btn.offsetWidth+'px';}
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    movePill(btn);
+  });
+});
+setTimeout(()=>{const a=document.querySelector('.tab-btn.active');if(a)movePill(a);},50);
+
+async function renderTable(k){
+  const cfg=TABS[k];if(!cfg)return;
+  const thead=document.getElementById('th-'+k),tbody=document.getElementById('tb-'+k);
+  tbody.innerHTML='<tr><td class="empty-td" colspan="'+cfg.cols.length+'">Cargando…</td></tr>';
+  thead.innerHTML='<tr>'+cfg.labels.map(l=>'<th>'+l+'</th>').join('')+'</tr>';
+  let rows=[];
+  try{rows=await apiFetch('/ing/'+k+'?limit='+MAX);}
+  catch(e){tbody.innerHTML='<tr><td class="empty-td" colspan="'+cfg.cols.length+'">Error al cargar: '+e.message+'</td></tr>';return;}
+  const data=rows.map(r=>normalize(k,r));
+  if(!data.length){tbody.innerHTML='<tr><td class="empty-td" colspan="'+cfg.cols.length+'">Sin registros aún</td></tr>';return;}
+  tbody.innerHTML=data.map(r=>'<tr>'+cfg.cols.map(c=>{
+    let v=r[c];
+    if(typeof v==='number'){if(['fpy','aprov','D','R','C','ole'].includes(c))v=v.toFixed(1)+'%';else if(['tn','sam'].includes(c))v=v.toFixed(2);}
+    return '<td>'+(v??'—')+'</td>';
+  }).join('')+'</tr>').join('');
+}
+
+async function push(k, rec){
+  const payload=toPayload(k, rec);
+  await apiFetch('/ing/'+k,{method:'POST',body:JSON.stringify(payload)});
+  await renderTable(k);
+  if(k==='muestreo') await renderMueResumen();
+}
+
+function clear(k){
+  showToast('Limpiar registros: use el panel de administración del servidor','error');
+}
+
+async function renderMueResumen(){
+  const thead=document.getElementById('th-mue-res'),tbody=document.getElementById('tb-mue-res');
+  thead.innerHTML='<tr><th>Fase</th><th>Total</th>'+ESTADOS.map(e=>'<th>'+e+' %</th>').join('')+'</tr>';
+  let rows=[];
+  try{rows=await apiFetch('/ing/muestreo?limit=500');}
+  catch{tbody.innerHTML='<tr><td class="empty-td" colspan="5">Error</td></tr>';return;}
+  if(!rows.length){tbody.innerHTML='<tr><td class="empty-td" colspan="5">Sin datos</td></tr>';return;}
+  const m={};FASES.forEach(f=>{m[f]={total:0,Activo:0,'En espera':0,Parado:0};});
+  rows.forEach(r=>{const f=r.fase;if(!m[f])m[f]={total:0,Activo:0,'En espera':0,Parado:0};m[f].total++;if(r.estado in m[f])m[f][r.estado]++;});
+  const tableRows=FASES.filter(f=>m[f].total>0).map(f=>{const s=m[f];const p=e=>s.total?((s[e]/s.total)*100).toFixed(1)+'%':'0%';return '<tr><td>'+f+'</td><td>'+s.total+'</td>'+ESTADOS.map(e=>'<td>'+p(e)+'</td>').join('')+'</tr>';});
+  tbody.innerHTML=tableRows.length?tableRows.join(''):'<tr><td class="empty-td" colspan="5">Sin datos</td></tr>';
+}
+
+const tgrid=document.getElementById('sam-tgrid');
+for(let i=1;i<=10;i++)tgrid.innerHTML+='<div class="field"><label for="st'+i+'">T'+i+'</label><input type="number" id="st'+i+'" class="st" step="0.01" min="0"></div>';
+
+function calcSAM(){
+  const vals=[...document.querySelectorAll('.st')].map(el=>parseFloat(el.value)).filter(v=>!isNaN(v)&&v>0);
+  const fv=parseFloat(document.getElementById('s-fv').value)||100,sup=parseFloat(document.getElementById('s-sup').value)||0;
+  let tn=null,sam=null;
+  if(vals.length){const avg=vals.reduce((a,b)=>a+b,0)/vals.length;tn=avg*(fv/100);sam=tn*(1+sup/100);}
+  setCalc('s-tn',tn?tn.toFixed(2)+' seg':null);setCalc('s-sam',sam?sam.toFixed(2)+' seg':null);setCalc('s-n',vals.length.toString());
+  return{tn,sam,vals,fv,sup};
+}
+document.querySelectorAll('.st,#s-fv,#s-sup').forEach(el=>el.addEventListener('input',calcSAM));
+document.getElementById('form-sam').addEventListener('submit',async e=>{
+  e.preventDefault();const{tn,sam,vals,fv,sup}=calcSAM();
+  if(!tn){alert('Ingrese al menos una lectura de tiempo.');return;}
+  try{
+    await push('sam',{of:document.getElementById('s-of').value.trim(),fecha:document.getElementById('s-fecha').value,operario:document.getElementById('s-op').value.trim(),fase:document.getElementById('s-fase').value,elemento:document.getElementById('s-elem').value.trim(),tiempos:vals,factor:fv,sup,tn,sam});
+    showToast('Registro SAM guardado');e.target.reset();document.getElementById('s-fv').value=100;document.getElementById('s-sup').value=15;calcSAM();
+  }catch(err){showToast('Error: '+err.message,'error');}
+});
+
+document.getElementById('form-paradas').addEventListener('submit',async e=>{
+  e.preventDefault();
+  try{
+    await push('paradas',{of:document.getElementById('p-of').value.trim(),fecha:document.getElementById('p-fecha').value,turno:document.getElementById('p-turno').value,fase:document.getElementById('p-fase').value,causa:document.getElementById('p-causa').value,duracion:parseFloat(document.getElementById('p-dur').value),obs:document.getElementById('p-obs').value.trim()});
+    showToast('Parada registrada');e.target.reset();setToday();
+  }catch(err){showToast('Error: '+err.message,'error');}
+});
+
+document.getElementById('form-muestreo').addEventListener('submit',async e=>{
+  e.preventDefault();
+  try{
+    await push('muestreo',{of:document.getElementById('m-of').value.trim(),fecha:document.getElementById('m-fecha').value,hora:document.getElementById('m-hora').value,fase:document.getElementById('m-fase').value,estado:document.getElementById('m-estado').value,obs:document.getElementById('m-obs').value.trim()});
+    showToast('Observación registrada');e.target.reset();setToday();
+  }catch(err){showToast('Error: '+err.message,'error');}
+});
+
+function calcTendido(){
+  const l=parseFloat(document.getElementById('t-largo').value),c=parseFloat(document.getElementById('t-capas').value),a=parseFloat(document.getElementById('t-ancho').value),am=parseFloat(document.getElementById('t-area').value);
+  const denom=l*c*a;let aprov=null,areaTot=null;
+  if(denom>0){areaTot=denom;if(!isNaN(am))aprov=(am/denom)*100;}
+  setCalc('t-aprov',aprov?aprov.toFixed(1)+'%':null);setCalc('t-area-tot',areaTot?areaTot.toFixed(2)+' m²':null);
+  return{aprov,areaTot};
+}
+['t-largo','t-capas','t-ancho','t-area'].forEach(id=>document.getElementById(id).addEventListener('input',calcTendido));
+document.getElementById('form-tendido').addEventListener('submit',async e=>{
+  e.preventDefault();const{aprov,areaTot}=calcTendido();
+  try{
+    await push('tendido',{fecha:document.getElementById('t-fecha').value,of:document.getElementById('t-of').value.trim(),prenda:document.getElementById('t-prenda').value.trim(),tela:document.getElementById('t-tela').value.trim(),largo:parseFloat(document.getElementById('t-largo').value),capas:parseInt(document.getElementById('t-capas').value),ancho:parseFloat(document.getElementById('t-ancho').value),prendas:parseInt(document.getElementById('t-prendas').value),retazo:parseFloat(document.getElementById('t-retazo').value)||0,areaMoldes:parseFloat(document.getElementById('t-area').value),aprov,areaTendida:areaTot});
+    showToast('Tendido guardado');e.target.reset();document.getElementById('t-retazo').value=0;setToday();calcTendido();
+  }catch(err){showToast('Error: '+err.message,'error');}
+});
+
+const DEFIDS=['c-mc','c-fus','c-num','c-tel','c-med','c-otro'];
+function calcCal(){
+  const total=parseInt(document.getElementById('c-total').value)||0;
+  const def=DEFIDS.reduce((s,id)=>s+(parseInt(document.getElementById(id).value)||0),0);
+  const aprobadas=Math.max(0,total-def),fpy=total>0?(aprobadas/total)*100:null;
+  setCalc('c-fpy',fpy!==null?fpy.toFixed(1)+'%':null);setCalc('c-aprobadas',total>0?aprobadas.toString():null);setCalc('c-defectos',total>0?def.toString():null);
+  return{fpy,total,def,aprobadas};
+}
+['c-total',...DEFIDS].forEach(id=>document.getElementById(id).addEventListener('input',calcCal));
+document.getElementById('form-calidad').addEventListener('submit',async e=>{
+  e.preventDefault();const{fpy,total,def,aprobadas}=calcCal();
+  try{
+    await push('calidad',{fecha:document.getElementById('c-fecha').value,of:document.getElementById('c-of').value.trim(),prenda:document.getElementById('c-prenda').value.trim(),total,fpy,mc:parseInt(document.getElementById('c-mc').value)||0,fus:parseInt(document.getElementById('c-fus').value)||0,num:parseInt(document.getElementById('c-num').value)||0,tel:parseInt(document.getElementById('c-tel').value)||0,med:parseInt(document.getElementById('c-med').value)||0,otro:parseInt(document.getElementById('c-otro').value)||0,totalDef:def,aprobadas});
+    showToast('Inspección guardada');e.target.reset();DEFIDS.forEach(id=>document.getElementById(id).value=0);setToday();calcCal();
+  }catch(err){showToast('Error: '+err.message,'error');}
+});
+
+function calcOLE(){
+  const hp=parseFloat(document.getElementById('o-hprog').value),ht=parseFloat(document.getElementById('o-htrab').value);
+  const pr=parseFloat(document.getElementById('o-preal').value),ps=parseFloat(document.getElementById('o-pstd').value),pb=parseFloat(document.getElementById('o-pbue').value);
+  let D=null,R=null,C=null,ole=null;
+  if(hp>0)D=(ht/hp)*100;if(ps>0)R=(pr/ps)*100;if(pr>0)C=(pb/pr)*100;
+  if(D!==null&&R!==null&&C!==null)ole=(D/100)*(R/100)*(C/100)*100;
+  const f=v=>v!==null?v.toFixed(1)+'%':null;
+  setCalc('o-d',f(D));setCalc('o-r',f(R));setCalc('o-c',f(C));setCalc('o-ole',f(ole));
+  return{D,R,C,ole};
+}
+['o-hprog','o-htrab','o-preal','o-pstd','o-pbue'].forEach(id=>document.getElementById(id).addEventListener('input',calcOLE));
+document.getElementById('form-ole').addEventListener('submit',async e=>{
+  e.preventDefault();const{D,R,C,ole}=calcOLE();
+  try{
+    await push('ole',{of:document.getElementById('o-of').value.trim(),fecha:document.getElementById('o-fecha').value,turno:document.getElementById('o-turno').value,fase:document.getElementById('o-fase').value,ops:parseInt(document.getElementById('o-ops').value),hprog:parseFloat(document.getElementById('o-hprog').value),htrab:parseFloat(document.getElementById('o-htrab').value),preal:parseFloat(document.getElementById('o-preal').value),pstd:parseFloat(document.getElementById('o-pstd').value),pbue:parseFloat(document.getElementById('o-pbue').value),D,R,C,ole});
+    showToast('Parte diario guardado');e.target.reset();setToday();calcOLE();
+  }catch(err){showToast('Error: '+err.message,'error');}
+});
+
+document.querySelectorAll('[data-clear]').forEach(btn=>btn.addEventListener('click',()=>clear(btn.dataset.clear)));
+
+document.getElementById('btn-export').addEventListener('click',async ()=>{
+  try{
+    const all={exportado:new Date().toISOString(),fichas:{}};
+    const keys=Object.keys(TABS);
+    await Promise.all(keys.map(async k=>{all.fichas[k]=await apiFetch('/ing/'+k+'?limit=1000');}));
+    const blob=new Blob([JSON.stringify(all,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='samitex_corte_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+    URL.revokeObjectURL(url);showToast('JSON exportado');
+  }catch(err){showToast('Error exportando: '+err.message,'error');}
+});
+
+document.getElementById('form-fusionado').addEventListener('submit',async e=>{
+  e.preventDefault();
+  try{
+    await push('fusionado',{of:document.getElementById('f-of').value.trim(),fecha:document.getElementById('f-fecha').value,turno:document.getElementById('f-turno').value,referencia:document.getElementById('f-ref').value.trim(),temp:parseFloat(document.getElementById('f-temp').value),presion:parseFloat(document.getElementById('f-pres').value),tiempo:parseFloat(document.getElementById('f-tiem').value),piezas:parseInt(document.getElementById('f-pzas').value),obs:document.getElementById('f-obs').value.trim()});
+    showToast('Fusionado guardado');e.target.reset();setToday();
+  }catch(err){showToast('Error: '+err.message,'error');}
+});
+
+function calcHab(){
+  const c=parseInt(document.getElementById('h-cort').value)||0;
+  const e=parseInt(document.getElementById('h-entr').value)||0;
+  const pct=c>0?(e/c)*100:null;
+  const dif=c>0?e-c:null;
+  setCalc('h-pct',pct!==null?pct.toFixed(1)+'%':null);
+  setCalc('h-dif',dif!==null?(dif===0?'0':dif>0?'+'+dif:String(dif)):null);
+  return{pct,dif};
+}
+['h-cort','h-entr'].forEach(id=>document.getElementById(id).addEventListener('input',calcHab));
+document.getElementById('form-habilitado').addEventListener('submit',async e=>{
+  e.preventDefault();const{pct}=calcHab();
+  try{
+    await push('habilitado',{of:document.getElementById('h-of').value.trim(),fecha:document.getElementById('h-fecha').value,turno:document.getElementById('h-turno').value,supervisor:document.getElementById('h-sup').value.trim(),cortadas:parseInt(document.getElementById('h-cort').value),entregadas:parseInt(document.getElementById('h-entr').value),kit:document.getElementById('h-kit').value,pctEntrega:pct,obs:document.getElementById('h-obs').value.trim()});
+    showToast('Cierre de habilitado guardado');e.target.reset();setToday();calcHab();
+  }catch(err){showToast('Error: '+err.message,'error');}
+});
+
+/* ── Ishikawa (usa API) ── */
+const ISHI_MS=[
+  {key:'maquina',   label:'Máquina',      color:'#6366f1'},
+  {key:'metodo',    label:'Método',       color:'#22d3ee'},
+  {key:'material',  label:'Material',     color:'#a78bfa'},
+  {key:'mano',      label:'Mano de obra', color:'#10b981'},
+  {key:'medio',     label:'Medio ambiente',color:'#f59e0b'},
+  {key:'medicion',  label:'Medición',     color:'#f43f5e'}
+];
+
+let _ishiCache={};
+
+async function reloadIshi(){
+  try{
+    const rows=await apiFetch('/ing/ishikawa');
+    const d={};ISHI_MS.forEach(m=>{d[m.key]=[];});
+    rows.forEach(r=>{
+      if(!d[r.categoria])d[r.categoria]=[];
+      d[r.categoria].push({id:r.id,texto:r.causa_texto,porques:r.porques||[],raiz:r.causa_raiz||'',validada:r.validada,pqOpen:false});
+    });
+    _ishiCache=d;
+  }catch(e){console.error('Ishikawa load error',e);}
+}
+
+function ishiData(){return _ishiCache;}
+
+function renderIshi(){
+  const d=ishiData();
+  const grid=document.getElementById('ishi-grid');
+  grid.innerHTML=ISHI_MS.map(m=>{
+    const causas=d[m.key]||[];
+    const causasHTML=causas.map(c=>`
+      <div class="ishi-causa-item" id="ci-${m.key}-${c.id}">
+        <div class="ishi-causa-row">
+          <span class="ishi-causa-text">${c.texto}</span>
+          <div class="ishi-causa-actions">
+            <button class="ishi-btn${c.validada?' validado':''}" onclick="ishiValidar('${m.key}',${c.id})" title="Validar para catálogo">${c.validada?'✓ Validada':'Validar'}</button>
+            <button class="ishi-btn" onclick="ishiTogglePQ('${m.key}',${c.id})">5 Porqués ▾</button>
+            <button class="ishi-btn del" onclick="ishiDelete('${m.key}',${c.id})" title="Eliminar">✕</button>
+          </div>
+        </div>
+        <div class="ishi-porques${c.pqOpen?' open':''}" id="pq-${m.key}-${c.id}">
+          ${[1,2,3,4,5].map(n=>`<div class="ishi-pq-field"><label>¿Por qué ${n}?</label><input type="text" id="pq${n}-${m.key}-${c.id}" value="${(c.porques&&c.porques[n-1])||''}" placeholder="¿Por qué ocurre?"></div>`).join('')}
+          <div class="ishi-raiz" id="raiz-${m.key}-${c.id}">${c.raiz?'Causa raíz: '+c.raiz:''}</div>
+          <button class="btn btn-primary btn-sm ishi-pq-save" onclick="ishiSavePQ('${m.key}',${c.id})">Guardar análisis</button>
+        </div>
+      </div>`).join('');
+    return `<div class="ishi-card">
+      <div class="ishi-card-header">
+        <span class="ishi-m-dot" style="background:${m.color}"></span>
+        <span class="ishi-m-label">${m.label}</span>
+      </div>
+      <div class="ishi-causa-list">${causas.length?causasHTML:'<span style="font-size:11px;color:var(--muted2)">Sin causas aún</span>'}</div>
+      <div class="ishi-add-row">
+        <input type="text" id="add-${m.key}" placeholder="Agregar causa…">
+        <button onclick="ishiAdd('${m.key}')">+ Agregar</button>
+      </div>
+    </div>`;
+  }).join('');
+  renderIshiCatalogo();
+}
+
+async function ishiAdd(cat){
+  const inp=document.getElementById('add-'+cat);
+  const txt=(inp.value||'').trim();if(!txt)return;
+  try{
+    await apiFetch('/ing/ishikawa',{method:'POST',body:JSON.stringify({categoria:cat,causa_texto:txt,porques:[],causa_raiz:null,validada:false})});
+    inp.value='';await reloadIshi();renderIshi();
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+window.ishiAdd=ishiAdd;
+
+async function ishiDelete(cat,id){
+  if(!confirm('¿Eliminar esta causa?'))return;
+  try{
+    await apiFetch('/ing/ishikawa/'+id,{method:'DELETE'});
+    await reloadIshi();renderIshi();
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+window.ishiDelete=ishiDelete;
+
+function ishiTogglePQ(cat,id){
+  const d=ishiData();const c=(d[cat]||[]).find(x=>x.id===id);if(!c)return;
+  c.pqOpen=!c.pqOpen;
+  const el=document.getElementById('pq-'+cat+'-'+id);
+  if(el)el.classList.toggle('open',c.pqOpen);
+}
+window.ishiTogglePQ=ishiTogglePQ;
+
+async function ishiSavePQ(cat,id){
+  const porques=[1,2,3,4,5].map(n=>(document.getElementById('pq'+n+'-'+cat+'-'+id)||{}).value||'');
+  const raiz=porques.filter(Boolean).slice(-1)[0]||'';
+  try{
+    await apiFetch('/ing/ishikawa/'+id,{method:'PATCH',body:JSON.stringify({porques,causa_raiz:raiz})});
+    const raizEl=document.getElementById('raiz-'+cat+'-'+id);
+    if(raizEl)raizEl.textContent=raiz?'Causa raíz: '+raiz:'';
+    showToast('Análisis guardado');
+    await reloadIshi();
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+window.ishiSavePQ=ishiSavePQ;
+
+async function ishiValidar(cat,id){
+  const d=ishiData();const c=(d[cat]||[]).find(x=>x.id===id);if(!c)return;
+  const newVal=!c.validada;
+  try{
+    await apiFetch('/ing/ishikawa/'+id,{method:'PATCH',body:JSON.stringify({validada:newVal})});
+    showToast(newVal?'Causa añadida al catálogo':'Causa removida del catálogo');
+    await reloadIshi();renderIshi();
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+window.ishiValidar=ishiValidar;
+
+function renderIshiCatalogo(){
+  const d=ishiData();const el=document.getElementById('ishi-catalogo');
+  const grupos=ISHI_MS.map(m=>({label:m.label,causas:(d[m.key]||[]).filter(c=>c.validada)})).filter(g=>g.causas.length);
+  if(!grupos.length){el.innerHTML='<p class="ishi-cat-empty">Aún no hay causas validadas. Marca "Validar" en las causas que quieras incluir en el catálogo oficial de Paradas.</p>';return;}
+  let n=1;
+  el.innerHTML=grupos.map(g=>`
+    <div class="ishi-cat-group">
+      <p class="ishi-cat-group-label">${g.label}</p>
+      ${g.causas.map(c=>`<div class="ishi-cat-item"><span class="ishi-cat-num">${n++}</span><div class="ishi-cat-desc"><p class="ishi-cat-causa">${c.texto}</p>${c.raiz?'<p class="ishi-cat-raiz">Raíz: '+c.raiz+'</p>':''}</div></div>`).join('')}
+    </div>`).join('');
+}
+
+document.getElementById('ishi-export').addEventListener('click',async ()=>{
+  await reloadIshi();
+  const d=ishiData();
+  const grupos=ISHI_MS.map(m=>({categoria:m.label,causas:(d[m.key]||[]).filter(c=>c.validada).map(c=>({causa:c.texto,porques:c.porques,raiz:c.raiz}))})).filter(g=>g.causas.length);
+  const blob=new Blob([JSON.stringify({catalogo_ishikawa:grupos,exportado:new Date().toISOString()},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='ishikawa_catalogo_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  URL.revokeObjectURL(url);showToast('Catálogo exportado');
+});
+
+function renderDict(){
+  const cc={tiempo:'cat-tiempo',calidad:'cat-calidad',eficiencia:'cat-eficiencia',proceso:'cat-proceso',gestion:'cat-gestion'};
+  document.getElementById('dict-grid').innerHTML=DICT.map(d=>`<div class="dict-card"><span class="dict-badge ${cc[d.cat]||''}">${d.catLabel}</span><p class="dict-term">${d.term}</p><p class="dict-full">${d.full}</p><p class="dict-def">${d.def}</p>${d.formula?'<div class="dict-formula">'+d.formula+'</div>':''}<p class="dict-when-label">¿Cuándo usar?</p><p class="dict-when">${d.when}</p>${d.note?'<div class="dict-note">'+d.note+'</div>':''}</div>`).join('');
+}
+renderDict();
+
+function setToday(){
+  const t=new Date().toISOString().slice(0,10);
+  document.querySelectorAll('input[type="date"]').forEach(el=>{if(!el.value)el.value=t;});
+  const now=new Date(),ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const mh=document.getElementById('m-hora');if(mh&&!mh.value)mh.value=ts;
+}
+setToday();
+
+/* ── Carga inicial ── */
+(async()=>{
+  await Promise.all(Object.keys(TABS).map(k=>renderTable(k)));
+  await renderMueResumen();
+  await reloadIshi();
+  renderIshi();
+})();
+
+})();
+</script>
+</body>
+</html>

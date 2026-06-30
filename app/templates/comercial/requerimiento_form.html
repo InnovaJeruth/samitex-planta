@@ -32,7 +32,7 @@
     flex-shrink: 0;
 }
 .seccion-titulo { font-size: 14px; font-weight: 600; color: #fff; margin-left: 10px; flex: 1; }
-.seccion-chevron { color: #555; font-size: 12px; transition: transform .2s; }
+.seccion-chevron { color: #767676; font-size: 12px; transition: transform .2s; }
 .seccion-chevron.open { transform: rotate(180deg); }
 .seccion-body { padding: 20px; border-top: 1px solid #222; display: none; }
 .seccion-body.open { display: block; }
@@ -58,7 +58,7 @@
     border: 1px solid #333; color: #888; cursor: pointer; transition: all .15s;
     background: #111;
 }
-.tipo-pill:hover { border-color: #555; color: #ccc; }
+.tipo-pill:hover { border-color: #767676; color: #ccc; }
 .tipo-pill.active { background: #1a6fbe; border-color: #1a6fbe; color: #fff; }
 
 /* ── Items de prenda ── */
@@ -96,8 +96,7 @@
 .talla-input {
     width: 60px; background: #111; border: 1px solid #333;
     border-radius: 5px; padding: 5px 6px; color: #e0e0e0;
-    font-size: 13px; text-align: center; outline: none;
-    transition: border-color .15s;
+    font-size: 13px; text-align: center; transition: border-color .15s;
 }
 .talla-input:focus { border-color: #1a6fbe; }
 .talla-total-row {
@@ -111,12 +110,12 @@
 .campo-condicional.visible { display: block; }
 
 /* ── Separador de secciones internas ── */
-.sub-titulo { font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase;
+.sub-titulo { font-size: 11px; font-weight: 700; color: #767676; text-transform: uppercase;
     letter-spacing: .6px; margin: 18px 0 10px; }
 
 /* ── Botón agregar ítem ── */
 .btn-agregar-item {
-    width: 100%; border: 1px dashed #333; background: none; color: #555;
+    width: 100%; border: 1px dashed #333; background: none; color: #767676;
     border-radius: 8px; padding: 12px; font-size: 13px; cursor: pointer;
     transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 8px;
 }
@@ -179,7 +178,7 @@
                 <div class="form-row form-row-3">
                     <div class="form-group">
                         <label>N° Contrato <span style="color:#e06060">*</span></label>
-                        <input type="text" id="nro_contrato" placeholder="GR-065-2026-ELCTO">
+                        <input type="text" id="nro_contrato" placeholder="GR-065-2026-ELCTO" aria-label="Número de contrato">
                     </div>
                     <div class="form-group">
                         <label>Proceso</label>
@@ -193,7 +192,7 @@
                     </div>
                     <div class="form-group">
                         <label>N° Licitación / Referencia</label>
-                        <input type="text" id="nro_licitacion" placeholder="LP-SM-001-2026-ELCTO">
+                        <input type="text" id="nro_licitacion" placeholder="LP-SM-001-2026-ELCTO" aria-label="Número de licitación">
                     </div>
                 </div>
             </div>
@@ -203,15 +202,15 @@
                 <div class="form-row form-row-3">
                     <div class="form-group">
                         <label>N° Orden de Compra <span style="color:#e06060">*</span></label>
-                        <input type="text" id="nro_oc" placeholder="0000369">
+                        <input type="text" id="nro_oc" placeholder="0000369" aria-label="Número de OC">
                     </div>
                     <div class="form-group">
                         <label>Unidad Ejecutora</label>
-                        <input type="text" id="unidad_ejecutora" placeholder="001 Universidad Nacional...">
+                        <input type="text" id="unidad_ejecutora" placeholder="001 Universidad Nacional..." aria-label="Unidad ejecutora">
                     </div>
                     <div class="form-group">
                         <label>N° Cuadro Adquisición</label>
-                        <input type="text" id="nro_cuadro" placeholder="000374">
+                        <input type="text" id="nro_cuadro" placeholder="000374" aria-label="Número de cuadro">
                     </div>
                 </div>
             </div>
@@ -267,11 +266,11 @@
             <div class="form-row form-row-2">
                 <div class="form-group">
                     <label>Fecha de Solicitud <span style="color:#e06060">*</span></label>
-                    <input type="date" id="fecha_solicitud">
+                    <input type="date" id="fecha_solicitud" aria-label="Fecha de solicitud">
                 </div>
                 <div class="form-group">
                     <label>Fecha de Entrega APT</label>
-                    <input type="date" id="fecha_apt">
+                    <input type="date" id="fecha_apt" aria-label="Fecha APT">
                 </div>
             </div>
 
@@ -291,7 +290,7 @@
                 <div class="form-row form-row-3">
                     <div class="form-group">
                         <label>Fecha de toma de medidas</label>
-                        <input type="date" id="fecha_medidas">
+                        <input type="date" id="fecha_medidas" aria-label="Fecha de medidas">
                     </div>
                     <div class="form-group">
                         <label>Sede</label>
@@ -318,7 +317,7 @@
                 <div class="form-row form-row-2">
                     <div class="form-group">
                         <label>Fecha límite de recepción</label>
-                        <input type="date" id="fecha_limite_medidas">
+                        <input type="date" id="fecha_limite_medidas" aria-label="Fecha límite de medidas">
                     </div>
                     <div class="form-group">
                         <label>Canal de recepción</label>
@@ -524,7 +523,7 @@ function buildItemHTML(id) {
     '<div class="form-row form-row-3">' +
         '<div class="form-group">' +
             '<label>Artículo / Prenda <span style="color:#e06060">*</span></label>' +
-            '<input type="text" id="item-articulo-' + id + '" placeholder="Camisa manga larga Oxford">' +
+            '<input type="text" id="item-articulo-' + id + '" placeholder="Camisa manga larga Oxford" aria-label="Artículo">' +
         '</div>' +
         '<div class="form-group">' +
             '<label>Tipo de prenda <span style="color:#e06060">*</span></label>' +
@@ -538,7 +537,7 @@ function buildItemHTML(id) {
         '</div>' +
         '<div class="form-group">' +
             '<label>Código Estilo</label>' +
-            '<input type="text" id="item-estilo-' + id + '" placeholder="LYI278">' +
+            '<input type="text" id="item-estilo-' + id + '" placeholder="LYI278" aria-label="Estilo">' +
         '</div>' +
     '</div>' +
     '<div class="form-row form-row-3">' +
@@ -579,7 +578,7 @@ function buildItemHTML(id) {
         '</div>' +
         '<div class="form-group">' +
             '<label>Código de tela</label>' +
-            '<input type="text" id="item-codtela-' + id + '" placeholder="TF-2024-001">' +
+            '<input type="text" id="item-codtela-' + id + '" placeholder="TF-2024-001" aria-label="Código de tela">' +
         '</div>' +
     '</div>' +
     // Sistema de tallas (R3: por ítem)
@@ -596,7 +595,7 @@ function buildItemHTML(id) {
         '</div>' +
         '<div class="form-group" id="item-total-personas-wrap-' + id + '" style="display:none">' +
             '<label id="item-total-label-' + id + '">Total de personas</label>' +
-            '<input type="number" id="item-total-personas-' + id + '" min="1" placeholder="0">' +
+            '<input type="number" id="item-total-personas-' + id + '" min="1" placeholder="0" aria-label="Total de personas">' +
         '</div>' +
     '</div>' +
     '<div id="item-tallas-block-' + id + '"></div>';
@@ -648,7 +647,7 @@ function actualizarBloquesTallas(itemId) {
     } else {
         // Sin gestión definida aún: mostrar grid bloqueado por defecto
         totalWrap.style.display = 'none';
-        block.innerHTML = '<p style="font-size:12px;color:#555;padding:8px 0;">Selecciona primero la gestión de tallas en Datos Generales.</p>';
+        block.innerHTML = '<p style="font-size:12px;color:#767676;padding:8px 0;">Selecciona primero la gestión de tallas en Datos Generales.</p>';
     }
 }
 
@@ -659,6 +658,7 @@ function buildGridTallas(itemId, sistema, tallas, bloqueado) {
         html += '<div class="talla-cell">' +
             '<span class="talla-label">' + t + '</span>' +
             '<input class="talla-input" type="number" id="' + tId + '" min="0" value="0"' +
+            ' aria-label="Cantidad talla ' + t + '"' +
             (bloqueado ? ' disabled style="opacity:.4;cursor:not-allowed"' : '') +
             ' oninput="calcularTotal(' + itemId + ')">' +
         '</div>';

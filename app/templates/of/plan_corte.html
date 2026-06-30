@@ -2,76 +2,240 @@
 {% block title %}Plan de Corte — Samitex{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.css">
 <style>
-/* ── Frappe Gantt — tema oscuro ─────────────────────────────── */
-.gantt-container { background: transparent; font-family: inherit; }
-.gantt .grid-background { fill: transparent; }
-.gantt .grid-header { fill: #111; stroke: #222; }
-.gantt .grid-row { fill: transparent; }
-.gantt .grid-row:nth-child(even) { fill: rgba(255,255,255,.018); }
-.gantt .row-line { stroke: #1a1a1a; }
-.gantt .tick { stroke: #222; stroke-width: 1; }
-.gantt .tick.thick { stroke: #2e2e2e; }
-.gantt .today-highlight { fill: rgba(74,159,255,.07); }
-.gantt .arrow { fill: none; stroke: #333; stroke-width: 1.2; }
-.gantt .bar { fill: #1a3555; stroke: none; }
-.gantt .bar-progress { fill: #2a6cb5; }
-.gantt .bar-wrapper:hover .bar { fill: #224a7a; }
-.gantt .bar-invalid { fill: transparent; stroke: #666; stroke-width:1; stroke-dasharray:5; }
-.gantt .bar-label { fill: #ddd !important; font-size: 11px !important; font-family: inherit !important; }
-.gantt .lower-text { fill: #555 !important; font-size: 10px !important; font-family: inherit !important; }
-.gantt .upper-text { fill: #777 !important; font-size: 11px !important; font-family: inherit !important; }
-.gantt .handle { fill: #4a9fff; cursor: ew-resize; }
+/* ── Layout ──────────────────────────────────────────────────── */
+.gc-outer { display:flex; flex-direction:column; gap:0; }
+.gc-controls { display:flex; align-items:center; gap:8px; padding-bottom:10px; flex-wrap:wrap; }
+.gc-wrap { display:flex; border:1px solid #1c1c1c; border-radius:6px; overflow:hidden;
+           background:#0b0b0b; height:calc(100vh - 210px); min-height:340px; }
 
-/* Colores por semáforo */
-.bar-rojo    .bar { fill: #3f1212; } .bar-rojo    .bar-progress { fill: #c0392b; }
-.bar-naranja .bar { fill: #3f2500; } .bar-naranja .bar-progress { fill: #c87f0a; }
-.bar-verde   .bar { fill: #0b2a14; } .bar-verde   .bar-progress { fill: #1e7d34; }
-.bar-default .bar { fill: #1a1a30; } .bar-default .bar-progress { fill: #3a3a80; }
-.bar-morado  .bar { fill: #2a0a4e; } .bar-morado  .bar-progress { fill: #7c3aed; }
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.gc-side { width:308px; min-width:308px; display:flex; flex-direction:column;
+           border-right:1px solid #1c1c1c; overflow:hidden; }
+.gc-side-head { height:60px; display:flex; align-items:flex-end; padding:0 10px 8px;
+                border-bottom:1px solid #1c1c1c; background:#0a0a0a; flex-shrink:0; }
+.gc-sh-col1 { width:22px; flex-shrink:0; }
+.gc-sh-col2 { flex:1; min-width:0; font-size:10px; color:#767676; text-transform:uppercase; letter-spacing:.4px; }
+.gc-sh-col3 { width:78px; flex-shrink:0; font-size:10px; color:#767676; text-transform:uppercase; letter-spacing:.4px; }
+.gc-sh-col4 { width:36px; flex-shrink:0; text-align:right; font-size:10px; color:#767676; text-transform:uppercase; letter-spacing:.4px; }
 
-/* Popup oscuro */
-.gantt-container .popup-wrapper {
-  background: #181818 !important; border: 1px solid #2e2e2e !important;
-  border-radius: 6px !important; box-shadow: 0 8px 28px rgba(0,0,0,.65) !important;
-  min-width: 0 !important; padding: 0 !important;
-}
-.gantt-container .popup-wrapper .title,
-.gantt-container .popup-wrapper .subtitle { display: none !important; }
-.gantt-container .pointer { border-top-color: #181818 !important; }
+.gc-side-body { overflow-y:auto; overflow-x:hidden; flex:1; }
+.gc-row { display:flex; align-items:center; padding:0 10px; height:46px;
+          border-bottom:1px solid #141414; cursor:grab; transition:background .1s; user-select:none; }
+.gc-row:hover        { background:#141414; }
+.gc-row.highlight    { background:#0d1e35 !important; }
+.gc-row.is-dragging  { opacity:.3; }
+.gc-row.drag-over    { border-top:2px solid #4a9fff !important; }
+.gc-row-num { width:22px; flex-shrink:0; font-size:11px; color:#444; text-align:center; }
+.gc-row-info { flex:1; min-width:0; }
+.gc-row-of  { font-size:12px; font-weight:600; color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gc-row-sub { font-size:10px; color:#767676; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:4px; }
+.gc-row-apt { width:78px; flex-shrink:0; }
+.gc-row-apt-val { font-size:11px; }
+.gc-row-pct { width:36px; flex-shrink:0; text-align:right; font-size:12px; font-weight:600; }
 
-/* Tabla de prioridades */
-.prio-wrap { overflow-x: auto; }
-.prio-table { width:100%; border-collapse:collapse; font-size:12px; }
-.prio-table th { background:#0e0e0e; color:#555; font-size:10px; font-weight:500;
-  text-transform:uppercase; letter-spacing:.4px; padding:6px 10px;
-  border-bottom:1px solid #1e1e1e; white-space:nowrap; }
-.prio-table td { padding:6px 10px; border-bottom:1px solid #161616; vertical-align:middle; }
-.prio-table tr[draggable]:hover td { background:#161616; cursor:grab; }
-.prio-table tr.is-dragging { opacity:.3; }
-.prio-table tr.drag-over td { border-top: 2px solid #4a9fff !important; }
-.drag-handle { color:#333; font-size:15px; user-select:none; cursor:grab; }
-.drag-handle:active { cursor:grabbing; }
-.row-num { color:#555; font-size:11px; min-width:18px; display:inline-block; text-align:center; }
+/* Inline date editor */
+.inicio-display { cursor:pointer; border-bottom:1px dashed #2a2a2a; }
+.inicio-display.has-val { color:#4a9fff; border-bottom-color:#4a9fff; }
+.inicio-editor { display:none; align-items:center; gap:1px;
+                 background:#0d1e35; border:1px solid #1a6fbe;
+                 border-radius:3px; padding:1px 3px; }
+.inicio-editor input { background:none; border:none; color:#e0e0e0; font-size:10px; text-align:center; }
+.inicio-editor .fecha-dd   { width:20px; }
+.inicio-editor .fecha-mm   { width:20px; }
+.inicio-editor .fecha-yyyy { width:34px; }
+.inicio-editor .fecha-sep  { color:#444; font-size:10px; }
+.inicio-editor .fecha-x    { color:#444; font-size:10px; cursor:pointer; margin-left:2px; }
+.inicio-editor .fecha-x:hover { color:#ccc; }
+
+/* ── Chart area ──────────────────────────────────────────────── */
+.gc-chart { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+.gc-chart-head { height:72px; flex-shrink:0; border-bottom:1px solid #1c1c1c;
+                 background:#0a0a0a; overflow:hidden; position:relative; }
+.gc-head-inner { position:absolute; top:0; left:0; height:100%; display:flex; flex-direction:column; }
+.gc-months { height:26px; display:flex; align-items:center; border-bottom:1px solid #161616; position:relative; }
+.gc-month-cell { position:absolute; height:100%; display:flex; align-items:center; padding-left:7px; }
+.gc-month-cell span { font-size:11px; color:#777; font-weight:600; white-space:nowrap; }
+.gc-weeks { height:34px; display:flex; align-items:center; position:relative; }
+.gc-week-cell { position:absolute; height:100%; display:flex; align-items:center; padding-left:5px; border-left:1px solid #1a1a1a; }
+.gc-week-cell span { font-size:10px; color:#444; white-space:nowrap; }
+
+.gc-chart-body { flex:1; overflow:auto; }
+.gc-chart-inner { position:relative; min-height:100%; }
+
+/* Grid lines */
+.gc-vline { position:absolute; top:0; bottom:0; width:1px; background:#151515; pointer-events:none; }
+.gc-vline.major { background:#1c1c1c; }
+.gc-today-line { position:absolute; top:0; bottom:0; width:2px;
+                 background:rgba(74,159,255,.35); pointer-events:none; z-index:4; }
+.gc-today-dot { position:absolute; top:0; left:-4px; width:8px; height:8px;
+                border-radius:50%; background:#4a9fff; opacity:.6; }
+
+/* Bar rows */
+.gc-bar-row { height:46px; position:relative; border-bottom:1px solid #141414; }
+.gc-bar-row:hover { background:rgba(255,255,255,.01); }
+
+/* Normal bars */
+.gc-bar { position:absolute; top:11px; height:24px; border-radius:4px;
+          overflow:hidden; min-width:6px; transition:filter .12s; display:flex; align-items:center; }
+.gc-bar.draggable { cursor:grab; }
+.gc-bar.draggable:hover { filter:brightness(1.18); }
+.gc-bar.draggable:hover::before {
+  content:'⇔'; position:absolute; left:6px; font-size:10px;
+  color:rgba(255,255,255,.5); z-index:10; pointer-events:none; }
+.gc-bar-bg   { position:absolute; inset:0; border-radius:4px; }
+.gc-bar-fill { position:absolute; left:0; top:0; bottom:0; border-radius:4px 0 0 4px; }
+.gc-bar-label { position:relative; padding:0 8px; font-size:10px;
+                color:rgba(255,255,255,.85); white-space:nowrap; overflow:hidden;
+                font-weight:500; z-index:1; pointer-events:none; }
+
+/* Ghost bars (no fecha_inicio_plan) */
+.gc-bar-ghost { position:absolute; top:11px; height:24px; border-radius:4px;
+                border:1px dashed #2a2a2a; background:rgba(255,255,255,.025);
+                display:flex; align-items:center; justify-content:center;
+                cursor:crosshair; min-width:80px; transition:all .15s; }
+.gc-bar-ghost:hover { border-color:#4a9fff; background:rgba(74,159,255,.06); }
+.gc-bar-ghost span { font-size:10px; color:#767676; pointer-events:none; }
+.gc-bar-ghost:hover span { color:#4a9fff; }
+/* Click indicator (appears inside on hover) */
+.gc-bar-ghost::after { content:'+ click para asignar inicio'; position:absolute;
+                        font-size:10px; color:#4a9fff; opacity:0; transition:opacity .15s;
+                        pointer-events:none; white-space:nowrap; }
+.gc-bar-ghost:hover::after { opacity:1; }
+.gc-bar-ghost:hover span  { display:none; }
+
+/* Bar colors */
+.bar-rojo    .gc-bar-bg   { background:#3d1010; } .bar-rojo    .gc-bar-fill { background:#c0392b; }
+.bar-naranja .gc-bar-bg   { background:#3f2200; } .bar-naranja .gc-bar-fill { background:#c87f0a; }
+.bar-verde   .gc-bar-bg   { background:#0a2812; } .bar-verde   .gc-bar-fill { background:#1e7d34; }
+.bar-default .gc-bar-bg   { background:#181828; } .bar-default .gc-bar-fill { background:#3a3a80; }
+.bar-morado  .gc-bar-bg   { background:#280940; } .bar-morado  .gc-bar-fill { background:#7c3aed; }
+
+/* Bloque 3 — phase segments */
+.gc-seg { position:absolute; top:3px; bottom:3px; min-width:2px;
+          border-radius:2px; pointer-events:auto; cursor:default; z-index:2; }
+.bar-verde   .gc-seg.done   { background:rgba(46,160,67,.92); }
+.bar-verde   .gc-seg.active { background:rgba(46,160,67,.65); animation:seg-pulse 1.4s ease-in-out infinite; }
+.bar-verde   .gc-seg.prog   { background:rgba(46,160,67,.18); border:1px dashed rgba(46,160,67,.45); }
+.bar-naranja .gc-seg.done   { background:rgba(200,127,10,.92); }
+.bar-naranja .gc-seg.active { background:rgba(200,127,10,.65); animation:seg-pulse 1.4s ease-in-out infinite; }
+.bar-naranja .gc-seg.prog   { background:rgba(200,127,10,.18); border:1px dashed rgba(200,127,10,.45); }
+.bar-rojo    .gc-seg.done   { background:rgba(192,57,43,.92); }
+.bar-rojo    .gc-seg.active { background:rgba(192,57,43,.65); animation:seg-pulse 1.4s ease-in-out infinite; }
+.bar-rojo    .gc-seg.prog   { background:rgba(192,57,43,.18); border:1px dashed rgba(192,57,43,.45); }
+.bar-default .gc-seg.done   { background:rgba(58,58,128,.92); }
+.bar-default .gc-seg.active { background:rgba(58,58,128,.65); animation:seg-pulse 1.4s ease-in-out infinite; }
+.bar-default .gc-seg.prog   { background:rgba(58,58,128,.18); border:1px dashed rgba(58,58,128,.45); }
+.bar-morado  .gc-seg.done   { background:rgba(124,58,237,.92); }
+.bar-morado  .gc-seg.active { background:rgba(124,58,237,.65); animation:seg-pulse 1.4s ease-in-out infinite; }
+.bar-morado  .gc-seg.prog   { background:rgba(124,58,237,.18); border:1px dashed rgba(124,58,237,.45); }
+/* late = scheduled but overdue — same for all colors */
+.gc-seg.late { background:rgba(200,55,30,.28); border:1px dashed rgba(200,55,30,.55); }
+@keyframes seg-pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+/* Drag tooltip */
+#gcDragTip { position:fixed; padding:5px 11px; border-radius:4px; font-size:11px;
+             pointer-events:none; z-index:600; white-space:nowrap; font-weight:500;
+             background:#0d1e35; border:1px solid #4a9fff; color:#4a9fff;
+             box-shadow:0 4px 16px rgba(0,0,0,.6); transform:translateY(-4px); }
+#gcDragTip.warn { background:#3a1000; border-color:#c87f0a; color:#c87f0a; }
+#gcDragTip.error { background:#3d0e0e; border-color:#c0392b; color:#c0392b; }
+
+/* ── Detail panel ────────────────────────────────────────────── */
+.dp { position:fixed; right:0; top:0; bottom:0; width:320px; background:#111;
+      border-left:1px solid #1e1e1e; z-index:300;
+      transform:translateX(100%); transition:transform .22s cubic-bezier(.25,.46,.45,.94);
+      display:flex; flex-direction:column; overflow:hidden; }
+.dp.open { transform:translateX(0); }
+.dp-head { padding:16px; border-bottom:1px solid #1a1a1a;
+           display:flex; justify-content:space-between; align-items:flex-start; flex-shrink:0; }
+.dp-of { font-size:18px; font-weight:700; color:#ddd; }
+.dp-cliente { font-size:12px; color:#666; margin-top:3px; }
+.dp-close { background:none; border:none; color:#444; font-size:20px; cursor:pointer; padding:0; line-height:1; }
+.dp-close:hover { color:#ccc; }
+.dp-body { padding:16px; flex:1; overflow-y:auto; }
+.dp-section { margin-top:14px; }
+.dp-label { font-size:10px; color:#444; text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px; }
+.dp-value { font-size:13px; color:#bbb; }
+.dp-row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+.dp-prog { margin-top:16px; }
+.dp-bar-outer { height:8px; background:#1a1a1a; border-radius:4px; margin-top:6px; overflow:hidden; border:1px solid #222; }
+.dp-bar-inner { height:100%; border-radius:4px; transition:width .4s; }
+.dp-pct-row { display:flex; align-items:center; gap:8px; }
+.dp-pct-num { font-size:15px; font-weight:700; color:#ddd; min-width:38px; text-align:right; }
+.dp-terc { margin-top:14px; padding:10px 12px; background:#1a1030; border-radius:5px; border:1px solid #2a1a50; }
+.dp-footer { padding:14px; border-top:1px solid #1a1a1a; display:flex; gap:8px; flex-shrink:0; }
+
+/* ── Overlay ─────────────────────────────────────────────────── */
+#panelOverlay { display:none; position:fixed; inset:0; z-index:299; background:rgba(0,0,0,.3); }
+
+/* ── Chips ───────────────────────────────────────────────────── */
+.filter-chips { display:flex; gap:5px; flex-wrap:wrap; }
+.f-chip { padding:3px 11px; border-radius:20px; font-size:11px; border:1px solid #222;
+          color:#767676; cursor:pointer; transition:all .15s; background:none; }
+.f-chip:hover  { border-color:#4a9fff; color:#4a9fff; }
+.f-chip.active { background:#1c3050; border-color:#4a9fff; color:#4a9fff; }
+
+/* ── View buttons ────────────────────────────────────────────── */
+.view-btns { display:flex; gap:3px; }
+.view-btn { padding:4px 10px; font-size:11px; background:#1a1a1a; border:1px solid #2a2a2a;
+            color:#777; border-radius:4px; cursor:pointer; transition:all .15s; }
+.view-btn:hover  { border-color:#4a9fff; color:#4a9fff; }
+.view-btn.active { background:#1c3050; border-color:#4a9fff; color:#4a9fff; }
 
 /* APT colors */
 .apt-red    { color:#e57373; font-weight:600; }
 .apt-orange { color:#e6a817; font-weight:600; }
 .apt-green  { color:#4caf7d; }
 
-/* Controles vista */
-.view-btns { display:flex; gap:3px; }
-.view-btn { padding:4px 10px; font-size:11px; background:#1a1a1a; border:1px solid #2a2a2a;
-  color:#777; border-radius:4px; cursor:pointer; transition:all .15s; }
-.view-btn:hover { border-color:#4a9fff; color:#4a9fff; }
-.view-btn.active { background:#1c3050; border-color:#4a9fff; color:#4a9fff; }
-
-/* Toast */
+/* Toast (con soporte para botón Deshacer) */
 .toast { position:fixed; bottom:22px; right:22px; padding:9px 16px; border-radius:5px;
-  font-size:12px; color:#fff; z-index:9999; opacity:0; transform:translateY(6px);
-  transition:all .25s; pointer-events:none; }
-.toast.show { opacity:1; transform:translateY(0); }
+         font-size:12px; color:#fff; z-index:9999; opacity:0; transform:translateY(6px);
+         transition:all .25s; pointer-events:none; display:flex; align-items:center; gap:10px; }
+.toast.show { opacity:1; transform:translateY(0); pointer-events:auto; }
+.toast-undo { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25);
+              color:#fff; padding:2px 10px; border-radius:3px; font-size:11px;
+              cursor:pointer; flex-shrink:0; }
+.toast-undo:hover { background:rgba(255,255,255,.25); }
+
+/* Scrollbars */
+.gc-side-body::-webkit-scrollbar,
+.gc-chart-body::-webkit-scrollbar { width:4px; height:4px; }
+.gc-side-body::-webkit-scrollbar-track,
+.gc-chart-body::-webkit-scrollbar-track { background:transparent; }
+.gc-side-body::-webkit-scrollbar-thumb,
+.gc-chart-body::-webkit-scrollbar-thumb { background:#222; border-radius:2px; }
+
+/* ── Modal overlay genérico (capacidad + config) ────────────── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+                 align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal-box { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px;
+             padding:24px 28px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,.6); }
+.modal-titulo { font-size:15px; font-weight:700; margin-bottom:8px; color:#e0e0e0; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+.modal-field { margin-bottom:12px; }
+
+/* ── Guardrail modal ────────────────────────────────────────── */
+.gc-guard-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.72);
+                    z-index:3000; align-items:center; justify-content:center; }
+.gc-guard-overlay.show { display:flex; }
+.gc-guard-box { background:#141414; border:1px solid #2a2a2a; border-radius:6px;
+                padding:24px 28px; max-width:440px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,.6); }
+.gc-guard-title { color:#e6a817; font-size:14px; font-weight:600; margin-bottom:8px; }
+.gc-guard-msg { color:#888; font-size:12px; line-height:1.6; margin-bottom:14px; }
+.gc-guard-list { list-style:none; padding:0; margin:0 0 20px; }
+.gc-guard-list li { display:flex; justify-content:space-between; align-items:center;
+                    padding:7px 12px; background:#1a1a1a; border-radius:4px;
+                    margin-bottom:4px; font-size:12px; color:#ccc; }
+.gc-guard-list li span { color:#666; font-size:11px; }
+.gc-guard-btns { display:flex; gap:10px; justify-content:flex-end; }
+.gc-guard-cancel  { padding:7px 16px; background:transparent; border:1px solid #333;
+                    color:#777; border-radius:4px; cursor:pointer; font-size:12px; }
+.gc-guard-cancel:hover { border-color:#767676; color:#aaa; }
+.gc-guard-confirm { padding:7px 18px; background:#7c2d12; border:1px solid #991b1b;
+                    color:#fca5a5; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600; }
+.gc-guard-confirm:hover { background:#991b1b; }
 </style>
 {% endblock %}
 
@@ -80,9 +244,9 @@
   <span class="page-title">Plan de Corte</span>
   <div style="display:flex;gap:6px;align-items:center">
     <div class="view-btns" id="viewBtns">
-      <button class="view-btn active" data-mode="Week">Semana</button>
-      <button class="view-btn" data-mode="Month">Mes</button>
-      <button class="view-btn" data-mode="Day">Día</button>
+      <button class="view-btn active" data-mode="week">Semana</button>
+      <button class="view-btn" data-mode="month">Mes</button>
+      <button class="view-btn" data-mode="day">Día</button>
     </div>
     <button class="btn btn-secondary btn-sm" id="btnHoy">Hoy</button>
     <a href="/" class="btn btn-secondary btn-sm">← Dashboard</a>
@@ -90,250 +254,858 @@
 </div>
 
 {% if not ofs %}
-<div class="card" style="text-align:center;padding:48px;color:#555">
+<div class="card" style="text-align:center;padding:48px;color:#767676">
   No hay OFs registradas.
   <div style="margin-top:12px"><a href="/of/crear" class="btn btn-primary">+ Nueva OF</a></div>
 </div>
-
 {% else %}
 
-<!-- Tabla de prioridades (drag-to-reorder) -->
-<div class="card" style="padding:0;overflow:hidden;margin-bottom:6px">
-  <div class="prio-wrap">
-    <table class="prio-table">
-      <thead>
-        <tr>
-          <th style="width:22px"></th>
-          <th style="width:26px">#</th>
-          <th>N° OF</th>
-          <th>Cliente</th>
-          <th>Tipo</th>
-          <th>Inicio Corte</th>
-          <th>APT</th>
-          <th>Estado</th>
-          <th style="min-width:110px">Avance</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="prioBody">
-      {% for item in ofs %}
-      {% set of = item.of %}
-      {% set sem = item.semaforo %}
-      <tr draggable="true" data-of-id="{{ of.id }}">
-        <td><span class="drag-handle" title="Arrastrar para cambiar prioridad">⠿</span></td>
-        <td><span class="row-num">{{ loop.index }}</span></td>
-        <td><strong style="color:#ccc">{{ of.numero_of }}</strong></td>
-        <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#aaa">{{ of.cliente }}</td>
-        <td style="color:#777">{{ of.tipo_prenda.value }}</td>
-        <td>
-          <span class="inicio-display" data-of-id="{{ of.id }}"
-                data-value="{{ item.fecha_inicio_str if of.fecha_inicio_plan else '' }}"
-                onclick="abrirFechaInicio(this)"
-                title="Click para editar fecha de inicio"
-                style="cursor:pointer;color:{{ '#4a9fff' if of.fecha_inicio_plan else '#444' }}">
-            {% if of.fecha_inicio_plan %}
-              {{ item.fecha_inicio_str[8:10] }}/{{ item.fecha_inicio_str[5:7] }}/{{ item.fecha_inicio_str[0:4] }}
-            {% else %}
-              <span style="font-size:11px;border-bottom:1px dashed #333;">+ Asignar</span>
-            {% endif %}
-          </span>
-          <span class="inicio-editor" style="display:none;align-items:center;gap:1px;
-                background:#0d1e35;border:1px solid #1a6fbe;border-radius:4px;padding:1px 4px;">
-            <input class="fecha-dd" maxlength="2" placeholder="DD" autocomplete="off"
-                   style="width:32px;background:none;border:none;color:#e0e0e0;
-                          font-size:11px;outline:none;text-align:center;"
-                   onkeydown="fechaKey(this,event,'dd')">
-            <span style="color:#555;font-size:11px;">/</span>
-            <input class="fecha-mm" maxlength="2" placeholder="MM" autocomplete="off"
-                   style="width:32px;background:none;border:none;color:#e0e0e0;
-                          font-size:11px;outline:none;text-align:center;"
-                   onkeydown="fechaKey(this,event,'mm')">
-            <span style="color:#555;font-size:11px;">/</span>
-            <input class="fecha-yyyy" maxlength="4" placeholder="YYYY" autocomplete="off"
-                   style="width:54px;background:none;border:none;color:#e0e0e0;
-                          font-size:11px;outline:none;text-align:center;"
-                   onkeydown="fechaKey(this,event,'yyyy')">
-            <span style="color:#555;font-size:10px;cursor:pointer;margin-left:4px;"
-                  onclick="cancelarFechaInicio(this.closest('.inicio-editor'))">✕</span>
-          </span>
-        </td>
-        <td>
-          {% if of.fecha_apt %}
-          <span class="{{ item.apt_class }}">{{ of.fecha_apt }}</span>
-          {% else %}<span style="color:#444">—</span>{% endif %}
-        </td>
-        <td><span class="badge badge-{{ of.estado.value.lower() }}">{{ of.estado.value }}</span></td>
-        <td>
-          <div style="display:flex;align-items:center;gap:5px">
-            <div style="width:90px;background:#111;border-radius:3px;height:5px;overflow:hidden;flex-shrink:0;border:1px solid #1e1e1e">
-              <div style="width:{{ item.pct }}%;height:100%;background:{% if item.pct==100 %}#1e7d34{% elif item.pct>=50 %}#c87f0a{% else %}#2a6cb5{% endif %}"></div>
+<div class="gc-outer">
+  <!-- Filter chips -->
+  <div class="gc-controls">
+    <div class="filter-chips" id="filterChips">
+      <button class="f-chip active" data-filter="all">Todas</button>
+      <button class="f-chip" data-filter="BORRADOR">Borrador</button>
+      <button class="f-chip" data-filter="ACTIVA">Activa</button>
+      <button class="f-chip" data-filter="EN_PROCESO">En proceso</button>
+      <button class="f-chip" data-filter="COMPLETADA">Completada</button>
+      <button class="f-chip" data-filter="TERCERIZADA">Tercerizada</button>
+    </div>
+    <span id="countBadge" style="font-size:11px;color:#444;margin-left:4px"></span>
+  </div>
+
+  <!-- Gantt wrapper -->
+  <div class="gc-wrap" id="gcWrap">
+
+    <!-- Sidebar -->
+    <div class="gc-side">
+      <div class="gc-side-head">
+        <div class="gc-sh-col1"></div>
+        <div class="gc-sh-col2">OF / Inicio plan</div>
+        <div class="gc-sh-col3">APT / Estado</div>
+        <div class="gc-sh-col4">%</div>
+      </div>
+      <div class="gc-side-body" id="sideBody">
+        {% for item in ofs %}{% set of = item.of %}
+        <div class="gc-row"
+             draggable="true"
+             data-of-id="{{ of.id }}"
+             data-estado="{{ of.estado.value }}"
+             data-terc="{{ 'true' if of.tercerizado else 'false' }}">
+          <div class="gc-row-num">{{ loop.index }}</div>
+          <div class="gc-row-info">
+            <div class="gc-row-of">{{ of.numero_of }}</div>
+            <div class="gc-row-sub">
+              <span class="inicio-display{% if of.fecha_inicio_plan %} has-val{% endif %}"
+                    data-of-id="{{ of.id }}"
+                    data-value="{{ item.fecha_inicio_str if of.fecha_inicio_plan else '' }}"
+                    onclick="abrirFechaInicio(this)"
+                    title="Click para editar inicio de corte">
+                {% if of.fecha_inicio_plan %}{{ item.fecha_inicio_str[8:10] }}/{{ item.fecha_inicio_str[5:7] }}/{{ item.fecha_inicio_str[0:4] }}{% else %}+ inicio{% endif %}
+              </span>
+              <span class="inicio-editor">
+                <input class="fecha-dd" maxlength="2" placeholder="DD" onkeydown="fechaKey(this,event,'dd')" aria-label="DD">
+                <span class="fecha-sep">/</span>
+                <input class="fecha-mm" maxlength="2" placeholder="MM" onkeydown="fechaKey(this,event,'mm')" aria-label="MM">
+                <span class="fecha-sep">/</span>
+                <input class="fecha-yyyy" maxlength="4" placeholder="YYYY" onkeydown="fechaKey(this,event,'yyyy')" aria-label="YYYY">
+                <span class="fecha-x" onclick="cancelarFechaInicio(this.closest('.inicio-editor'))">✕</span>
+              </span>
+              <span style="color:#444;font-size:10px">· {{ of.cliente[:22] }}</span>
             </div>
-            <span style="font-size:10px;color:#555">{{ item.pct }}%</span>
           </div>
-        </td>
-        <td>
-          <div style="display:flex;gap:4px">
-            <a href="/of/{{ of.id }}/detalle" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 7px">Det</a>
-            <a href="/corte/{{ of.id }}"      class="btn btn-primary btn-sm"   style="font-size:10px;padding:2px 7px">Corte</a>
+          <div class="gc-row-apt">
+            {% if of.fecha_apt %}
+            <div class="gc-row-apt-val {{ item.apt_class }}">{{ of.fecha_apt }}</div>
+            {% else %}<div class="gc-row-apt-val" style="color:#767676">—</div>{% endif %}
+            <div style="margin-top:2px">
+              <span class="badge badge-{{ of.estado.value.lower() }}"
+                    style="font-size:9px;padding:1px 5px">{{ of.estado.value }}</span>
+            </div>
           </div>
-        </td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+          <div class="gc-row-pct"
+               style="color:{% if item.pct==100 %}#4caf7d{% elif item.pct>=50 %}#c87f0a{% else %}#4a9fff{% endif %}">
+            {{ item.pct }}%
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="gc-chart">
+      <div class="gc-chart-head" id="gcHead" style="height:72px">
+        <div class="gc-head-inner" id="gcHeadInner"></div>
+        <div id="gcCargaBars"></div>
+      </div>
+      <div class="gc-chart-body" id="gcBody">
+        <div class="gc-chart-inner" id="gcInner"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<!-- Gantt chart -->
-<div class="card" style="padding:16px 10px;overflow-x:auto">
-  <div id="gantt-target"></div>
+<!-- Detail panel -->
+<div class="dp" id="detailPanel">
+  <div class="dp-head">
+    <div>
+      <div class="dp-of" id="dpOf">—</div>
+      <div class="dp-cliente" id="dpCliente">—</div>
+    </div>
+    <button class="dp-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="dp-body">
+    <div class="dp-section">
+      <div class="dp-label">Estado</div>
+      <div class="dp-value" id="dpEstado"></div>
+    </div>
+    <div class="dp-section">
+      <div class="dp-label">Tipo de Prenda</div>
+      <div class="dp-value" id="dpTipo"></div>
+    </div>
+    <div class="dp-row2">
+      <div><div class="dp-label">Inicio Plan</div><div class="dp-value" id="dpInicio"></div></div>
+      <div><div class="dp-label">APT</div><div class="dp-value" id="dpApt"></div></div>
+    </div>
+    <div class="dp-row2">
+      <div><div class="dp-label">Total Juegos</div><div class="dp-value" id="dpJuegos"></div></div>
+      <div><div class="dp-label">Piezas</div><div class="dp-value" id="dpPiezas"></div></div>
+    </div>
+    <div class="dp-prog">
+      <div class="dp-label">Avance</div>
+      <div class="dp-pct-row" style="margin-top:6px">
+        <div class="dp-bar-outer" style="flex:1">
+          <div class="dp-bar-inner" id="dpBar"></div>
+        </div>
+        <span class="dp-pct-num" id="dpPct">0%</span>
+      </div>
+    </div>
+    <div id="dpTercBox" style="display:none">
+      <div class="dp-terc">
+        <div class="dp-label">Tercerización</div>
+        <div class="dp-value" id="dpTercPlanta" style="margin-top:3px"></div>
+        <div style="font-size:11px;color:#7c3aed;margin-top:2px" id="dpTercEst"></div>
+      </div>
+    </div>
+  </div>
+  <div class="dp-footer">
+    <a id="dpDetalle" href="#" class="btn btn-secondary" style="flex:1;text-align:center;font-size:12px">Ver Detalle</a>
+    <a id="dpCorte"   href="#" class="btn btn-primary"   style="flex:1;text-align:center;font-size:12px">Ir a Corte</a>
+  </div>
 </div>
+<div id="panelOverlay" onclick="closePanel()"></div>
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
-<script>
-// Datos serializados desde Python
-const tasksData = {{ tasks_json | safe }};
+<!-- Guardrail: confirmación cuando la OF ya tiene actividad real -->
+<div class="gc-guard-overlay" id="gcGuardOverlay">
+  <div class="gc-guard-box">
+    <div class="gc-guard-title">⚠ Esta OF ya tiene actividad en producción</div>
+    <div class="gc-guard-msg">Las siguientes fases ya iniciaron con tiempos reales registrados. Cambiar la fecha de inicio no afectará esas fases — solo las pendientes.</div>
+    <ul class="gc-guard-list" id="gcGuardList"></ul>
+    <div class="gc-guard-btns">
+      <button class="gc-guard-cancel"  id="gcGuardCancel">Cancelar</button>
+      <button class="gc-guard-confirm" id="gcGuardConfirm">Continuar de todos modos</button>
+    </div>
+  </div>
+</div>
 
-// Helpers
-function fmtDate(d) {
-  const dt = (d instanceof Date) ? d : new Date(d);
-  return dt.getFullYear() + '-' +
-    String(dt.getMonth() + 1).padStart(2, '0') + '-' +
-    String(dt.getDate()).padStart(2, '0');
-}
-function fmtDisp(s) {
-  if (!s) return '—';
-  const [y, m, d] = s.split('-');
-  return `${d}/${m}/${y}`;
-}
-function toast(msg, ok = true) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.background = ok ? '#1e7d34' : '#c0392b';
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 2500);
-}
+<script>
+// ── Backend data ──────────────────────────────────────────────
+const tasksData = {{ tasks_json | safe }};
+const ofMeta = {
+{% for item in ofs %}{% set of = item.of %}
+  "{{ of.id }}": {
+    numero_of:  {{ of.numero_of | tojson }},
+    cliente:    {{ of.cliente   | tojson }},
+    estado:     {{ of.estado.value | tojson }},
+    tipo:       {{ of.tipo_prenda | tojson }},
+    pct:        {{ item.pct }},
+    inicio:     {{ item.fecha_inicio_str | tojson }},
+    has_inicio: {{ 'true' if of.fecha_inicio_plan else 'false' }},
+    apt:        {{ (of.fecha_apt.isoformat() if of.fecha_apt else '') | tojson }},
+    juegos:     {{ of.total_juegos or 0 }},
+    piezas:     {{ of.piezas | length }},
+    terc:       {{ 'true' if of.tercerizado else 'false' }},
+    planta:     {{ (of.planta_externa or '') | tojson }},
+    terc_est:      {{ (of.estado_tercerizado or '') | tojson }},
+    color:         {{ item.color_class | tojson }},
+    fases_con_real:{{ item.fases_con_real | tojson }},
+  },
+{% endfor %}
+};
+
+// ── Carga diaria ─────────────────────────────────────────────
+const _cargaRaw = {{ carga_json | default('{"capacidad":500,"planificado":{},"real":{}}') | safe }};
+let CAP_DIARIA    = _cargaRaw.capacidad || 500;
+const PLANIFICADO = _cargaRaw.planificado || {};
+const REAL_DIA    = _cargaRaw.real || {};
+const NOMBRES_FASE_GANTT = {
+  F1:'Tizado', F2:'Tendido', F3:'Corte', F4:'Numerado',
+  F5:'Fusionado', F6:'Calidad', F7:'Habilitado', F8:'Estampado', F9:'Auditoria'
+};
+
+// ── Config ────────────────────────────────────────────────────
+const PPD = { week: 14, month: 4, day: 40 };   // pixels per day
+let viewMode = 'week';
+let currentFilter = 'all';
+
+// ── Helpers ───────────────────────────────────────────────────
+const parseD  = s => new Date(s + 'T00:00:00');
+const fmtISO  = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const fmtDMY  = s => { if (!s) return '—'; const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; };
+const addD    = (d,n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
+const diffD   = (a,b) => Math.round((b-a)/86400000);
+const MONTHS  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const TODAY_ISO = fmtISO(new Date());
+
 async function patchPlan(ofId, payload) {
   try {
     const r = await fetch(`/of/api/${ofId}/planificar`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload),
     });
+    if (r.status === 409) {
+      const data = await r.json();
+
+      // Guardrail capacidad diaria
+      if (data.over_capacity) {
+        return new Promise(resolve => {
+          const overlay = document.getElementById('gcCapOverlay');
+          document.getElementById('gcCapMsg').innerHTML =
+            `El día <strong>${fmtDMY(data.fecha)}</strong> ya tiene <strong>${data.carga_actual} juegos</strong> programados.<br>` +
+            `Esta OF agrega <strong>${data.of_juegos} juegos</strong> → total <strong>${data.nueva_carga}</strong> ` +
+            `(máx. ${data.capacidad_max}, exceso: <span style="color:#e05030">${data.exceso}</span>).`;
+          // Cerrar config modal si está abierto para evitar interferencia
+          document.getElementById('cap-overlay').classList.remove('show');
+          overlay.classList.add('show');
+
+          const confirmBtn = document.getElementById('gcCapConfirm');
+          const cancelBtn  = document.getElementById('gcCapCancel');
+
+          async function onConfirm() {
+            cleanup();
+            try {
+              const r2 = await fetch(`/of/api/${ofId}/planificar`, {
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ ...payload, force: true }),
+              });
+              if (r2.ok) {
+                actualizarCargaLocal(payload.fecha_inicio_plan, ofId);
+                showToast('✓ Inicio asignado (forzado)', true);
+              } else {
+                showToast('⚠ Error al guardar', false);
+              }
+              resolve(r2.ok ? true : false);
+            } catch (err) {
+              showToast('⚠ Error de red', false);
+              resolve(false);
+            }
+          }
+          function onCancel() { cleanup(); resolve(null); }
+          function cleanup() {
+            overlay.classList.remove('show');
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+          }
+          confirmBtn.addEventListener('click', onConfirm);
+          cancelBtn.addEventListener('click', onCancel);
+        });
+      }
+
+      // Guardrail fases con actividad real
+      if (data.needs_confirm) {
+        return new Promise(resolve => {
+          const list = document.getElementById('gcGuardList');
+          list.innerHTML = data.fases_con_real.map(f =>
+            `<li><strong>${f.nombre}</strong><span>inició ${f.inicio_real}</span></li>`
+          ).join('');
+          document.getElementById('gcGuardOverlay').classList.add('show');
+
+          const confirmBtn = document.getElementById('gcGuardConfirm');
+          const cancelBtn  = document.getElementById('gcGuardCancel');
+          const overlay    = document.getElementById('gcGuardOverlay');
+
+          async function onConfirm() {
+            cleanup();
+            const r2 = await fetch(`/of/api/${ofId}/planificar`, {
+              method: 'PATCH', headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({ ...payload, force: true }),
+            });
+            resolve(r2.ok ? true : false);
+          }
+          function onCancel() { cleanup(); resolve(null); }
+          function onOverlay(e) { if (e.target === overlay) onCancel(); }
+          function cleanup() {
+            overlay.classList.remove('show');
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            overlay.removeEventListener('click', onOverlay);
+          }
+          confirmBtn.addEventListener('click', onConfirm);
+          cancelBtn.addEventListener('click', onCancel);
+          overlay.addEventListener('click', onOverlay);
+        });
+      }
+    }
     return r.ok;
   } catch { return false; }
 }
 
-// Gantt
-let gantt;
-function initGantt(tasks) {
-  document.getElementById('gantt-target').innerHTML = '';
-  gantt = new Gantt('#gantt-target', tasks, {
-    view_mode: 'Week',
-    date_format: 'YYYY-MM-DD',
-    bar_height: 24,
-    padding: 14,
-    language: 'en',
+// ── Toast (con undo) ──────────────────────────────────────────
+function showToast(msg, ok = true, onUndo = null) {
+  const el = document.getElementById('toast');
+  el.style.background = ok ? '#1c3050' : '#c0392b';
+  clearTimeout(el._t);
 
-    on_date_change: async function(task, start, end) {
-      const newStart = fmtDate(start);
-      const newEnd   = fmtDate(end);
-      const aptStr   = task._apt;  // APT original — nunca se modifica desde el Gantt
+  if (onUndo) {
+    el.innerHTML = `<span>${msg}</span><button class="toast-undo" id="toastUndoBtn">Deshacer</button>`;
+    document.getElementById('toastUndoBtn').onclick = () => {
+      el.classList.remove('show');
+      onUndo();
+    };
+  } else {
+    el.innerHTML = `<span>${msg}</span>`;
+  }
 
-      // ¿El arrastre superó la fecha APT?
-      if (aptStr && newEnd > aptStr) {
-        toast('⚠ No se puede pasar la fecha APT (' + fmtDisp(aptStr) + ')', false);
-        // Snap-back: restaurar barra a inicio guardado → APT original
-        const td = tasksData.find(t => t.id === task.id);
-        if (td) { task.start = td.start; task.end = td.end; }
-        setTimeout(() => gantt.refresh(tasksData), 30);
-        return;
-      }
+  el.classList.add('show');
+  el._t = setTimeout(() => el.classList.remove('show'), onUndo ? 5000 : 2600);
+}
 
-      // Solo guardamos fecha_inicio_plan; la APT no cambia desde aquí
-      const ok = await patchPlan(task.id, { fecha_inicio_plan: newStart });
+// ── Range ─────────────────────────────────────────────────────
+let rangeStart, totalDays;
 
-      // Actualizar datos locales para mantener coherencia
-      const td = tasksData.find(t => t.id === task.id);
-      if (td) { td.start = newStart; }
+function computeRange(tasks) {
+  const starts = tasks.map(t => parseD(t.start));
+  const ends   = tasks.map(t => parseD(t.end));
+  const minS = new Date(Math.min(...starts));
+  const maxE = new Date(Math.max(...ends));
+  rangeStart = addD(minS, viewMode === 'month' ? -14 : -7);
+  totalDays  = diffD(rangeStart, addD(maxE, viewMode === 'month' ? 21 : 14));
+}
 
-      // Redibujar para que el extremo derecho quede en APT (no en newEnd)
-      setTimeout(() => gantt.refresh(tasksData), 30);
-
-      toast(ok ? `✓ Inicio de ${task.name}: ${fmtDisp(newStart)}` : 'Error al guardar', ok);
-    },
-
-    custom_popup_html: function(task) {
-      return `
-        <div style="padding:11px 14px;min-width:195px;font-family:inherit">
-          <div style="font-weight:600;color:#ddd;margin-bottom:4px;font-size:13px">${task.name}</div>
-          <div style="font-size:11px;color:#777;margin-bottom:6px">${task._cliente}</div>
-          <div style="font-size:11px;color:#666;line-height:1.8">
-            Inicio&nbsp;plan: <strong style="color:#aaa">${fmtDisp(task.start)}</strong><br>
-            APT: <strong style="color:#aaa">${task._apt ? fmtDisp(task._apt) : '—'}</strong><br>
-            Avance: <strong style="color:#4a9fff">${task.progress}%</strong>
-          </div>
-          <div style="margin-top:9px;display:flex;gap:12px;font-size:11px">
-            <a href="/of/${task.id}/detalle" style="color:#4a9fff;text-decoration:none">Ver detalle →</a>
-            <a href="/corte/${task.id}"      style="color:#4caf7d;text-decoration:none">Ir a Corte →</a>
-          </div>
-        </div>`;
-    },
+// ── Visibility / filter ───────────────────────────────────────
+function getVisible() {
+  const f = currentFilter;
+  return tasksData.filter(t => {
+    if (f === 'all') return true;
+    if (f === 'TERCERIZADA') return ofMeta[t.id] && ofMeta[t.id].terc;
+    return t._estado === f;
   });
 }
-initGantt(tasksData);
 
-// Controles de vista
+// ── Main render ───────────────────────────────────────────────
+function render() {
+  const visible = getVisible();
+  const visIds  = new Set(visible.map(t => t.id));
+
+  let shown = 0;
+  document.querySelectorAll('#sideBody .gc-row').forEach(row => {
+    const show = visIds.has(row.dataset.ofId);
+    row.style.display = show ? '' : 'none';
+    if (show) shown++;
+  });
+  document.getElementById('countBadge').textContent = shown + ' OF' + (shown !== 1 ? 's' : '');
+
+  if (!visible.length) {
+    document.getElementById('gcInner').innerHTML = '<div style="padding:24px;color:#444;font-size:12px">Sin resultados.</div>';
+    document.getElementById('gcHeadInner').innerHTML = '';
+    return;
+  }
+
+  computeRange(visible);
+  const ppd = PPD[viewMode];
+  const W   = totalDays * ppd;
+
+  renderHead(W, ppd);
+  renderBars(W, ppd, visible);
+  syncScroll();
+  setTimeout(scrollToday, 50);
+}
+
+// ── Header ────────────────────────────────────────────────────
+let _vlines = '';
+
+function renderHead(W, ppd) {
+  const hi = document.getElementById('gcHeadInner');
+  hi.style.width = W + 'px';
+
+  let mHtml = '';
+  let cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+  while (cur <= addD(rangeStart, totalDays)) {
+    const ms  = new Date(Math.max(cur.getTime(), rangeStart.getTime()));
+    const nm  = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
+    const me  = new Date(Math.min(nm.getTime(), addD(rangeStart, totalDays).getTime()));
+    const lft = diffD(rangeStart, ms) * ppd;
+    const wid = diffD(ms, me) * ppd;
+    mHtml += `<div class="gc-month-cell" style="left:${lft}px;width:${wid}px">
+      <span>${MONTHS[cur.getMonth()]} ${cur.getFullYear()}</span></div>`;
+    cur = nm;
+  }
+
+  let sHtml = ''; _vlines = '';
+
+  if (viewMode === 'day') {
+    for (let i = 0; i < totalDays; i++) {
+      const d   = addD(rangeStart, i);
+      const x   = i * ppd;
+      const mon = d.getDay() === 1;
+      sHtml   += `<div class="gc-week-cell" style="left:${x}px;width:${ppd}px${mon?';border-left-color:#2a2a2a':''}"><span>${d.getDate()}</span></div>`;
+      _vlines += `<div class="gc-vline${mon?' major':''}" style="left:${x}px"></div>`;
+    }
+  } else if (viewMode === 'week') {
+    let w = new Date(rangeStart);
+    const wd = (w.getDay()+6)%7;
+    w.setDate(w.getDate() - wd);
+    while (w < addD(rangeStart, totalDays)) {
+      const x = Math.max(0, diffD(rangeStart, w) * ppd);
+      sHtml   += `<div class="gc-week-cell" style="left:${x}px;width:${7*ppd}px"><span>${w.getDate()}/${w.getMonth()+1}</span></div>`;
+      _vlines += `<div class="gc-vline major" style="left:${x}px"></div>`;
+      w = addD(w, 7);
+    }
+  } else {
+    let mc = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+    while (mc < addD(rangeStart, totalDays)) {
+      const x = Math.max(0, diffD(rangeStart, mc) * ppd);
+      _vlines += `<div class="gc-vline major" style="left:${x}px"></div>`;
+      mc = new Date(mc.getFullYear(), mc.getMonth()+1, 1);
+    }
+  }
+
+  hi.innerHTML = `
+    <div class="gc-months" style="width:${W}px">${mHtml}</div>
+    <div class="gc-weeks"  style="width:${W}px">${sHtml}</div>`;
+  renderCargaBars();
+}
+
+// ── Bars ──────────────────────────────────────────────────────
+function renderBars(W, ppd, visible) {
+  const gcInner  = document.getElementById('gcInner');
+  const todayISO = fmtISO(new Date());
+  const todayX   = diffD(rangeStart, parseD(todayISO)) * ppd;
+
+  // Order bars to match current sidebar DOM order
+  const orderedIds = [...document.querySelectorAll('#sideBody .gc-row')]
+    .filter(r => r.style.display !== 'none')
+    .map(r => r.dataset.ofId);
+  const taskMap = {};
+  visible.forEach(t => taskMap[t.id] = t);
+
+  let html = `<div style="position:absolute;inset:0;pointer-events:none;width:${W}px">${_vlines}</div>`;
+  if (todayX >= 0 && todayX <= W) {
+    html += `<div class="gc-today-line" style="left:${todayX}px"><div class="gc-today-dot"></div></div>`;
+  }
+
+  orderedIds.forEach(id => {
+    const t    = taskMap[id];
+    const meta = ofMeta[id];
+    if (!t || !meta) return;
+
+    const sx = diffD(rangeStart, parseD(t.start)) * ppd;
+    const ex = diffD(rangeStart, parseD(t.end))   * ppd;
+    const bw = Math.max(ex - sx, 6);
+    const fw = Math.min(Math.max(t.progress, 0), 100);
+
+    if (!meta.has_inicio) {
+      // Ghost bar — click to assign
+      html += `<div class="gc-bar-row" style="width:${W}px">
+        <div class="gc-bar-ghost" style="left:${sx}px;width:${bw}px" data-of-id="${id}">
+          <span>${t.name}</span>
+        </div>
+      </div>`;
+    } else {
+      const showLabel = bw > 55;
+
+      // ── Bloque 3: phase segments ──────────────────────────────
+      let innerSegs = '';
+      const fasesProg = t.fases_prog || [];
+      const rsMs = rangeStart.getTime();
+      if (fasesProg.length > 0) {
+        fasesProg.forEach(f => {
+          const fsMs  = new Date(f.inicio).getTime();
+          const feMs  = new Date(f.fin).getTime();
+          const segL  = (fsMs - rsMs) / 86400000 * ppd - sx;
+          const segW  = Math.max((feMs - fsMs) / 86400000 * ppd, 2);
+          const cls   = f.tipo === 'real_done'   ? 'done'
+                      : f.tipo === 'real_active' ? 'active'
+                      : f.tipo === 'prog_late'   ? 'late'
+                      :                            'prog';
+          const fmt   = s => s.replace('T', ' ');
+          const tip   = `${f.nombre}\n${fmt(f.inicio)} → ${fmt(f.fin)}`;
+          innerSegs += `<div class="gc-seg ${cls}" style="left:${segL.toFixed(1)}px;width:${segW.toFixed(1)}px" title="${tip}"></div>`;
+        });
+      } else {
+        // fallback: simple progress fill
+        innerSegs = `<div class="gc-bar-fill" style="width:${fw}%"></div>`;
+      }
+
+      html += `<div class="gc-bar-row" style="width:${W}px">
+        <div class="gc-bar draggable ${t.custom_class}"
+             style="left:${sx}px;width:${bw}px"
+             data-of-id="${id}">
+          <div class="gc-bar-bg"></div>
+          ${innerSegs}
+          ${showLabel ? `<div class="gc-bar-label" style="z-index:3">${t.name} &middot; ${t.progress}%</div>` : ''}
+        </div>
+      </div>`;
+    }
+  });
+
+  gcInner.innerHTML = html;
+  gcInner.style.width    = W + 'px';
+  gcInner.style.minWidth = W + 'px';
+}
+
+// ── Scroll sync ───────────────────────────────────────────────
+function syncScroll() {
+  const sb   = document.getElementById('sideBody');
+  const gb   = document.getElementById('gcBody');
+  const head = document.getElementById('gcHeadInner');
+
+  sb.onscroll = () => {
+    if (sb._lock) return;
+    gb._lock = true;
+    gb.scrollTop = sb.scrollTop;
+    setTimeout(() => gb._lock = false, 50);
+  };
+  gb.onscroll = () => {
+    if (gb._lock) return;
+    sb._lock = true;
+    sb.scrollTop = gb.scrollTop;
+    if (head) head.style.transform = `translateX(-${gb.scrollLeft}px)`;
+    setTimeout(() => sb._lock = false, 50);
+  };
+}
+
+function scrollToday() {
+  const gb   = document.getElementById('gcBody');
+  const ppd  = PPD[viewMode];
+  const tx   = diffD(rangeStart, parseD(fmtISO(new Date()))) * ppd;
+  gb.scrollLeft = Math.max(0, tx - gb.clientWidth / 3);
+}
+
+// ── Sidebar date display update ───────────────────────────────
+function _setSidebarDate(ofId, iso) {
+  const disp = document.querySelector(`.inicio-display[data-of-id="${ofId}"]`);
+  if (!disp) return;
+  if (iso) {
+    const [y,m,d] = iso.split('-');
+    disp.textContent    = `${d}/${m}/${y}`;
+    disp.dataset.value  = iso;
+    disp.classList.add('has-val');
+  } else {
+    disp.textContent    = '+ inicio';
+    disp.dataset.value  = '';
+    disp.classList.remove('has-val');
+  }
+}
+
+// ── Assign inicio (ghost bar click) ──────────────────────────
+async function assignInicio(ofId, newISO) {
+  const t = tasksData.find(x => x.id === ofId);
+  if (!t) return;
+
+  if (newISO < TODAY_ISO) {
+    showToast('No se puede asignar una fecha anterior a hoy', false);
+    return;
+  }
+  const apt = t._apt;
+  if (apt && newISO >= apt) {
+    showToast('La fecha debe ser antes del APT (' + fmtDMY(apt) + ')', false);
+    return;
+  }
+
+  const prevISO    = ofMeta[ofId] && ofMeta[ofId].has_inicio ? t.start : '';
+  t.start          = newISO;
+  ofMeta[ofId].inicio     = newISO;
+  ofMeta[ofId].has_inicio = true;
+  _setSidebarDate(ofId, newISO);
+  render();
+
+  const ok = await patchPlan(ofId, { fecha_inicio_plan: newISO });
+  if (ok === null) {
+    // Usuario canceló en el modal — revertir estado visual
+    if (prevISO) { t.start = prevISO; ofMeta[ofId].inicio = prevISO; ofMeta[ofId].has_inicio = true; _setSidebarDate(ofId, prevISO); }
+    else { ofMeta[ofId].inicio = ''; ofMeta[ofId].has_inicio = false; _setSidebarDate(ofId, ''); }
+    render(); return;
+  }
+  showToast(
+    ok ? `✓ Inicio asignado: ${fmtDMY(newISO)}` : '⚠ Error al guardar',
+    ok,
+    ok ? () => _revertDate(ofId, prevISO) : null,
+  );
+}
+
+// Revert helper (used by undo)
+async function _revertDate(ofId, prevISO) {
+  const t = tasksData.find(x => x.id === ofId);
+  if (!t) return;
+  if (prevISO) {
+    t.start = prevISO;
+    ofMeta[ofId].inicio     = prevISO;
+    ofMeta[ofId].has_inicio = true;
+    _setSidebarDate(ofId, prevISO);
+  } else {
+    // Clear fecha_inicio_plan → back to ghost
+    ofMeta[ofId].inicio     = '';
+    ofMeta[ofId].has_inicio = false;
+    _setSidebarDate(ofId, '');
+    // t.start keeps fallback value for range calc — that's fine
+  }
+  render();
+  const ok = await patchPlan(ofId, { fecha_inicio_plan: prevISO || '' });
+  showToast(ok ? '↩ Fecha revertida' : '⚠ Error al revertir', ok);
+}
+
+// ── Click on ghost bar → assign date ─────────────────────────
+document.getElementById('gcBody').addEventListener('click', e => {
+  if (drag && drag.moved) return;  // ignore if came from drag end
+  const ghost = e.target.closest('.gc-bar-ghost');
+  if (!ghost) return;
+  const ofId = ghost.dataset.ofId;
+  const inner = document.getElementById('gcInner');
+  const x     = e.clientX - inner.getBoundingClientRect().left;
+  const days  = Math.round(x / PPD[viewMode]);
+  const newISO = fmtISO(addD(rangeStart, days));
+  assignInicio(ofId, newISO);
+});
+
+// ── Drag to reschedule ────────────────────────────────────────
+let drag = null;
+
+document.getElementById('gcBody').addEventListener('mousedown', e => {
+  const bar = e.target.closest('.gc-bar.draggable');
+  if (!bar) return;
+  e.preventDefault();
+
+  const ofId = bar.dataset.ofId;
+  const t    = tasksData.find(x => x.id === ofId);
+  if (!t) return;
+
+  const origLeft  = parseFloat(bar.style.left);
+  const origWidth = parseFloat(bar.style.width);
+
+  drag = {
+    ofId, bar,
+    startX:    e.clientX,
+    origStart: t.start,
+    origLeft, origWidth,
+    ppd:       PPD[viewMode],
+    moved:     false,
+    valid:     true,
+    newISO:    null,
+  };
+
+  const tip = document.createElement('div');
+  tip.id = 'gcDragTip';
+  document.body.appendChild(tip);
+  drag.tip = tip;
+
+  document.body.style.userSelect = 'none';
+  bar.classList.add('draggable');
+});
+
+document.addEventListener('mousemove', e => {
+  if (!drag) return;
+
+  const dx = e.clientX - drag.startX;
+  if (Math.abs(dx) > 5) drag.moved = true;
+  if (!drag.moved) return;
+
+  document.body.style.cursor = 'grabbing';
+  drag.bar.style.opacity     = '0.75';
+
+  const deltaDays = Math.round(dx / drag.ppd);
+  const newDate   = addD(parseD(drag.origStart), deltaDays);
+  const newISO    = fmtISO(newDate);
+  const t         = tasksData.find(x => x.id === drag.ofId);
+  const aptISO    = t ? t._apt : '';
+
+  // Validate
+  if (newISO < TODAY_ISO) {
+    drag.valid         = false;
+    drag.tip.className = 'warn';
+    drag.tip.textContent = `⚠ No se puede mover a fecha pasada`;
+  } else if (aptISO && newISO >= aptISO) {
+    drag.valid         = false;
+    drag.tip.className = 'warn';
+    drag.tip.textContent = `⚠ No puede superar APT (${fmtDMY(aptISO)})`;
+  } else {
+    drag.valid     = true;
+    drag.newISO    = newISO;
+    drag.tip.className = '';
+    drag.tip.textContent = `${fmtDMY(drag.origStart)}  →  ${fmtDMY(newISO)}`;
+  }
+
+  // Move bar visually
+  const newLeft  = drag.origLeft + dx;
+  const aptX     = aptISO ? diffD(rangeStart, parseD(aptISO)) * drag.ppd : 999999;
+  drag.bar.style.left  = Math.max(0, newLeft) + 'px';
+  drag.bar.style.width = Math.max(aptX - Math.max(0, newLeft), 6) + 'px';
+
+  drag.tip.style.left = (e.clientX + 14) + 'px';
+  drag.tip.style.top  = (e.clientY - 36) + 'px';
+});
+
+document.addEventListener('mouseup', async e => {
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  d.bar.style.opacity = '';
+  if (d.tip) d.tip.remove();
+
+  if (!d.moved) {
+    // Pure click → open panel
+    render();    // snap bar back to computed position
+    openPanel(d.ofId);
+    return;
+  }
+
+  if (!d.valid || !d.newISO || d.newISO === d.origStart) {
+    render();
+    if (!d.valid) showToast('No se puede mover más allá del APT', false);
+    return;
+  }
+
+  // Optimistic update
+  const prevISO = d.origStart;
+  const t       = tasksData.find(x => x.id === d.ofId);
+  t.start = d.newISO;
+  if (ofMeta[d.ofId]) ofMeta[d.ofId].inicio = d.newISO;
+  _setSidebarDate(d.ofId, d.newISO);
+  render();
+
+  const ok = await patchPlan(d.ofId, { fecha_inicio_plan: d.newISO });
+  if (ok === null) {
+    // Usuario canceló — revertir estado visual al inicio original
+    t.start = prevISO; if (ofMeta[d.ofId]) ofMeta[d.ofId].inicio = prevISO;
+    _setSidebarDate(d.ofId, prevISO); render(); return;
+  }
+  showToast(
+    ok ? `✓ Inicio: ${fmtDMY(d.newISO)}` : '⚠ Error al guardar',
+    ok,
+    ok ? () => _revertDate(d.ofId, prevISO) : null,
+  );
+});
+
+// ── Detail panel ──────────────────────────────────────────────
+function openPanel(ofId) {
+  const m = ofMeta[ofId];
+  if (!m) return;
+  document.getElementById('dpOf').textContent      = m.numero_of;
+  document.getElementById('dpCliente').textContent = m.cliente;
+  document.getElementById('dpEstado').textContent  = m.estado;
+  document.getElementById('dpTipo').textContent    = m.tipo;
+  document.getElementById('dpInicio').textContent  = m.has_inicio ? fmtDMY(m.inicio) : '— no asignado';
+  document.getElementById('dpApt').textContent     = fmtDMY(m.apt);
+  document.getElementById('dpJuegos').textContent  = m.juegos;
+  document.getElementById('dpPiezas').textContent  = m.piezas;
+
+  const bar = document.getElementById('dpBar');
+  bar.style.width      = m.pct + '%';
+  bar.style.background = m.pct === 100 ? '#1e7d34' : m.pct >= 50 ? '#c87f0a' : '#2a6cb5';
+  document.getElementById('dpPct').textContent = m.pct + '%';
+
+  const tb = document.getElementById('dpTercBox');
+  if (m.terc) {
+    tb.style.display = '';
+    document.getElementById('dpTercPlanta').textContent = m.planta || '—';
+    document.getElementById('dpTercEst').textContent    = m.terc_est || '';
+  } else {
+    tb.style.display = 'none';
+  }
+
+  document.getElementById('dpDetalle').href = `/of/${ofId}/detalle`;
+  document.getElementById('dpCorte').href   = `/corte/${ofId}`;
+
+  document.querySelectorAll('#sideBody .gc-row').forEach(r => r.classList.remove('highlight'));
+  const row = document.querySelector(`#sideBody .gc-row[data-of-id="${ofId}"]`);
+  if (row) { row.classList.add('highlight'); row.scrollIntoView({block:'nearest'}); }
+
+  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('panelOverlay').style.display = '';
+}
+
+function closePanel() {
+  document.getElementById('detailPanel').classList.remove('open');
+  document.getElementById('panelOverlay').style.display = 'none';
+  document.querySelectorAll('#sideBody .gc-row').forEach(r => r.classList.remove('highlight'));
+}
+
+// ── View mode ─────────────────────────────────────────────────
 document.getElementById('viewBtns').addEventListener('click', e => {
   const btn = e.target.closest('.view-btn');
   if (!btn) return;
+  viewMode = btn.dataset.mode;
   document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  gantt.change_view_mode(btn.dataset.mode);
+  render();
 });
-document.getElementById('btnHoy').addEventListener('click', () => {
-  gantt.change_view_mode('Week');
-  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.view-btn[data-mode="Week"]').classList.add('active');
+document.getElementById('btnHoy').addEventListener('click', scrollToday);
+
+// ── Filters ───────────────────────────────────────────────────
+document.getElementById('filterChips').addEventListener('click', e => {
+  const chip = e.target.closest('.f-chip');
+  if (!chip) return;
+  document.querySelectorAll('.f-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  currentFilter = chip.dataset.filter;
+  render();
 });
 
-// Drag-to-reorder prioridades
-const tbody = document.getElementById('prioBody');
-let dragSrc = null;
+// ── Drag-to-reorder sidebar rows ──────────────────────────────
+const sideBody = document.getElementById('sideBody');
+let rowDragSrc = null;
 
-tbody.addEventListener('dragstart', e => {
-  dragSrc = e.target.closest('tr');
-  if (dragSrc) dragSrc.classList.add('is-dragging');
+sideBody.addEventListener('dragstart', e => {
+  rowDragSrc = e.target.closest('.gc-row');
+  if (rowDragSrc) rowDragSrc.classList.add('is-dragging');
   if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
 });
-tbody.addEventListener('dragend', () => {
-  tbody.querySelectorAll('tr').forEach(r => r.classList.remove('is-dragging', 'drag-over'));
-  dragSrc = null;
-});
-tbody.addEventListener('dragover', e => {
-  e.preventDefault();
-  const target = e.target.closest('tr');
-  if (!target || target === dragSrc) return;
-  tbody.querySelectorAll('tr').forEach(r => r.classList.remove('drag-over'));
-  target.classList.add('drag-over');
-  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-});
-tbody.addEventListener('drop', e => {
-  e.preventDefault();
-  const target = e.target.closest('tr');
-  if (!target || target === dragSrc) return;
-  const rows = [...tbody.querySelectorAll('tr')];
-  if (rows.indexOf(dragSrc) < rows.indexOf(target)) target.after(dragSrc);
-  else target.before(dragSrc);
-  saveOrder();
+sideBody.addEventListener('dragend', () => {
+  sideBody.querySelectorAll('.gc-row').forEach(r => {
+    r.classList.remove('is-dragging');
+    r.classList.remove('drag-over');
+  });
+  rowDragSrc = null;
 });
 
-// ── Edición inline de fecha de inicio ────────────────────────
+sideBody.addEventListener('dragover', e => {
+  e.preventDefault();
+  const target = e.target.closest('.gc-row');
+  if (!target || target === rowDragSrc) return;
+  sideBody.querySelectorAll('.gc-row').forEach(r => r.classList.remove('drag-over'));
+  target.classList.add('drag-over');
+});
+
+sideBody.addEventListener('drop', e => {
+  e.preventDefault();
+  const target = e.target.closest('.gc-row');
+  if (!target || target === rowDragSrc) return;
+  sideBody.querySelectorAll('.gc-row').forEach(r => r.classList.remove('drag-over'));
+  const rows = [...sideBody.querySelectorAll('.gc-row')];
+  const srcIdx = rows.indexOf(rowDragSrc);
+  const tgtIdx = rows.indexOf(target);
+  if (srcIdx < tgtIdx) target.after(rowDragSrc);
+  else target.before(rowDragSrc);
+  rows.forEach((r, i) => r.querySelector('.gc-row-num').textContent = i + 1);
+  render();
+  Promise.all(
+    [...sideBody.querySelectorAll('.gc-row')].map((r, i) =>
+      patchPlan(r.dataset.ofId, { orden_plan: i + 1 })
+    )
+  ).then(results => {
+    showToast(results.every(Boolean) ? '✓ Orden guardado' : '⚠ Error al guardar orden',
+              results.every(Boolean));
+  });
+});
+
+// ── Inline date editor (sidebar) ─────────────────────────────
 function abrirFechaInicio(displaySpan) {
-  // Cerrar cualquier otro editor abierto
   document.querySelectorAll('.inicio-editor').forEach(function(ed) {
     if (ed.style.display !== 'none') {
       ed.style.display = 'none';
@@ -369,21 +1141,14 @@ function fechaKey(input, e, seg) {
   const mm   = editor.querySelector('.fecha-mm');
   const yyyy = editor.querySelector('.fecha-yyyy');
 
-  // Escape
-  if (e.key === 'Escape') { e.preventDefault(); cancelarFechaInicio(editor); return; }
-  // Enter
-  if (e.key === 'Enter')  { e.preventDefault(); _commitFechaInicio(editor);  return; }
-  // Tab — navegación natural entre inputs
-  if (e.key === 'Tab') return;
-
-  // Flecha izquierda — ir al campo anterior
+  if (e.key === 'Escape') { cancelarFechaInicio(editor); return; }
+  if (e.key === 'Enter')  { _commitFechaInicio(editor);  return; }
   if (e.key === 'ArrowLeft') {
     e.preventDefault();
     if (seg === 'mm')   { dd.focus();   dd.select(); }
     if (seg === 'yyyy') { mm.focus();   mm.select(); }
     return;
   }
-  // Flecha derecha — ir al siguiente campo
   if (e.key === 'ArrowRight') {
     e.preventDefault();
     if (seg === 'dd')   { mm.focus();   mm.select(); }
@@ -429,38 +1194,195 @@ async function _commitFechaInicio(editor) {
   const iso  = yyyy + '-' + mm + '-' + dd;
   const test = new Date(iso + 'T00:00:00');
   if (yyyy.length < 4 || isNaN(test.getTime())) {
-    toast('Fecha inválida — completa DD / MM / YYYY', false);
+    showToast('Fecha inválida — completa DD / MM / YYYY', false);
+    yyyyEl.focus();
+    return;
+  }
+  if (iso < TODAY_ISO) {
+    showToast('No se puede asignar una fecha anterior a hoy', false);
     yyyyEl.focus();
     return;
   }
 
   const ok = await patchPlan(ofId, { fecha_inicio_plan: iso });
-  if (ok) {
+  if (ok === true) {
     displaySpan.dataset.value = iso;
-    displaySpan.innerHTML     = dd + '/' + mm + '/' + yyyy;
-    displaySpan.style.color   = '#4a9fff';
-    const td = tasksData.find(function(t) { return t.id === ofId; });
-    if (td) td.start = iso;
-    setTimeout(function() { gantt.refresh(tasksData); }, 50);
-    toast('✓ Inicio actualizado', true);
-  } else {
-    toast('Error al guardar', false);
+    const [y, m2, d2] = iso.split('-');
+    displaySpan.innerHTML   = d2 + '/' + m2 + '/' + y;
+    displaySpan.classList.add('has-val');
+    actualizarCargaLocal(iso, ofId);
+    render();
+    showToast('✓ Inicio asignado: ' + d2 + '/' + m2 + '/' + y, true,
+      () => patchPlan(ofId, { fecha_inicio_plan: '' }));
+  } else if (ok === false) {
+    showToast('Error al guardar', false);
   }
+  // ok === null → usuario canceló; no hacer nada
   editor.style.display      = 'none';
   displaySpan.style.display = '';
 }
 
 async function saveOrder() {
-  const rows = [...tbody.querySelectorAll('tr')];
-  rows.forEach((r, i) => r.querySelector('.row-num').textContent = i + 1);
-  const idMap = {};
-  tasksData.forEach(t => idMap[t.id] = t);
-  gantt.refresh(rows.map(r => idMap[r.dataset.ofId]).filter(Boolean));
+  const rows = [...sideBody.querySelectorAll('.gc-row')];
   const ok = (await Promise.all(
     rows.map((r, i) => patchPlan(r.dataset.ofId, { orden_plan: i + 1 }))
   )).every(Boolean);
-  toast(ok ? '✓ Prioridad guardada' : 'Error al guardar orden', ok);
+  showToast(ok ? '✓ Prioridad guardada' : 'Error al guardar orden', ok);
 }
+
+// ── Carga local: actualizar PLANIFICADO tras asignar fecha ────
+function actualizarCargaLocal(fechaISO, ofId) {
+  if (!fechaISO) return;
+  const juegos = (ofMeta[ofId] && ofMeta[ofId].juegos) || 0;
+  if (!juegos) return;
+  PLANIFICADO[fechaISO] = (PLANIFICADO[fechaISO] || 0) + juegos;
+  renderCargaBars();
+}
+
+// ── Barras de carga sobre columnas del Gantt ──────────────────
+function renderCargaBars() {
+  const container = document.getElementById('gcCargaBars');
+  if (!container) return;
+  const ppd = PPD[viewMode];
+  const W   = totalDays * ppd;
+  container.style.width = W + 'px';
+  let html = '';
+  for (let i = 0; i < totalDays; i++) {
+    const d    = addD(rangeStart, i);
+    const iso  = fmtISO(d);
+    const plan = PLANIFICADO[iso] || 0;
+    if (!plan) continue;
+    const pct  = Math.min(Math.round(plan / CAP_DIARIA * 100), 150);
+    const col  = pct >= 100 ? '#e05030' : pct >= 80 ? '#e6a817' : '#4caf7d';
+    const x    = i * ppd;
+    const barH = Math.min(Math.round(pct / 100 * 18), 18);
+    html += `<div title="${iso}: ${plan}j / ${CAP_DIARIA}j (${pct}%)"
+      style="position:absolute;left:${x}px;bottom:0;width:${ppd - 1}px;height:${barH}px;
+             background:${col};opacity:0.75;border-radius:2px 2px 0 0;cursor:default"></div>`;
+  }
+  container.innerHTML = html;
+}
+
+// ── Panel cumplimiento diario ─────────────────────────────────
+function renderCumplimiento() {
+  const tbody = document.getElementById('cumpl-tbody');
+  if (!tbody) return;
+  const dias = [];
+  for (let i = 13; i >= 0; i--) {
+    dias.push(fmtISO(addD(new Date(), -i)));
+  }
+  tbody.innerHTML = dias.map(iso => {
+    const plan  = PLANIFICADO[iso] || 0;
+    const rData = REAL_DIA[iso] || {};
+    const real  = rData.total || 0;
+    if (!plan && !real) return '';
+    const pct = plan ? Math.round(real / plan * 100) : (real ? 100 : 0);
+    const col = pct >= 95 ? '#4caf7d' : pct >= 70 ? '#e6a817' : '#e05030';
+    const icon = pct >= 95 ? '🟢' : pct >= 70 ? '🟡' : '🔴';
+    const [y, m, d] = iso.split('-');
+    const faseRows = Object.entries(rData.por_fase || {})
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([f, j]) => `<tr class="cumpl-det" id="det-row-${iso}-${f}" style="display:none;background:#0a0a0a">
+        <td colspan="2" style="padding:2px 12px 2px 24px;font-size:10px;color:#767676">${NOMBRES_FASE_GANTT[f] || f}</td>
+        <td style="padding:2px 8px;font-size:10px;color:#aaa">${j} j</td><td colspan="2"></td></tr>`)
+      .join('');
+    return `<tr style="cursor:pointer;border-bottom:1px solid #1a1a1a"
+        onclick="document.querySelectorAll('[id^=\\'det-row-${iso}-\\']').forEach(r=>r.style.display=r.style.display==='none'?'':'none')">
+      <td style="padding:6px 10px;font-size:12px;color:#ccc">${d}/${m}</td>
+      <td style="padding:6px 8px;font-size:12px;color:#aaa">${plan || '—'}</td>
+      <td style="padding:6px 8px;font-size:12px;color:#aaa">${real || '—'}</td>
+      <td style="padding:6px 8px;font-size:12px"><span style="color:${col}">${icon} ${pct}%</span></td>
+      <td style="padding:6px 4px;font-size:10px;color:#444">${faseRows ? '▾' : ''}</td>
+    </tr>${faseRows}`;
+  }).join('');
+}
+
+// ── Guardar capacidad desde modal ─────────────────────────────
+async function guardarCapacidad() {
+  const val = parseInt(document.getElementById('inp-capacidad').value);
+  if (!val || val < 1) { showToast('Valor inválido', false); return; }
+  const r = await fetch('/of/api/config/capacidad', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ capacidad: val }),
+  });
+  if (r.ok) {
+    CAP_DIARIA = val;
+    document.getElementById('cap-overlay').classList.remove('show');
+    const lbl = document.getElementById('cap-label');
+    if (lbl) lbl.textContent = val;
+    renderCargaBars();
+    showToast(`✓ Capacidad actualizada: ${val} juegos/día`, true);
+  } else {
+    showToast('Error al guardar', false);
+  }
+}
+
+// ── Render inicial ────────────────────────────────────────────
+render();
+setTimeout(function() { renderCargaBars(); renderCumplimiento(); }, 100);
 </script>
+
+<!-- Modal: capacidad diaria superada -->
+<div class="modal-overlay" id="gcCapOverlay" style="z-index:1200">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-titulo" style="color:#e6a817">⚠ Capacidad diaria superada</div>
+    <div id="gcCapMsg" style="font-size:13px;color:#ccc;line-height:1.6;margin:12px 0"></div>
+    <div style="font-size:12px;color:#767676;margin-bottom:16px">¿Deseas igualmente asignar esta fecha?</div>
+    <div class="modal-actions">
+      <button id="gcCapCancel"  class="btn btn-secondary">Cancelar</button>
+      <button id="gcCapConfirm" class="btn" style="background:#e6a817;color:#1a0e00;border-color:#e6a817">Asignar igual</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: configurar capacidad diaria -->
+<div class="modal-overlay" id="cap-overlay" style="z-index:1100">
+  <div class="modal-box" style="max-width:320px">
+    <div class="modal-titulo">⚙ Capacidad diaria de Corte</div>
+    <div style="font-size:12px;color:#767676;margin-bottom:12px">Máximo de juegos programables por día</div>
+    <div class="modal-field">
+      <label>Juegos / día</label>
+      <input type="number" id="inp-capacidad" min="1"
+        style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:16px">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('cap-overlay').classList.remove('show')">Cancelar</button>
+      <button class="btn" style="background:#1a6fbe" onclick="guardarCapacidad()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Panel cumplimiento diario -->
+<div style="margin-top:18px;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden">
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0d0d0d;cursor:pointer"
+       onclick="document.getElementById('cumpl-panel').classList.toggle('hidden')">
+    <span style="font-size:13px;font-weight:600;color:#ccc">📊 Cumplimiento diario</span>
+    <span style="font-size:11px;color:#767676">(últimos 14 días)</span>
+    <button onclick="event.stopPropagation();document.getElementById('inp-capacidad').value=CAP_DIARIA;document.getElementById('cap-overlay').classList.add('show')"
+      style="margin-left:auto;background:#111;border:1px solid #333;border-radius:4px;color:#767676;font-size:11px;padding:3px 8px;cursor:pointer">
+      ⚙ Cap: <span id="cap-label">{{ capacidad | default(500) }}</span> j/día
+    </button>
+  </div>
+  <div class="hidden" id="cumpl-panel">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="background:#0a0a0a">
+          <th style="padding:6px 10px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase">Fecha</th>
+          <th style="padding:6px 8px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase">Planif.</th>
+          <th style="padding:6px 8px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase">Real</th>
+          <th style="padding:6px 8px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase">Cumpl.</th>
+          <th style="width:20px"></th>
+        </tr>
+      </thead>
+      <tbody id="cumpl-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.hidden { display: none !important; }
+#gcCargaBars { position:absolute; bottom:0; left:0; height:20px; pointer-events:none; }
+</style>
+
 {% endif %}
 {% endblock %}

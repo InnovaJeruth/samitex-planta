@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Catálogo de Prendas — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+.cat-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:20px; }
+.cat-toolbar input, .cat-toolbar select { background:#1e1e1e; border:1px solid #333; color:#e0e0e0; padding:7px 12px; border-radius:6px; font-size:13px; }
+.cat-toolbar input:focus, .cat-toolbar select:focus { outline:none; border-color:#1a6fbe; }
+
+.prenda-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px; }
+
+.prenda-card {
+    background:#1a1a1a; border:1px solid #2a2a2a; border-radius:10px;
+    overflow:hidden; cursor:pointer; transition:all .2s;
+    display:flex; flex-direction:column;
+}
+.prenda-card:hover { border-color:#1a6fbe; transform:translateY(-2px); box-shadow:0 4px 16px rgba(26,111,190,.2); }
+
+.prenda-img { width:100%; height:160px; object-fit:cover; background:#111; display:flex; align-items:center; justify-content:center; }
+.prenda-img img  { width:100%; height:100%; object-fit:cover; }
+.prenda-img-none { width:100%; height:160px; background:#111; display:flex; align-items:center; justify-content:center; color:#444; font-size:40px; }
+
+.prenda-body { padding:12px; flex:1; display:flex; flex-direction:column; gap:4px; }
+.prenda-codigo { font-size:11px; color:#888; font-family:monospace; }
+.prenda-nombre { font-size:14px; font-weight:600; color:#fff; line-height:1.3; }
+.prenda-tipo   { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:12px; margin-top:2px; }
+.tipo-SACO     { background:#1a3a6f; color:#4a9fff; }
+.tipo-PANTALON { background:#3a2a00; color:#e6a817; }
+.tipo-CAMISA   { background:#0d3320; color:#4caf7d; }
+.tipo-PULLOVER { background:#2a1a3a; color:#c084f5; }
+.tc-INSTITUCION { background:#1a3a1a; color:#6fcf6f; }
+.tc-MARCA       { background:#3a1a00; color:#f0a040; }
+.tc-BASE        { background:#222;    color:#666; }
+
+.prenda-footer { padding:8px 12px; border-top:1px solid #222; display:flex; justify-content:space-between; align-items:center; }
+.prenda-piezas { font-size:11px; color:#666; }
+
+.empty-state { text-align:center; padding:60px 20px; color:#555; }
+.empty-state .icon { font-size:48px; margin-bottom:12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <span class="page-title">👗 Catálogo de Prendas</span>
+    {% if puede_editar %}
+    <a href="/catalogo/nueva" class="btn btn-primary">+ Nueva Prenda</a>
+    {% endif %}
+</div>
+
+<!-- Filtros -->
+<div class="cat-toolbar">
+    <input id="q-input" placeholder="Buscar por código o nombre..." value="{{ q }}" onkeyup="filtrar()" style="flex:1;min-width:180px">
+    <select id="tipo-select" onchange="filtrar()">
+        <option value="">Todos los tipos</option>
+        {% for t in tipos_base %}
+        <option value="{{ t }}" {% if tipo_base == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+    </select>
+    <select id="tc-select" onchange="filtrar()">
+        <option value="">Todos los clientes</option>
+        <option value="INSTITUCION" {% if tipo_cliente == 'INSTITUCION' %}selected{% endif %}>Institución</option>
+        <option value="MARCA"       {% if tipo_cliente == 'MARCA' %}selected{% endif %}>Marca</option>
+        <option value="BASE"        {% if tipo_cliente == 'BASE' %}selected{% endif %}>Base</option>
+    </select>
+    <select id="activos-select" onchange="filtrar()">
+        <option value="1" {% if solo_activos=='1' %}selected{% endif %}>Solo activos</option>
+        <option value="0" {% if solo_activos=='0' %}selected{% endif %}>Todos</option>
+    </select>
+</div>
+
+<!-- Grid de prendas -->
+{% if prendas %}
+<div class="prenda-grid" id="prenda-grid">
+    {% for p in prendas %}
+    <div class="prenda-card" onclick="window.location='/catalogo/{{ p.id }}'">
+        {% if p.imagen_ruta %}
+        <div class="prenda-img"><img src="/{{ p.imagen_ruta }}" alt="{{ p.nombre }}" loading="lazy"></div>
+        {% else %}
+        <div class="prenda-img-none">👔</div>
+        {% endif %}
+        <div class="prenda-body">
+            <span class="prenda-codigo">{{ p.codigo }}</span>
+            <span class="prenda-nombre">{{ p.nombre }}</span>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">
+                <span class="prenda-tipo tipo-{{ p.tipo_base }}">{{ p.tipo_base }}</span>
+                <span class="prenda-tipo tc-{{ p.tipo_cliente }}">{{ p.tipo_cliente }}</span>
+                {% if p.fit %}
+                <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:12px;background:#1a2a1a;color:#7ec87e">{{ p.fit.replace('_', ' ') }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="prenda-footer">
+            <span class="prenda-piezas">{{ p._num_piezas }} pieza{{ 's' if p._num_piezas != 1 else '' }}</span>
+            {% if not p.activo %}<span class="badge" style="background:#2a2a2a;color:#666">Archivada</span>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="icon">👗</div>
+    <p>No hay prendas en el catálogo aún.</p>
+    {% if puede_editar %}
+    <a href="/catalogo/nueva" class="btn btn-primary" style="margin-top:12px">+ Crear primera prenda</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function filtrar() {
+    const q    = document.getElementById('q-input').value;
+    const tipo = document.getElementById('tipo-select').value;
+    const tc   = document.getElementById('tc-select').value;
+    const act  = document.getElementById('activos-select').value;
+    const params = new URLSearchParams({ q, tipo_base: tipo, tipo_cliente: tc, solo_activos: act });
+    window.location.href = '/catalogo/?' + params.toString();
+}
+</script>
+{% endblock %}

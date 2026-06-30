@@ -46,7 +46,7 @@
         {% if planta.activo %}
         <span class="badge" style="background:#0a2e0a;color:#4caf7d;border:1px solid #1a5e1a">Activa</span>
         {% else %}
-        <span class="badge" style="background:#2a2a2a;color:#555;border:1px solid #333">Inactiva</span>
+        <span class="badge" style="background:#2a2a2a;color:#767676;border:1px solid #333">Inactiva</span>
         {% endif %}
         <a href="/plantas/" class="btn btn-secondary btn-sm">← Volver</a>
     </div>
@@ -96,7 +96,7 @@
 <div class="section-title">Órdenes de Fabricación</div>
 
 {% if not ofs %}
-<div style="text-align:center;padding:30px;color:#555">No hay OFs asignadas a esta planta.</div>
+<div style="text-align:center;padding:30px;color:#767676">No hay OFs asignadas a esta planta.</div>
 {% else %}
 {% for of in ofs %}
 <div class="of-row">
