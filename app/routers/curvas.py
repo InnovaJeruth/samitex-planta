@@ -292,17 +292,34 @@ def api_vincular_ofs(
             ))
 
         # Upsert DocumentoOF tipo REPORTE_TALLAS (solo si hay archivo adjunto)
-        if curva.ruta_archivo:
+        # Se copia el archivo físico a la carpeta de la OF para que cada OF
+        # tenga su propia copia independiente — evita puntero colgante si la
+        # curva reemplaza su archivo en el futuro.
+        if curva.ruta_archivo and os.path.exists(curva.ruta_archivo):
+            import shutil as _shutil
+            of_upload_dir = os.path.join(settings.UPLOAD_DIR, str(of_id))
+            os.makedirs(of_upload_dir, exist_ok=True)
+            ext = pathlib.Path(curva.nombre_archivo or "").suffix
+            copia_nombre = f"{uuid.uuid4().hex}_reporte_tallas{ext}"
+            copia_ruta   = os.path.join(of_upload_dir, copia_nombre)
+            _shutil.copy2(curva.ruta_archivo, copia_ruta)
+
             doc_ex = db.query(DocumentoOF).filter_by(of_id=of_id, tipo="REPORTE_TALLAS").first()
             if doc_ex:
+                # Eliminar copia anterior si existe
+                if doc_ex.ruta_archivo and os.path.exists(doc_ex.ruta_archivo):
+                    try:
+                        os.remove(doc_ex.ruta_archivo)
+                    except OSError:
+                        pass
                 doc_ex.nombre_archivo = curva.nombre_archivo
-                doc_ex.ruta_archivo   = curva.ruta_archivo
+                doc_ex.ruta_archivo   = copia_ruta
                 doc_ex.usuario_id     = current_user.id
             else:
                 db.add(DocumentoOF(
                     of_id=of_id, tipo="REPORTE_TALLAS",
                     nombre_archivo=curva.nombre_archivo,
-                    ruta_archivo=curva.ruta_archivo,
+                    ruta_archivo=copia_ruta,
                     area=get_rol(current_user),
                     usuario_id=current_user.id,
                 ))
