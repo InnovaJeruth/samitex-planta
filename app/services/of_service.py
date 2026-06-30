@@ -8,12 +8,78 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.of import OrdenFabricacion, EstadoOF, EstadoDocsEnum
-from app.models.fase import OFFaseEstado
+from app.models.fase import OFFaseEstado, OFFaseTiempos, FaseCatalogo
 from app.models.pieza import OFPieza, PlantillaPieza
 from app.models.planta import PlantaExterna, TercHistorialFecha
 from app.models.usuario import Usuario
 from app.constants import ORDEN_FASES
 from app.services.gate_service import puede_activar
+
+
+# ── Duraciones estándar por fase (horas) — fallback si no hay catálogo ───────
+_DUR_STD = {
+    'F1': 1.0, 'F2': 1.0, 'F3': 1.0, 'F4': 1.0,
+    'F8': 1.0, 'F9': 1.0, 'F5': 1.0, 'F6': 1.0, 'F7': 1.0,
+}
+
+
+def auto_derivar_programado(of: OrdenFabricacion, db: Session) -> None:
+    """
+    Calcula y escribe OFFaseTiempos.inicio_programado / fin_programado
+    para las fases que aún NO tienen inicio_real, usando duraciones estándar
+    del catálogo de fases de forma secuencial desde fecha_inicio_plan 08:00.
+
+    Las fases con inicio_real ya registrado no se tocan — solo avanzamos el
+    puntero de tiempo a partir de su fin_real (o inicio_real + duración).
+    """
+    from datetime import timedelta
+
+    fecha_base = of.fecha_inicio_plan
+    if not fecha_base:
+        return
+
+    # Cargar catálogo de duraciones — defensivo: si la migración
+    # bloque2_duracion_horas aún no fue aplicada, cae a _DUR_STD
+    try:
+        catalogo = {
+            fc.fase_id: (fc.duracion_horas_std or _DUR_STD.get(fc.fase_id, 8.0))
+            for fc in db.query(FaseCatalogo).all()
+        }
+    except Exception:
+        catalogo = {}
+
+    # Índice de tiempos existentes para esta OF
+    tiempos_idx: dict[str, OFFaseTiempos] = {
+        t.fase_id: t
+        for t in db.query(OFFaseTiempos).filter_by(of_id=of.id).all()
+    }
+
+    # Puntero de tiempo — empieza a las 08:00 del día de inicio plan
+    cursor = datetime(fecha_base.year, fecha_base.month, fecha_base.day, 8, 0)
+
+    for fase_id in ORDEN_FASES:
+        dur_h = catalogo.get(fase_id) or _DUR_STD.get(fase_id, 8.0)
+        t = tiempos_idx.get(fase_id)
+
+        if t and t.inicio_real is not None:
+            # Fase ya iniciada — avanzar cursor desde su fin_real o estimado
+            fin_real = t.fin_real or (t.inicio_real + timedelta(hours=dur_h))
+            cursor = max(cursor, fin_real)
+            continue  # No modificar fechas reales
+
+        # Fase pendiente — calcular programado
+        inicio_prog = cursor
+        fin_prog    = cursor + timedelta(hours=dur_h)
+
+        if t is None:
+            t = OFFaseTiempos(of_id=of.id, fase_id=fase_id)
+            db.add(t)
+            tiempos_idx[fase_id] = t
+
+        t.inicio_programado = inicio_prog
+        t.fin_programado    = fin_prog
+
+        cursor = fin_prog
 
 
 def _rol(usuario: Usuario) -> str:
