@@ -188,15 +188,6 @@
 .apt-orange { color:#e6a817; font-weight:600; }
 .apt-green  { color:#4caf7d; }
 
-/* Toast (con soporte para botón Deshacer) */
-.toast { position:fixed; bottom:22px; right:22px; padding:9px 16px; border-radius:5px;
-         font-size:12px; color:#fff; z-index:9999; opacity:0; transform:translateY(6px);
-         transition:all .25s; pointer-events:none; display:flex; align-items:center; gap:10px; }
-.toast.show { opacity:1; transform:translateY(0); pointer-events:auto; }
-.toast-undo { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25);
-              color:#fff; padding:2px 10px; border-radius:3px; font-size:11px;
-              cursor:pointer; flex-shrink:0; }
-.toast-undo:hover { background:rgba(255,255,255,.25); }
 
 /* Scrollbars */
 .gc-side-body::-webkit-scrollbar,
@@ -396,8 +387,6 @@
 </div>
 <div id="panelOverlay" onclick="closePanel()"></div>
 
-<div class="toast" id="toast"></div>
-
 <!-- Guardrail: confirmación cuando la OF ya tiene actividad real -->
 <div class="gc-guard-overlay" id="gcGuardOverlay">
   <div class="gc-guard-box">
@@ -493,13 +482,13 @@ async function patchPlan(ofId, payload) {
               });
               if (r2.ok) {
                 actualizarCargaLocal(payload.fecha_inicio_plan, ofId);
-                showToast('✓ Inicio asignado (forzado)', true);
+                showToast('✓ Inicio asignado (forzado)', 'success');
               } else {
-                showToast('⚠ Error al guardar', false);
+                showToast('⚠ Error al guardar', 'error');
               }
               resolve(r2.ok ? true : false);
             } catch (err) {
-              showToast('⚠ Error de red', false);
+              showToast('⚠ Error de red', 'error');
               resolve(false);
             }
           }
@@ -551,26 +540,6 @@ async function patchPlan(ofId, payload) {
     }
     return r.ok;
   } catch { return false; }
-}
-
-// ── Toast (con undo) ──────────────────────────────────────────
-function showToast(msg, ok = true, onUndo = null) {
-  const el = document.getElementById('toast');
-  el.style.background = ok ? '#1c3050' : '#c0392b';
-  clearTimeout(el._t);
-
-  if (onUndo) {
-    el.innerHTML = `<span>${msg}</span><button class="toast-undo" id="toastUndoBtn">Deshacer</button>`;
-    document.getElementById('toastUndoBtn').onclick = () => {
-      el.classList.remove('show');
-      onUndo();
-    };
-  } else {
-    el.innerHTML = `<span>${msg}</span>`;
-  }
-
-  el.classList.add('show');
-  el._t = setTimeout(() => el.classList.remove('show'), onUndo ? 5000 : 2600);
 }
 
 // ── Range ─────────────────────────────────────────────────────
@@ -807,12 +776,12 @@ async function assignInicio(ofId, newISO) {
   if (!t) return;
 
   if (newISO < TODAY_ISO) {
-    showToast('No se puede asignar una fecha anterior a hoy', false);
+    showToast('No se puede asignar una fecha anterior a hoy', 'error');
     return;
   }
   const apt = t._apt;
   if (apt && newISO >= apt) {
-    showToast('La fecha debe ser antes del APT (' + fmtDMY(apt) + ')', false);
+    showToast('La fecha debe ser antes del APT (' + fmtDMY(apt) + ')', 'error');
     return;
   }
 
@@ -832,8 +801,7 @@ async function assignInicio(ofId, newISO) {
   }
   showToast(
     ok ? `✓ Inicio asignado: ${fmtDMY(newISO)}` : '⚠ Error al guardar',
-    ok,
-    ok ? () => _revertDate(ofId, prevISO) : null,
+    ok ? 'success' : 'error',
   );
 }
 
@@ -855,7 +823,7 @@ async function _revertDate(ofId, prevISO) {
   }
   render();
   const ok = await patchPlan(ofId, { fecha_inicio_plan: prevISO || '' });
-  showToast(ok ? '↩ Fecha revertida' : '⚠ Error al revertir', ok);
+  showToast(ok ? '↩ Fecha revertida' : '⚠ Error al revertir', ok ? 'success' : 'error');
 }
 
 // ── Click on ghost bar → assign date ─────────────────────────
@@ -967,7 +935,7 @@ document.addEventListener('mouseup', async e => {
 
   if (!d.valid || !d.newISO || d.newISO === d.origStart) {
     render();
-    if (!d.valid) showToast('No se puede mover más allá del APT', false);
+    if (!d.valid) showToast('No se puede mover más allá del APT', 'error');
     return;
   }
 
@@ -987,8 +955,7 @@ document.addEventListener('mouseup', async e => {
   }
   showToast(
     ok ? `✓ Inicio: ${fmtDMY(d.newISO)}` : '⚠ Error al guardar',
-    ok,
-    ok ? () => _revertDate(d.ofId, prevISO) : null,
+    ok ? 'success' : 'error',
   );
 });
 
@@ -1100,7 +1067,7 @@ sideBody.addEventListener('drop', e => {
     )
   ).then(results => {
     showToast(results.every(Boolean) ? '✓ Orden guardado' : '⚠ Error al guardar orden',
-              results.every(Boolean));
+              results.every(Boolean) ? 'success' : 'error');
   });
 });
 
@@ -1194,12 +1161,12 @@ async function _commitFechaInicio(editor) {
   const iso  = yyyy + '-' + mm + '-' + dd;
   const test = new Date(iso + 'T00:00:00');
   if (yyyy.length < 4 || isNaN(test.getTime())) {
-    showToast('Fecha inválida — completa DD / MM / YYYY', false);
+    showToast('Fecha inválida — completa DD / MM / YYYY', 'error');
     yyyyEl.focus();
     return;
   }
   if (iso < TODAY_ISO) {
-    showToast('No se puede asignar una fecha anterior a hoy', false);
+    showToast('No se puede asignar una fecha anterior a hoy', 'error');
     yyyyEl.focus();
     return;
   }
@@ -1212,10 +1179,9 @@ async function _commitFechaInicio(editor) {
     displaySpan.classList.add('has-val');
     actualizarCargaLocal(iso, ofId);
     render();
-    showToast('✓ Inicio asignado: ' + d2 + '/' + m2 + '/' + y, true,
-      () => patchPlan(ofId, { fecha_inicio_plan: '' }));
+    showToast('✓ Inicio asignado: ' + d2 + '/' + m2 + '/' + y, 'success');
   } else if (ok === false) {
-    showToast('Error al guardar', false);
+    showToast('Error al guardar', 'error');
   }
   // ok === null → usuario canceló; no hacer nada
   editor.style.display      = 'none';
@@ -1227,7 +1193,7 @@ async function saveOrder() {
   const ok = (await Promise.all(
     rows.map((r, i) => patchPlan(r.dataset.ofId, { orden_plan: i + 1 }))
   )).every(Boolean);
-  showToast(ok ? '✓ Prioridad guardada' : 'Error al guardar orden', ok);
+  showToast(ok ? '✓ Prioridad guardada' : 'Error al guardar orden', ok ? 'success' : 'error');
 }
 
 // ── Carga local: actualizar PLANIFICADO tras asignar fecha ────
@@ -1300,7 +1266,7 @@ function renderCumplimiento() {
 // ── Guardar capacidad desde modal ─────────────────────────────
 async function guardarCapacidad() {
   const val = parseInt(document.getElementById('inp-capacidad').value);
-  if (!val || val < 1) { showToast('Valor inválido', false); return; }
+  if (!val || val < 1) { showToast('Valor inválido', 'error'); return; }
   const r = await fetch('/of/api/config/capacidad', {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ capacidad: val }),
@@ -1311,9 +1277,9 @@ async function guardarCapacidad() {
     const lbl = document.getElementById('cap-label');
     if (lbl) lbl.textContent = val;
     renderCargaBars();
-    showToast(`✓ Capacidad actualizada: ${val} juegos/día`, true);
+    showToast(`✓ Capacidad actualizada: ${val} juegos/día`, 'success');
   } else {
-    showToast('Error al guardar', false);
+    showToast('Error al guardar', 'error');
   }
 }
 
