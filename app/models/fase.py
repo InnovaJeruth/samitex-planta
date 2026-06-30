@@ -22,7 +22,7 @@ class OFFaseEstado(Base):
     id               = Column(Integer, primary_key=True, index=True)
     of_id            = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=False)
     pieza_id         = Column(Integer, ForeignKey("of_piezas.id"),           nullable=False)
-    fase_id          = Column(String(5), nullable=False)
+    fase_id          = Column(String(5), ForeignKey("fases_catalogo.fase_id"), nullable=False)
     cantidad_actual  = Column(Integer, default=0)
     max_cantidad     = Column(Integer, nullable=False)
     completada       = Column(Boolean, default=False)
@@ -44,12 +44,15 @@ class OFFaseTiempos(Base):
     __tablename__ = "of_fase_tiempos"
     id                = Column(Integer, primary_key=True, index=True)
     of_id             = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=False)
-    fase_id           = Column(String(5), nullable=False)
+    fase_id           = Column(String(5), ForeignKey("fases_catalogo.fase_id"), nullable=False)
     inicio_programado = Column(DateTime, nullable=True)
     fin_programado    = Column(DateTime, nullable=True)
     inicio_real       = Column(DateTime, nullable=True)
     fin_real          = Column(DateTime, nullable=True)
     of = relationship("OrdenFabricacion", back_populates="fase_tiempos")
+    __table_args__ = (
+        UniqueConstraint("of_id", "fase_id", name="uq_of_fase_tiempos"),
+    )
 
 
 class OFFaseParada(Base):
@@ -57,7 +60,7 @@ class OFFaseParada(Base):
     __tablename__ = "of_fase_paradas"
     id                = Column(Integer,   primary_key=True, index=True)
     of_id             = Column(Integer,   ForeignKey("ordenes_fabricacion.id"), nullable=False)
-    fase_id           = Column(String(5), nullable=False)
+    fase_id           = Column(String(5), ForeignKey("fases_catalogo.fase_id"), nullable=False)
     inicio_parada     = Column(DateTime,  nullable=False, server_default=func.now())
     fin_parada        = Column(DateTime,  nullable=True)
     motivo            = Column(String(30), nullable=False)
@@ -83,7 +86,7 @@ class AvanceRegistro(Base):
     id         = Column(Integer,   primary_key=True, index=True)
     of_id      = Column(Integer,   ForeignKey("ordenes_fabricacion.id"), nullable=False)
     pieza_id   = Column(Integer,   ForeignKey("of_piezas.id"),           nullable=False)
-    fase_id    = Column(String(5), nullable=False)
+    fase_id    = Column(String(5), ForeignKey("fases_catalogo.fase_id"), nullable=False)
     cantidad   = Column(Integer,   nullable=False)
     usuario_id = Column(Integer,   ForeignKey("usuarios.id"))
     observacion= Column(Text,      nullable=True)
