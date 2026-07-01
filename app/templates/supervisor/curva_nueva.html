@@ -93,6 +93,15 @@ input[type=text]:focus,select:focus,textarea:focus{outline:none;border-color:#4a
     <label>Notas</label>
     <textarea id="curva-notas" rows="2" style="resize:vertical;" placeholder="Observaciones..."></textarea>
   </div>
+  <div style="margin-top:14px;">
+    <label>Documento Reporte Tallas <span style="color:#555;font-size:11px;">(opcional — PDF, Excel, Word o imagen, max 10 MB)</span></label>
+    <div class="upload-zone" onclick="document.getElementById('doc-archivo').click()" style="margin-top:6px;">
+      <div id="doc-nombre" style="font-size:12px;color:#555;">Haz clic para seleccionar archivo</div>
+      <input type="file" id="doc-archivo" style="display:none;"
+             accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg"
+             onchange="onDocSeleccionado(this)">
+    </div>
+  </div>
 </div>
 
 <!-- Paso 4: OFs -->
@@ -294,6 +303,11 @@ function seleccionarOf(id, totalJuegos, numeroOf, cliente){
   validarCuadre(getTotalTallas());
 }
 
+function onDocSeleccionado(input){
+  var f = input.files[0];
+  document.getElementById('doc-nombre').textContent = f ? f.name : 'Haz clic para seleccionar archivo';
+}
+
 async function guardarCurva(){
   const prendaId = parseInt(document.getElementById('prenda-id').value);
   if(!prendaId){ toast('Selecciona una prenda','error'); return; }
@@ -332,10 +346,22 @@ async function guardarCurva(){
       headers:{'Content-Type':'application/json'}
     });
 
+    // Adjuntar documento si fue seleccionado
+    const docInput = document.getElementById('doc-archivo');
+    if(docInput && docInput.files[0]){
+      const fd = new FormData();
+      fd.append('archivo', docInput.files[0]);
+      await apiFetch(`/curvas/api/curvas/${data.curva_id}/adjuntar`, {method:'POST', body:fd}).catch(()=>{});
+    }
+
     // Vincular OF seleccionada si hay y cuadra
     if(_ofSeleccionada){
+      const inputs = document.querySelectorAll('.talla-input-of');
+      const cantidades = inputs.length
+        ? Array.from(inputs).map(i => ({sku_id: parseInt(i.dataset.sku), cantidad: parseInt(i.value)||0}))
+        : [];
       await apiFetch(`/curvas/api/curvas/${data.curva_id}/vincular-ofs`, {
-        method:'POST', body: JSON.stringify({of_ids: [_ofSeleccionada.id]}),
+        method:'POST', body: JSON.stringify({of_ids: [_ofSeleccionada.id], cantidades}),
         headers:{'Content-Type':'application/json'}
       }).catch(() => {});
     }
