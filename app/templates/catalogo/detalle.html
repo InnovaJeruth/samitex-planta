@@ -631,6 +631,31 @@
         </div>
         <div id="hoja-aprobado-info" style="display:none;padding:4px 16px 12px;font-size:11px;color:#4caf7d"></div>
       </div>
+      <!-- Historial de versiones aprobadas -->
+      <div id="hoja-historial-wrap" style="display:none;border-top:1px solid #1a1a1a">
+        <div style="padding:10px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" onclick="toggleHistorial()">
+          <span style="font-size:10px;font-weight:700;color:#666;letter-spacing:.08em">📋 HISTORIAL DE VERSIONES APROBADAS <span id="historial-count" style="color:#444"></span></span>
+          <span id="historial-toggle-icon" style="color:#444;font-size:11px">▼</span>
+        </div>
+        <div id="historial-body" style="display:none;padding-bottom:8px">
+          <div id="historial-loading" style="font-size:11px;color:#555;padding:10px 16px;text-align:center">Cargando…</div>
+          <div id="historial-vacio" style="display:none;font-size:11px;color:#555;padding:10px 16px;text-align:center">Sin versiones aprobadas aún.</div>
+          <table id="historial-tabla" style="display:none;width:100%;font-size:11px;border-collapse:collapse">
+            <thead>
+              <tr style="color:#555;font-size:10px;border-bottom:1px solid #1a1a1a">
+                <th style="padding:5px 8px;text-align:left">Ver.</th>
+                <th style="padding:5px 4px;text-align:left">Fecha aprobación</th>
+                <th style="padding:5px 4px;text-align:right">Total MP</th>
+                <th style="padding:5px 4px;text-align:right">Total Avíos</th>
+                <th style="padding:5px 4px;text-align:right;color:#4caf7d">Total</th>
+                <th style="padding:5px 4px;text-align:left">Aprobado por</th>
+                <th style="padding:5px 4px;width:36px"></th>
+              </tr>
+            </thead>
+            <tbody id="historial-tbody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Modal historial de precios -->
@@ -641,6 +666,38 @@
           <button onclick="document.getElementById('modal-historial-precio').style.display='none'" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer">✕</button>
         </div>
         <div id="hist-content" style="font-size:12px;color:#ccc;max-height:300px;overflow-y:auto">Cargando…</div>
+      </div>
+    </div>
+    <!-- Modal versión histórica HDC (solo lectura) -->
+    <div id="modal-version-hoja" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:1500;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto">
+      <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:20px;width:720px;max-width:96vw">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <span style="font-weight:700;font-size:14px" id="version-hoja-titulo">Versión histórica — solo lectura</span>
+          <button onclick="document.getElementById('modal-version-hoja').style.display='none'" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer">✕</button>
+        </div>
+        <div id="version-hoja-content" style="font-size:12px;color:#ccc">Cargando…</div>
+      </div>
+    </div>
+
+    <!-- Modal confirmar aprobar HDC -->
+    <div id="modal-aprobar-hoja" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center">
+      <div style="background:#111;border:1px solid #2a6a3a;border-radius:12px;padding:28px 28px 22px;width:380px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+        <div style="font-size:28px;text-align:center;margin-bottom:12px">✅</div>
+        <div style="font-weight:700;font-size:15px;text-align:center;color:#fff;margin-bottom:10px">Aprobar hoja de costos</div>
+        <div style="font-size:12px;color:#aaa;text-align:center;line-height:1.6;margin-bottom:22px">
+          Esta versión quedará <span style="color:#4caf7d;font-weight:600">congelada como APROBADA</span>.<br>
+          Se creará automáticamente un nuevo borrador v+1.
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center">
+          <button onclick="document.getElementById('modal-aprobar-hoja').style.display='none'"
+                  style="padding:8px 20px;background:#222;border:1px solid #444;border-radius:7px;color:#aaa;font-size:13px;cursor:pointer">
+            Cancelar
+          </button>
+          <button id="btn-confirmar-aprobar"
+                  style="padding:8px 24px;background:#1a4a2a;border:1px solid #2a6a3a;border-radius:7px;color:#4caf7d;font-size:13px;font-weight:600;cursor:pointer">
+            ✓ Aprobar
+          </button>
+        </div>
       </div>
     </div>
     {% endif %}
@@ -1070,7 +1127,7 @@ async function agregarSku(){
 async function eliminarSku(id){if(!confirm('¿Eliminar este SKU?'))return;try{await apiFetch(`/catalogo/api/skus/${id}/eliminar`,{method:'POST'});document.getElementById(`sku-tr-${id}`)?.remove();document.getElementById(`sku-detail-${id}`)?.remove();toast('SKU eliminado');}catch(e){toast(e.message,'error');}}
 
 // ── Fotos ─────────────────────────────────────────────────────────────────────
-async function subirFotoPrenda(input){if(!input.files[0])return;const fd=new FormData();fd.append('imagen',input.files[0]);try{await fetch(`/catalogo/api/${PRENDA_ID}/editar`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});toast('Foto actualizada');setTimeout(()=>location.reload(),1200);}catch(e){toast('Error','error');}}
+async function subirFotoPrenda(input){if(!input.files[0])return;const fd=new FormData();fd.append('imagen',input.files[0]);try{const r=await fetch(`/catalogo/api/${PRENDA_ID}/imagen`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});if(!r.ok)throw new Error();toast('Foto actualizada');setTimeout(()=>location.reload(),1200);}catch(e){toast('Error al subir foto','error');}}
 async function subirFotoPieza(id,input){if(!input.files[0])return;const fd=new FormData();fd.append('imagen',input.files[0]);try{await fetch(`/catalogo/api/piezas/${id}/imagen`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});toast('Foto actualizada');setTimeout(()=>location.reload(),1200);}catch(e){toast('Error','error');}}
 
 // ── Modal pieza ───────────────────────────────────────────────────────────────
@@ -1265,6 +1322,129 @@ async function eliminarAvio(id){
     toast('Avío eliminado');
     setTimeout(()=>location.reload(),800);
   }catch(e){toast(e.message,'error');}
+}
+
+// ── Documentos ────────────────────────────────────────────────────────────────
+let _docIdSubido = null;
+
+function abrirModalDoc(){
+  _docIdSubido = null;
+  document.getElementById('doc-tipo').selectedIndex = 0;
+  document.getElementById('doc-archivo').value = '';
+  document.getElementById('doc-descripcion').value = '';
+  document.getElementById('panel-ofs-borrador').style.display = 'none';
+  document.getElementById('modal-doc').classList.add('open');
+}
+function cerrarModalDoc(){
+  document.getElementById('modal-doc').classList.remove('open');
+  if(_docIdSubido) location.reload();
+}
+async function subirDoc(){
+  const archivo = document.getElementById('doc-archivo').files[0];
+  if(!archivo){ toast('Selecciona un archivo','error'); return; }
+  const btn = document.getElementById('btn-subir-doc');
+  btn.disabled = true; btn.textContent = 'Subiendo…';
+  const fd = new FormData();
+  fd.append('tipo', document.getElementById('doc-tipo').value);
+  fd.append('descripcion', document.getElementById('doc-descripcion').value);
+  fd.append('archivo', archivo);
+  try {
+    const res = await fetch(`/catalogo/api/${PRENDA_ID}/documentos/subir`, {
+      method: 'POST', body: fd, headers: { 'x-csrf-token': getCsrf() }
+    });
+    if(!res.ok){ const d = await res.json().catch(()=>({})); throw new Error(d.detail||'Error'); }
+    const data = await res.json();
+    _docIdSubido = data.id;
+    toast('Documento subido');
+    if(data.ofs_borrador && data.ofs_borrador.length){
+      const lista = document.getElementById('lista-ofs-borrador');
+      lista.innerHTML = data.ofs_borrador.map(of => `
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+          <input type="checkbox" value="${of.id}" checked style="accent-color:#4caf7d">
+          OF ${of.numero_of} — ${of.cliente||'—'}
+        </label>`).join('');
+      document.getElementById('panel-ofs-borrador').style.display = 'block';
+      document.getElementById('btn-subir-doc').style.display = 'none';
+    } else {
+      cerrarModalDoc();
+    }
+  } catch(e){ toast(e.message,'error'); }
+  finally{ btn.disabled = false; btn.textContent = '📤 Subir'; }
+}
+async function copiarAOfs(){
+  if(!_docIdSubido) return;
+  const checks = [...document.querySelectorAll('#lista-ofs-borrador input:checked')];
+  const of_ids = JSON.stringify(checks.map(c => parseInt(c.value)));
+  const fd = new FormData();
+  fd.append('doc_id', _docIdSubido);
+  fd.append('of_ids', of_ids);
+  try {
+    const res = await fetch(`/catalogo/api/${PRENDA_ID}/documentos/copiar-a-ofs`, {
+      method: 'POST', body: fd, headers: { 'x-csrf-token': getCsrf() }
+    });
+    if(!res.ok){ const d = await res.json().catch(()=>({})); throw new Error(d.detail||'Error'); }
+    toast('Copiado a OFs');
+  } catch(e){ toast(e.message,'error'); }
+  cerrarModalDoc();
+}
+
+// ── Eliminar documento ────────────────────────────────────────────────────────
+async function eliminarDoc(id, btn){
+  if(!confirm('¿Eliminar este documento?')) return;
+  try {
+    await apiFetch(`/catalogo/api/documentos/${id}/eliminar`, { method: 'POST' });
+    btn.closest('tr')?.remove();
+    toast('Documento eliminado');
+  } catch(e){ toast(e.message,'error'); }
+}
+
+// ── Vincular documento a OFs ──────────────────────────────────────────────────
+let _tipoDocVincular = null;
+
+async function vincularDocumento(tipo){
+  _tipoDocVincular = tipo;
+  const lista = document.getElementById('vincular-lista');
+  document.getElementById('vincular-titulo').textContent = `📋 Enviar ${tipo.replace('_',' ')} a OFs`;
+  document.getElementById('vincular-check-all').checked = false;
+  lista.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:12px">Cargando OFs...</div>';
+  document.getElementById('modal-vincular').classList.add('open');
+  try {
+    const ofs = await apiFetch(`/catalogo/api/${PRENDA_ID}/ofs-activas?tipo=${tipo}`);
+    if(!ofs.length){
+      lista.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:12px">No hay OFs activas para esta prenda.</div>';
+      return;
+    }
+    lista.innerHTML = ofs.map(of => `
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #1a1a1a;cursor:${of.ya_tiene?'default':'pointer'};opacity:${of.ya_tiene?0.5:1}">
+        <input type="checkbox" value="${of.id}" ${of.ya_tiene?'disabled checked':''} style="accent-color:#4caf7d;width:15px;height:15px">
+        <div style="flex:1">
+          <div style="color:#e0e0e0;font-weight:500">${of.numero_of}</div>
+          <div style="font-size:11px;color:#666">${of.cliente||'—'} · ${of.total_juegos} juegos · <span style="color:${of.ya_tiene?'#4caf7d':'#888'}">${of.ya_tiene?'✓ Ya tiene':'Sin doc'}</span></div>
+        </div>
+      </label>`).join('');
+  } catch(e){ toast(e.message,'error'); cerrarModalVincular(); }
+}
+function cerrarModalVincular(){
+  document.getElementById('modal-vincular').classList.remove('open');
+  _tipoDocVincular = null;
+}
+function toggleTodas(cb){
+  document.querySelectorAll('#vincular-lista input[type=checkbox]:not([disabled])')
+    .forEach(c => c.checked = cb.checked);
+}
+async function confirmarVincular(){
+  const checks = [...document.querySelectorAll('#vincular-lista input[type=checkbox]:checked:not([disabled])')];
+  if(!checks.length){ toast('Selecciona al menos una OF','error'); return; }
+  const of_ids = checks.map(c => parseInt(c.value));
+  try {
+    const r = await apiFetch(`/catalogo/api/${PRENDA_ID}/vincular-documento`, {
+      method: 'POST',
+      body: JSON.stringify({ tipo: _tipoDocVincular, of_ids }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+    cerrarModalVincular();
+    toast(r.msg || `Documento enviado a ${of_ids.length} OF(s)`);
+  } catch(e){ toast(e.message,'error'); }
 }
 
 async function cargarHistorialCurvas(){
@@ -1500,13 +1680,9 @@ async function cargarHistorialCurvas(){
         orden:             i,
       }))
     };
-    const hojaId = window._hojaId || null;
-    const url = hojaId
-      ? `/catalogo/api/${PRENDA_ID}/hoja-costos/${hojaId}`
-      : `/catalogo/api/${PRENDA_ID}/hoja-costos`;
     try {
-      const data = await apiFetch(url, {
-        method: hojaId ? 'PUT' : 'POST',
+      const data = await apiFetch(`/catalogo/api/${PRENDA_ID}/hoja-costos`, {
+        method: 'POST',
         body: JSON.stringify(body),
         headers: {'Content-Type': 'application/json'},
       });
@@ -1549,8 +1725,155 @@ async function cargarHistorialCurvas(){
     }
   }
 
+  // ── Aprobar hoja ──────────────────────────────────────────────
+  window.aprobarHoja = function(){
+    const m = document.getElementById('modal-aprobar-hoja');
+    if(m) m.style.display = 'flex';
+  };
+
+  (function(){
+    const btn = document.getElementById('btn-confirmar-aprobar');
+    if(!btn) return;
+    btn.addEventListener('click', async function(){
+      btn.disabled = true;
+      btn.textContent = 'Aprobando…';
+      try {
+        const res = await apiFetch(`/catalogo/api/${PRENDA_ID}/hoja-costos/aprobar`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+        });
+        document.getElementById('modal-aprobar-hoja').style.display = 'none';
+        toast(res.mensaje || 'Hoja aprobada');
+        setTimeout(() => location.reload(), 1200);
+      } catch(e) {
+        document.getElementById('modal-aprobar-hoja').style.display = 'none';
+        toast(e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✓ Aprobar';
+      }
+    });
+  })();
+
+  // ── Historial de versiones aprobadas ─────────────────────────
+  let _historialAbierto = false;
+
+  window.toggleHistorial = function(){
+    _historialAbierto = !_historialAbierto;
+    const body = document.getElementById('historial-body');
+    const icon = document.getElementById('historial-toggle-icon');
+    if(!body) return;
+    body.style.display = _historialAbierto ? 'block' : 'none';
+    if(icon) icon.textContent = _historialAbierto ? '▲' : '▼';
+    if(_historialAbierto) _cargarHistorial();
+  };
+
+  async function _cargarHistorial(){
+    const loading = document.getElementById('historial-loading');
+    const vacio   = document.getElementById('historial-vacio');
+    const tabla   = document.getElementById('historial-tabla');
+    const tbody   = document.getElementById('historial-tbody');
+    const count   = document.getElementById('historial-count');
+    if(!tbody) return;
+    if(loading) loading.style.display = 'block';
+    if(vacio)  vacio.style.display  = 'none';
+    if(tabla)  tabla.style.display  = 'none';
+    try {
+      const data = await apiFetch(`/catalogo/api/${PRENDA_ID}/hoja-costos/historial`);
+      if(loading) loading.style.display = 'none';
+      if(!data || !data.length){
+        if(vacio) vacio.style.display = 'block';
+        if(count) count.textContent = '';
+        return;
+      }
+      if(count) count.textContent = `(${data.length})`;
+      tbody.innerHTML = data.map(h => `
+        <tr style="border-bottom:1px solid #141414">
+          <td style="padding:6px 8px;color:#4caf7d;font-weight:700">v${h.version}</td>
+          <td style="padding:6px 4px;color:#aaa">${h.aprobado_at ? h.aprobado_at.slice(0,10) : '—'}</td>
+          <td style="padding:6px 4px;text-align:right;color:#888">S/. ${h.total_mp != null ? h.total_mp.toFixed(2) : '—'}</td>
+          <td style="padding:6px 4px;text-align:right;color:#888">S/. ${h.total_avios != null ? h.total_avios.toFixed(2) : '—'}</td>
+          <td style="padding:6px 4px;text-align:right;font-weight:700;color:#e0e0e0">S/. ${h.total_general != null ? h.total_general.toFixed(2) : '—'}</td>
+          <td style="padding:6px 4px;color:#666">${h.aprobado_por || '—'}</td>
+          <td style="padding:6px 4px;text-align:center">
+            <button onclick="window._verVersionHoja(${h.id},'v${h.version}')" title="Ver detalle"
+              style="background:none;border:1px solid #333;color:#4a9fff;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px">Ver</button>
+          </td>
+        </tr>`).join('');
+      if(tabla) tabla.style.display = 'table';
+    } catch(e) {
+      if(loading) loading.style.display = 'none';
+      if(vacio){ vacio.style.display = 'block'; vacio.textContent = `Error: ${e.message}`; }
+    }
+  }
+
+  window._verVersionHoja = async function(hojaId, label){
+    const modal   = document.getElementById('modal-version-hoja');
+    const content = document.getElementById('version-hoja-content');
+    const titulo  = document.getElementById('version-hoja-titulo');
+    if(!modal) return;
+    titulo.textContent = `Hoja de costos ${label} — solo lectura`;
+    content.innerHTML  = '<div style="text-align:center;padding:20px;color:#555">Cargando…</div>';
+    modal.style.display = 'flex';
+    try {
+      const d = await apiFetch(`/catalogo/api/${PRENDA_ID}/hoja-costos/version/${hojaId}`);
+      const fmtSO = v => v != null ? `S/. ${parseFloat(v).toFixed(2)}` : '—';
+      const fmtN  = v => v != null ? parseFloat(v).toFixed(4) : '—';
+      const lineasMP   = d.lineas.filter(l => l.tipo === 'MP');
+      const lineasAV   = d.lineas.filter(l => l.tipo === 'AVIO');
+      const filas = (arr) => arr.map(l => `
+        <tr style="border-bottom:1px solid #141414">
+          <td style="padding:5px 8px;color:#ddd">${l.nombre}<br><span style="font-size:9px;color:#555">${l.seccion||''}</span></td>
+          <td style="padding:5px 4px;text-align:right;color:#aaa">${l.consumo_unitario}</td>
+          <td style="padding:5px 4px;text-align:right;color:#aaa">${l.pct_adicional ? (l.pct_adicional*100).toFixed(0)+'%' : '–'}</td>
+          <td style="padding:5px 4px;text-align:right;color:#ccc">${fmtN(l.precio_snapshot)}<br><span style="font-size:9px;color:#444">${l.unidad_compra||''}</span></td>
+          <td style="padding:5px 4px;text-align:right;color:#555;font-size:10px">${l.factor_conversion||1}</td>
+          <td style="padding:5px 4px;text-align:right;color:#666;font-size:10px">${l.moneda||''}</td>
+          <td style="padding:5px 4px;text-align:right;color:#4caf7d;font-weight:600">${fmtSO(l.subtotal)}</td>
+        </tr>`).join('');
+      const thead = `<thead><tr style="color:#555;font-size:10px;border-bottom:1px solid #1e1e1e">
+        <th style="padding:5px 8px;text-align:left">Nombre</th>
+        <th style="padding:5px 4px;text-align:right">Cons.</th>
+        <th style="padding:5px 4px;text-align:right">%Ad.</th>
+        <th style="padding:5px 4px;text-align:right">Precio/UC</th>
+        <th style="padding:5px 4px;text-align:right;font-size:9px">UC/UM</th>
+        <th style="padding:5px 4px;text-align:right">Mon.</th>
+        <th style="padding:5px 4px;text-align:right">Subtotal</th>
+      </tr></thead>`;
+      content.innerHTML = `
+        <div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px;color:#888">
+          <span>Aprobada: <b style="color:#4caf7d">${d.aprobado_at ? d.aprobado_at.slice(0,10) : '—'}</b></span>
+          <span>Por: <b style="color:#ccc">${d.aprobado_por || '—'}</b></span>
+          <span>TC: <b style="color:#ccc">S/. ${d.tipo_cambio || 3.70}</b></span>
+        </div>
+        ${lineasMP.length ? `<div style="font-size:10px;font-weight:700;color:#4a9fff;margin-bottom:4px;letter-spacing:.08em">MATERIA PRIMA</div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px">${thead}<tbody>${filas(lineasMP)}</tbody>
+          <tfoot><tr style="border-top:1px solid #222">
+            <td colspan="6" style="padding:6px 4px;text-align:right;font-size:10px;color:#777">Total MP</td>
+            <td style="padding:6px 4px;text-align:right;font-weight:700;color:#e0e0e0">${fmtSO(d.total_mp)}</td>
+          </tr></tfoot></table>` : ''}
+        ${lineasAV.length ? `<div style="font-size:10px;font-weight:700;color:#c084f5;margin-bottom:4px;letter-spacing:.08em">AVÍOS</div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px">${thead}<tbody>${filas(lineasAV)}</tbody>
+          <tfoot><tr style="border-top:1px solid #222">
+            <td colspan="6" style="padding:6px 4px;text-align:right;font-size:10px;color:#777">Total Avíos</td>
+            <td style="padding:6px 4px;text-align:right;font-weight:700;color:#e0e0e0">${fmtSO(d.total_avios)}</td>
+          </tr></tfoot></table>` : ''}
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;padding-top:8px;border-top:2px solid #2a2a2a">
+          <span style="font-size:11px;color:#888">TOTAL GENERAL</span>
+          <span style="font-size:18px;font-weight:700;color:#4caf7d">${fmtSO(d.total_general)}</span>
+        </div>`;
+    } catch(e) {
+      content.innerHTML = `<div style="color:#f06060;padding:12px">Error: ${e.message}</div>`;
+    }
+  };
+
   document.addEventListener('DOMContentLoaded', () => {
-    if(document.getElementById('card-hoja-costos')) _cargar();
+    if(document.getElementById('card-hoja-costos')) {
+      _cargar();
+      // Mostrar sección historial (siempre visible, colapsada)
+      const wrap = document.getElementById('hoja-historial-wrap');
+      if(wrap) wrap.style.display = 'block';
+    }
   });
 })();
 

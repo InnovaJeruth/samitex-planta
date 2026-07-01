@@ -33,6 +33,8 @@ def upgrade() -> None:
 
     op.add_column('hojas_costos',
         sa.Column('tipo_cambio', sa.Float(), nullable=False, server_default='3.70'))
+    op.add_column('hojas_costos',
+        sa.Column('version', sa.Integer(), nullable=False, server_default='1'))
 
     op.add_column('hojas_costos_lineas',
         sa.Column('unidad_compra', sa.String(length=20), nullable=True))
@@ -43,6 +45,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column('hojas_costos_lineas', 'factor_conversion')
     op.drop_column('hojas_costos_lineas', 'unidad_compra')
+    op.drop_column('hojas_costos', 'version')
     op.drop_column('hojas_costos', 'tipo_cambio')
     op.drop_column('catalogo_mp', 'factor_conversion')
     op.drop_column('catalogo_mp', 'unidad_compra')

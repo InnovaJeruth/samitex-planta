@@ -76,6 +76,7 @@ def _get_prenda(prenda_id: int, db: Session) -> PrendaCatalogo:
 def _hoja_dict(h: HojaCostos) -> dict:
     return {
         "id":          h.id,
+        "version":     getattr(h, 'version', 1) or 1,
         "estado":      h.estado,
         "moneda_base": h.moneda_base,
         "tipo_cambio": h.tipo_cambio,
@@ -84,6 +85,7 @@ def _hoja_dict(h: HojaCostos) -> dict:
         "total_avios": h.total_avios,
         "total_general": h.total_general,
         "aprobado_at": h.aprobado_at.isoformat() if h.aprobado_at else None,
+        "aprobado_por": h.aprobado_por.nombre if h.aprobado_por else None,
         "created_at":  h.created_at.isoformat() if h.created_at else None,
         "updated_at":  h.updated_at.isoformat() if h.updated_at else None,
         "lineas": [
@@ -180,6 +182,33 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
         })
         orden += 1
 
+    # ── MP específicos de variante ────────────────────────────
+    if prenda.tipo_cliente != "BASE":
+        for mp in sorted(prenda.materiales, key=lambda m: m.orden):
+            if not mp.activo:
+                continue
+            fc       = getattr(mp, 'factor_conversion', 1.0) or 1.0
+            precio   = mp.precio_referencia
+            subtotal = _calcular_subtotal(mp.consumo_unitario, mp.pct_adicional, precio, fc, mp.moneda, 3.70)
+            lineas.append({
+                "tipo":              "MP",
+                "item_id":           mp.id,
+                "seccion":           mp.tipo,
+                "nombre":            mp.nombre,
+                "unidad_medida":     mp.unidad_medida,
+                "unidad_compra":     getattr(mp, 'unidad_compra', None),
+                "factor_conversion": fc,
+                "consumo_unitario":  mp.consumo_unitario,
+                "pct_adicional":     mp.pct_adicional,
+                "precio_snapshot":   precio,
+                "moneda":            mp.moneda,
+                "subtotal":          subtotal,
+                "editado_manual":    False,
+                "notas":             None,
+                "orden":             orden,
+            })
+            orden += 1
+
     # ── Avíos ─────────────────────────────────────────────────
     for avio in sorted(base.avios, key=lambda a: (a.seccion, a.orden)):
         if not avio.activo:
@@ -210,6 +239,33 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
             "orden":            orden,
         })
         orden += 1
+
+    # ── Avíos específicos de variante ─────────────────────────
+    if prenda.tipo_cliente != "BASE":
+        for avio in sorted(prenda.avios, key=lambda a: (a.seccion, a.orden)):
+            if not avio.activo:
+                continue
+            fc       = getattr(avio, 'factor_conversion', 1.0) or 1.0
+            precio   = avio.precio
+            subtotal = _calcular_subtotal(avio.consumo_unitario, avio.pct_adicional, precio, fc, avio.moneda, 3.70)
+            lineas.append({
+                "tipo":              "AVIO",
+                "item_id":           avio.id,
+                "seccion":           avio.seccion,
+                "nombre":            avio.nombre,
+                "unidad_medida":     avio.unidad_medida,
+                "unidad_compra":     getattr(avio, 'unidad_compra', None),
+                "factor_conversion": fc,
+                "consumo_unitario":  avio.consumo_unitario,
+                "pct_adicional":     avio.pct_adicional,
+                "precio_snapshot":   precio,
+                "moneda":            avio.moneda,
+                "subtotal":          subtotal,
+                "editado_manual":    False,
+                "notas":             None,
+                "orden":             orden,
+            })
+            orden += 1
 
     total_mp    = sum(l["subtotal"] for l in lineas if l["tipo"] == "MP"   and l["subtotal"] is not None)
     total_avios = sum(l["subtotal"] for l in lineas if l["tipo"] == "AVIO" and l["subtotal"] is not None)
@@ -347,7 +403,7 @@ def api_guardar_hoja(
         db.add(HojaCostosLinea(
             hoja_id           = hoja.id,
             tipo              = l.tipo,
-            item_id           = l.item_id,
+            item_id                  = l.item_id,
             seccion           = l.seccion,
             nombre            = l.nombre,
             unidad_medida     = l.unidad_medida,
@@ -358,16 +414,17 @@ def api_guardar_hoja(
             precio_snapshot   = l.precio_snapshot,
             moneda            = l.moneda,
             subtotal          = subtotal,
-            editado_manual    = (l.precio_snapshot is not None),
             notas             = l.notas,
-            orden             = l.orden if l.orden else i,
+            orden             = i,
         ))
+
+    db.query(HojaCostosLinea).filter_by(hoja_id=hoja.id).filter(
+        HojaCostosLinea.orden >= len(lineas_data)
+    ).delete(synchronize_session=False)
 
     db.commit()
     db.refresh(hoja)
-    return {"ok": True, "id": hoja.id, "estado": hoja.estado,
-            "total_mp": hoja.total_mp, "total_avios": hoja.total_avios,
-            "total_general": hoja.total_general}
+    return _hoja_dict(hoja)
 
 
 @router.post("/api/{prenda_id}/hoja-costos/aprobar")
@@ -376,7 +433,7 @@ def api_aprobar_hoja(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Aprueba la hoja BORRADOR. Solo INGENIERIA / ADMIN."""
+    """Aprueba la hoja BORRADOR y crea nueva versión BORRADOR. Solo INGENIERIA / ADMIN."""
     if _rol(current_user) not in ROLES_APROBAR:
         raise HTTPException(403, "Solo Ingeniería o Admin pueden aprobar")
 
@@ -390,11 +447,124 @@ def api_aprobar_hoja(
     if not hoja.lineas:
         raise HTTPException(400, "La hoja no tiene líneas. Agrega MP o avíos antes de aprobar.")
 
+    version_actual = getattr(hoja, 'version', 1) or 1
+
+    # Snapshot de líneas antes de congelar
+    lineas_snap = [
+        {
+            "tipo":              l.tipo,
+            "item_id":           l.item_id,
+            "seccion":           l.seccion,
+            "nombre":            l.nombre,
+            "unidad_medida":     l.unidad_medida,
+            "unidad_compra":     l.unidad_compra,
+            "factor_conversion": l.factor_conversion,
+            "consumo_unitario":  l.consumo_unitario,
+            "pct_adicional":     l.pct_adicional,
+            "precio_snapshot":   l.precio_snapshot,
+            "moneda":            l.moneda,
+            "subtotal":          l.subtotal,
+            "notas":             l.notas,
+            "orden":             l.orden,
+        }
+        for l in hoja.lineas
+    ]
+
+    # Congelar BORRADOR como APROBADA
     hoja.estado          = "APROBADA"
     hoja.aprobado_por_id = current_user.id
     hoja.aprobado_at     = datetime.utcnow()
+    db.flush()
+
+    # Crear nuevo BORRADOR con version+1 copiando líneas actuales
+    nueva_hoja = HojaCostos(
+        prenda_catalogo_id = prenda_id,
+        estado             = "BORRADOR",
+        version            = version_actual + 1,
+        moneda_base        = hoja.moneda_base,
+        tipo_cambio        = hoja.tipo_cambio,
+        notas              = None,
+        total_mp           = hoja.total_mp,
+        total_avios        = hoja.total_avios,
+        total_general      = hoja.total_general,
+        creado_por_id      = current_user.id,
+    )
+    db.add(nueva_hoja)
+    db.flush()
+
+    for snap in lineas_snap:
+        db.add(HojaCostosLinea(
+            hoja_id           = nueva_hoja.id,
+            tipo              = snap["tipo"],
+            item_id           = snap["item_id"],
+            seccion           = snap["seccion"],
+            nombre            = snap["nombre"],
+            unidad_medida     = snap["unidad_medida"],
+            unidad_compra     = snap["unidad_compra"],
+            factor_conversion = snap["factor_conversion"],
+            consumo_unitario  = snap["consumo_unitario"],
+            pct_adicional     = snap["pct_adicional"],
+            precio_snapshot   = snap["precio_snapshot"],
+            moneda            = snap["moneda"],
+            subtotal          = snap["subtotal"],
+            notas             = snap["notas"],
+            orden             = snap["orden"],
+        ))
+
     db.commit()
-    return {"ok": True, "mensaje": "Hoja de costos aprobada"}
+    return {
+        "ok":            True,
+        "mensaje":       f"Hoja v{version_actual} aprobada. Nueva versión v{version_actual + 1} en borrador.",
+        "nueva_version": version_actual + 1,
+    }
+
+
+@router.get("/api/{prenda_id}/hoja-costos/historial")
+def api_historial_hojas(
+    prenda_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Devuelve todas las versiones APROBADAS de la prenda, ordenadas de más reciente a más antigua."""
+    _get_prenda(prenda_id, db)
+    hojas = (
+        db.query(HojaCostos)
+        .filter_by(prenda_catalogo_id=prenda_id, estado="APROBADA")
+        .order_by(HojaCostos.aprobado_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id":            h.id,
+            "version":       getattr(h, 'version', 1) or 1,
+            "total_mp":      h.total_mp,
+            "total_avios":   h.total_avios,
+            "total_general": h.total_general,
+            "moneda_base":   h.moneda_base,
+            "tipo_cambio":   h.tipo_cambio,
+            "aprobado_at":   h.aprobado_at.isoformat() if h.aprobado_at else None,
+            "aprobado_por":  h.aprobado_por.nombre if h.aprobado_por else None,
+        }
+        for h in hojas
+    ]
+
+
+@router.get("/api/{prenda_id}/hoja-costos/version/{hoja_id}")
+def api_get_version_hoja(
+    prenda_id: int,
+    hoja_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Devuelve una versión específica (APROBADA) de la hoja de costos para visualización."""
+    hoja = (
+        db.query(HojaCostos)
+        .filter_by(id=hoja_id, prenda_catalogo_id=prenda_id, estado="APROBADA")
+        .first()
+    )
+    if not hoja:
+        raise HTTPException(404, "Versión no encontrada")
+    return _hoja_dict(hoja)
 
 
 @router.get("/api/{prenda_id}/hoja-costos/historial-precios/{item_tipo}/{item_id}")

@@ -290,6 +290,7 @@ class HojaCostos(Base):
     total_general      = Column(Float,       nullable=True)
     moneda_base        = Column(String(5),   nullable=False, default="SO")
     tipo_cambio        = Column(Float,       nullable=False, server_default='3.70')  # USD→SO
+    version            = Column(Integer,     nullable=False, server_default='1')
     creado_por_id      = Column(Integer,     ForeignKey("usuarios.id"), nullable=True)
     aprobado_por_id    = Column(Integer,     ForeignKey("usuarios.id"), nullable=True)
     aprobado_at        = Column(DateTime,    nullable=True)
