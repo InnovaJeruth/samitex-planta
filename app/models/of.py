@@ -88,6 +88,7 @@ class OrdenFabricacion(Base):
                                          foreign_keys="OFFaseParada.of_id")
     historial_fechas_terc = relationship("TercHistorialFecha",  back_populates="of", cascade="all, delete-orphan")
     recepciones_terc      = relationship("TercRecepcion",       back_populates="of", cascade="all, delete-orphan")
+    subproceso_logs       = relationship("TercSubprocesoLog",  back_populates="of", cascade="all, delete-orphan", foreign_keys="TercSubprocesoLog.of_id")
     talla_distribucion    = relationship("OFTallaDistribucion", back_populates="of", cascade="all, delete-orphan")
 
 
