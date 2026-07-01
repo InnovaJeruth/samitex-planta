@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.of import OrdenFabricacion, EstadoOF, EstadoDocsEnum
 from app.models.fase import OFFaseEstado, OFFaseTiempos, FaseCatalogo
 from app.models.pieza import OFPieza, PlantillaPieza
-from app.models.planta import PlantaExterna, TercHistorialFecha
+from app.models.planta import PlantaExterna, TercHistorialFecha, TercSubprocesoLog, TercRecepcion
 from app.models.usuario import Usuario
 from app.constants import ORDEN_FASES
 from app.services.gate_service import puede_activar
@@ -193,21 +193,33 @@ def tercerizar(
     fecha_recepcion_est: Optional[str],
     usuario: Usuario,
     db: Session,
+    fase_id: Optional[str] = None,
 ) -> dict:
     rol = _rol(usuario)
     if rol not in ("ADMIN", "PLANEADOR"):
         raise HTTPException(403, "Solo ADMIN o PLANEADOR pueden tercerizar una OF")
-    if of.estado != EstadoOF.ACTIVA:
-        raise HTTPException(400, "Solo se puede tercerizar una OF en estado ACTIVA")
+    estados_permitidos = [EstadoOF.ACTIVA, EstadoOF.EN_PROCESO] if fase_id else [EstadoOF.ACTIVA]
+    if of.estado not in estados_permitidos:
+        raise HTTPException(400, "Solo se puede tercerizar una OF en estado ACTIVA" if not fase_id else "Solo se puede tercerizar un subproceso en OF ACTIVA o EN PROCESO")
     if of.estado_docs != EstadoDocsEnum.COMPLETA:
         raise HTTPException(400, "Los gates documentales deben estar completos antes de tercerizar")
-    tiene_avance = any(
-        fe.cantidad_actual > 0 or fe.completada
-        for p in of.piezas
-        for fe in p.fases_estado
-    )
-    if tiene_avance:
-        raise HTTPException(400, "No se puede tercerizar una OF que ya tiene avance de corte")
+    if fase_id:
+        tiene_avance_fase = any(
+            fe.cantidad_actual > 0 or fe.completada
+            for p in of.piezas
+            for fe in p.fases_estado
+            if fe.fase_id == fase_id
+        )
+        if tiene_avance_fase:
+            raise HTTPException(400, f"La fase {fase_id} ya tiene avance registrado")
+    else:
+        tiene_avance = any(
+            fe.cantidad_actual > 0 or fe.completada
+            for p in of.piezas
+            for fe in p.fases_estado
+        )
+        if tiene_avance:
+            raise HTTPException(400, "No se puede tercerizar una OF que ya tiene avance de corte")
 
     planta = db.query(PlantaExterna).filter_by(id=planta_id, activo=True).first()
     if not planta:
@@ -217,6 +229,7 @@ def tercerizar(
     of.planta_id = planta.id
     of.planta_externa = planta.nombre
     of.estado_tercerizado = "PENDIENTE_ENVIO"
+    of.fase_tercerizada = fase_id
     of.juegos_recibidos = 0
     if fecha_envio:
         of.fecha_envio = _parse_date(fecha_envio)
@@ -228,8 +241,20 @@ def tercerizar(
                 f"La fecha de recepción estimada ({fecha_recep}) no puede superar el APT de la OF ({of.fecha_apt})",
             )
         of.fecha_recepcion_est = fecha_recep
+    log = TercSubprocesoLog(
+        of_id=of.id,
+        planta_id=planta.id,
+        fase_id=fase_id,
+        estado="PROGRAMADO",
+        juegos_enviados=of.total_juegos,
+        fecha_envio=of.fecha_envio,
+        fecha_recepcion_est=of.fecha_recepcion_est,
+        usuario_creo_id=usuario.id,
+    )
+    db.add(log)
     db.commit()
-    return {"ok": True, "mensaje": f"OF {of.numero_of} tercerizada a {planta.nombre}"}
+    scope = f"fase {fase_id}" if fase_id else "proceso completo"
+    return {"ok": True, "mensaje": f"OF {of.numero_of} tercerizada a {planta.nombre} ({scope})"}
 
 
 def marcar_enviada(of: OrdenFabricacion, usuario: Usuario, db: Session) -> dict:

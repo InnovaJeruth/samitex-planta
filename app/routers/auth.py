@@ -7,9 +7,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
-from app.models.usuario import Usuario
+from app.models.usuario import Usuario, TokenRevocado
 from app.core.auth import (
-    verify_password, create_access_token,
+    verify_password, create_access_token, _decode_token,
     get_current_user, get_current_user_optional, COOKIE_NAME,
 )
 from app.schemas.usuario import TokenResponse, UsuarioResponse
@@ -110,15 +110,37 @@ def me(current_user: Usuario = Depends(get_current_user)):
     return current_user
 
 
+def _revocar_token(request: Request, db: Session) -> None:
+    """Agrega el JTI del token actual a la lista negra y limpia los expirados."""
+    from datetime import datetime
+    token = request.cookies.get(COOKIE_NAME)
+    if token:
+        payload = _decode_token(token)
+        if payload:
+            jti = payload.get("jti")
+            exp = payload.get("exp")
+            if jti and exp:
+                expires_at = datetime.utcfromtimestamp(exp)
+                if not db.query(TokenRevocado).filter_by(jti=jti).first():
+                    db.add(TokenRevocado(jti=jti, expires_at=expires_at))
+                # Limpiar tokens expirados (housekeeping)
+                db.query(TokenRevocado).filter(
+                    TokenRevocado.expires_at < datetime.utcnow()
+                ).delete()
+                db.commit()
+
+
 @router.post("/logout")
-def logout():
+def logout(request: Request, db: Session = Depends(get_db)):
+    _revocar_token(request, db)
     response = JSONResponse(content={"mensaje": "Sesion cerrada"})
     response.delete_cookie(COOKIE_NAME)
     return response
 
 
 @router.get("/logout")
-def logout_get():
+def logout_get(request: Request, db: Session = Depends(get_db)):
+    _revocar_token(request, db)
     response = RedirectResponse("/auth/login", status_code=302)
     response.delete_cookie(COOKIE_NAME)
     return response

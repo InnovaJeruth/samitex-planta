@@ -61,15 +61,20 @@ label.upload-btn:hover{background:#252525;}
 
 <!-- Tallas -->
 <div class="card">
-  <div class="section-title">Distribución por tallas</div>
-  <div class="talla-grid">
+  <div class="section-title">Distribucion por tallas</div>
+  <div class="talla-grid" id="talla-grid">
     {% for d in curva.detalle %}
-    <div class="talla-item">
+    <div class="talla-item" id="talla-{{ d.sku_id }}">
       <div class="talla-label">{{ d.talla }}</div>
-      <div class="talla-qty">{{ d.cantidad }}</div>
+      <div class="talla-qty" id="qty-display-{{ d.sku_id }}">{{ d.cantidad }}</div>
+      <input type="number" min="0" class="talla-input" data-sku="{{ d.sku_id }}"
+             value="{{ d.cantidad }}"
+             style="display:none;width:100%;text-align:center;font-size:18px;font-weight:600;background:#0d1f2e;border:1px solid #4a9fff;border-radius:4px;color:#e0e0e0;padding:4px 0;"
+             oninput="onCantidadChange()">
     </div>
     {% endfor %}
   </div>
+  <p id="tallas-hint" style="font-size:11px;color:#555;margin-top:8px;display:none;">Ajusta las cantidades para que sumen los juegos de la OF seleccionada.</p>
 </div>
 
 <!-- Documento -->
@@ -120,13 +125,9 @@ label.upload-btn:hover{background:#252525;}
   <div id="of-lista" style="background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;overflow:hidden;margin-bottom:10px;">
     {% for of in ofs_activas %}
     <div class="of-row">
-      {% if of.id in of_ids_vinculados %}
-      <input type="radio" name="of-sel" value="{{ of.id }}" disabled>
-      {% else %}
       <input type="radio" name="of-sel" id="of-{{ of.id }}" value="{{ of.id }}"
              data-total="{{ of.total_juegos }}" data-numero="{{ of.numero_of }}"
              onchange="seleccionarOf({{ of.id }}, {{ of.total_juegos or 0 }}, '{{ of.numero_of }}')">
-      {% endif %}
       <label for="of-{{ of.id }}" style="flex:1;cursor:pointer;margin:0;">
         <div style="font-size:12px;font-weight:500;color:#e0e0e0;">OF {{ of.numero_of }}
           <span style="font-size:10px;color:#555;font-weight:400;margin-left:6px;">{{ of.total_juegos }} juegos</span>
@@ -134,7 +135,7 @@ label.upload-btn:hover{background:#252525;}
         <div style="font-size:10px;color:#555;">{{ of.cliente }} · {{ of.estado.value }}</div>
       </label>
       {% if of.id in of_ids_vinculados %}
-      <span class="badge badge-ok">ya enviada</span>
+      <span class="badge" style="background:#1a2a0d;color:#8bc34a;border:1px solid #3a5a1a;font-size:10px;">ya enviada · re-enviar</span>
       {% endif %}
     </div>
     {% endfor %}
@@ -153,7 +154,14 @@ label.upload-btn:hover{background:#252525;}
 
 <script>
 const CURVA_ID   = {{ curva.id }};
-const CURVA_TOTAL = {{ curva.detalle | sum(attribute='cantidad') }};
+const CURVA_VINCULADA = {{ 'true' if of_ids_vinculados else 'false' }};
+let CURVA_TOTAL = {{ curva.detalle | sum(attribute='cantidad') }};
+
+function onCantidadChange(){
+  CURVA_TOTAL = Array.from(document.querySelectorAll('.talla-input'))
+    .reduce(function(s,i){ return s + (parseInt(i.value)||0); }, 0);
+  if(_ofSeleccionada) seleccionarOf(_ofSeleccionada.id, _ofSeleccionada.total_juegos, _ofSeleccionada.numero_of);
+}
 let _ofSeleccionada = null;
 
 async function adjuntarDoc(input){
@@ -170,6 +178,15 @@ async function adjuntarDoc(input){
 
 function seleccionarOf(id, totalJuegos, numeroOf){
   _ofSeleccionada = { id, total_juegos: totalJuegos, numero_of: numeroOf };
+  // Solo mostrar inputs editables si la curva no tiene OFs vinculadas aún
+  if(!CURVA_VINCULADA){
+    document.querySelectorAll('.talla-input').forEach(function(i){ i.style.display='block'; });
+    document.querySelectorAll('[id^="qty-display-"]').forEach(function(d){ d.style.display='none'; });
+    var hint = document.getElementById('tallas-hint');
+    if(hint) hint.style.display='block';
+  }
+  CURVA_TOTAL = Array.from(document.querySelectorAll('.talla-input'))
+    .reduce(function(s,i){ return s + (parseInt(i.value)||0); }, 0);
   const bar = document.getElementById('validacion-bar');
   const btn = document.getElementById('btn-enviar');
   if(!bar || !btn) return;
@@ -199,9 +216,13 @@ async function enviarAOfs(){
     toast(`El total (${CURVA_TOTAL}) no cuadra con la OF: ${_ofSeleccionada.total_juegos} juegos`, 'error');
     return;
   }
+  const cantidades = Array.from(document.querySelectorAll('.talla-input')).map(i => ({
+    sku_id: parseInt(i.dataset.sku),
+    cantidad: parseInt(i.value) || 0,
+  }));
   try {
     const d = await apiFetch(`/curvas/api/curvas/${CURVA_ID}/vincular-ofs`, {
-      method:'POST', body: JSON.stringify({of_ids: [_ofSeleccionada.id]}),
+      method:'POST', body: JSON.stringify({of_ids: [_ofSeleccionada.id], cantidades}),
       headers:{'Content-Type':'application/json'}
     });
     toast(d.msg);

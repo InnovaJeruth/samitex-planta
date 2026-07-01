@@ -77,14 +77,16 @@ def catalogo_lista(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
     tipo_base:    str = "",
-    tipo_cliente: str = "",
+    tipo_cliente: str = "BASE",
     q:            str = "",
     solo_activos: str = "1",
 ):
     query = db.query(PrendaCatalogo)
     if tipo_base:
         query = query.filter(PrendaCatalogo.tipo_base == tipo_base)
-    if tipo_cliente:
+    if tipo_cliente == "VARIANTE":
+        query = query.filter(PrendaCatalogo.tipo_cliente != "BASE")
+    elif tipo_cliente:
         query = query.filter(PrendaCatalogo.tipo_cliente == tipo_cliente)
     if q:
         like = f"%{q}%"
@@ -493,6 +495,24 @@ def api_piezas_base_para_heredar(
     }
 
 
+@router.post("/api/{prenda_id}/imagen")
+def api_subir_imagen_prenda(
+    prenda_id: int,
+    imagen:    UploadFile = File(...),
+    db:        Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if _rol(current_user) not in ROLES_EDITOR:
+        raise HTTPException(403, "Sin permiso")
+    prenda = db.query(PrendaCatalogo).filter_by(id=prenda_id).first()
+    if not prenda:
+        raise HTTPException(404, "Prenda no encontrada")
+    _borrar_imagen(prenda.imagen_ruta)
+    prenda.imagen_ruta = _guardar_imagen(imagen, UPLOAD_PRENDA)
+    db.commit()
+    return {"ok": True, "imagen_ruta": prenda.imagen_ruta}
+
+
 @router.post("/api/piezas/{pieza_id}/imagen")
 def api_subir_imagen_pieza(
     pieza_id: int,
@@ -523,7 +543,9 @@ def api_lista_prendas(
     query = db.query(PrendaCatalogo).filter_by(activo=True)
     if tipo_base:
         query = query.filter(PrendaCatalogo.tipo_base == tipo_base)
-    if tipo_cliente:
+    if tipo_cliente == "VARIANTE":
+        query = query.filter(PrendaCatalogo.tipo_cliente != "BASE")
+    elif tipo_cliente:
         query = query.filter(PrendaCatalogo.tipo_cliente == tipo_cliente)
     prendas = query.order_by(PrendaCatalogo.tipo_cliente, PrendaCatalogo.tipo_base, PrendaCatalogo.nombre).all()
     return [
@@ -707,6 +729,7 @@ class AvioIn(_PBase):
     consumo_unitario: float           = 1.0
     pct_adicional:    float           = 0.01
     unidad_compra:    Optional[str]   = None
+    factor_conversion: float          = 1.0
     moneda:           Optional[str]   = None
     precio:           Optional[float] = None
     orden:            int             = 0
@@ -732,6 +755,7 @@ def _avio_dict(a: CatalogoAvio) -> dict:
         "consumo_unitario": a.consumo_unitario,
         "pct_adicional":    a.pct_adicional,
         "unidad_compra":    a.unidad_compra,
+        "factor_conversion": a.factor_conversion,
         "moneda":           a.moneda,
         "precio":           a.precio,
         "orden":            a.orden,
@@ -850,6 +874,7 @@ def api_editar_avio(
     avio.consumo_unitario = body.consumo_unitario
     avio.pct_adicional    = body.pct_adicional
     avio.unidad_compra    = body.unidad_compra
+    avio.factor_conversion = body.factor_conversion
     avio.moneda           = body.moneda
     avio.precio           = body.precio
     avio.orden            = body.orden
@@ -941,6 +966,8 @@ class MpIn(_PBase):
     consumo_unitario:  float           = 1.0
     pct_adicional:     float           = 0.02
     unidad_medida:     str             = "mt."
+    unidad_compra:     Optional[str]   = None
+    factor_conversion: float           = 1.0
     codigo_interno:    Optional[str]   = None
     proveedor:         Optional[str]   = None
     procedencia:       Optional[str]   = None
@@ -965,6 +992,8 @@ def _mp_dict(m: CatalogoMp) -> dict:
         "consumo_unitario":  m.consumo_unitario,
         "pct_adicional":     m.pct_adicional,
         "unidad_medida":     m.unidad_medida,
+        "unidad_compra":     m.unidad_compra,
+        "factor_conversion": m.factor_conversion,
         "codigo_interno":    m.codigo_interno,
         "codigo_base":       m.codigo_base,
         "proveedor":         m.proveedor,
@@ -1083,6 +1112,8 @@ def api_editar_mp(
     mp.consumo_unitario  = body.consumo_unitario
     mp.pct_adicional     = body.pct_adicional
     mp.unidad_medida     = body.unidad_medida
+    mp.unidad_compra     = body.unidad_compra
+    mp.factor_conversion = body.factor_conversion
     mp.codigo_interno    = body.codigo_interno
     mp.proveedor         = body.proveedor
     mp.procedencia       = body.procedencia
@@ -1368,13 +1399,13 @@ def api_ofs_activas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Lista OFs activas de esta variante. tipo= indica qué doc revisar para ya_tiene."""
+    """Lista OFs en BORRADOR de esta variante. tipo= indica qué doc revisar para ya_tiene."""
     from app.models.of import OrdenFabricacion, EstadoOF
     ofs = (
         db.query(OrdenFabricacion)
           .filter(
               OrdenFabricacion.prenda_catalogo_id == prenda_id,
-              OrdenFabricacion.estado.in_([EstadoOF.BORRADOR, EstadoOF.ACTIVA, EstadoOF.EN_PROCESO]),
+              OrdenFabricacion.estado == EstadoOF.BORRADOR,
           ).order_by(OrdenFabricacion.numero_of).all()
     )
     return [
@@ -1424,14 +1455,14 @@ def api_vincular_muestra(
 
     q = db.query(OrdenFabricacion).filter(
         OrdenFabricacion.prenda_catalogo_id == prenda_id,
-        OrdenFabricacion.estado.in_([EstadoOF.BORRADOR, EstadoOF.ACTIVA, EstadoOF.EN_PROCESO]),
+        OrdenFabricacion.estado == EstadoOF.BORRADOR,
     )
     if body.of_ids:
         q = q.filter(OrdenFabricacion.id.in_(body.of_ids))
     ofs = q.all()
 
     if not ofs:
-        return {"ok": True, "vinculadas": [], "msg": "No hay OFs activas para vincular"}
+        return {"ok": True, "vinculadas": [], "msg": "No hay OFs en BORRADOR para vincular"}
 
     vinculadas = []
     for of in ofs:
@@ -1458,6 +1489,7 @@ def api_vincular_muestra(
 # ── Endpoint genérico: vincular cualquier tipo de documento del catálogo a OFs ─
 
 _TIPOS_VINCULABLES = {"MUESTRA_APROBADA", "FICHA_TECNICA", "MOLDE"}
+_TIPO_CATALOGO_A_OF = {"MOLDE": "MOLDES_LECTRA"}  # catalogo usa MOLDE, documentos_of usa MOLDES_LECTRA
 
 class VincularDocBody(_PBase):
     tipo:   str
@@ -1504,7 +1536,7 @@ def api_vincular_documento(
     if not ofs:
         raise HTTPException(400, "No hay OFs activas para esta prenda")
 
-    tipo_doc = body.tipo
+    tipo_doc = _TIPO_CATALOGO_A_OF.get(body.tipo, body.tipo)
     enviadas = []
     for of in ofs:
         doc_ex = db.query(DocumentoOF).filter_by(of_id=of.id, tipo=tipo_doc).first()

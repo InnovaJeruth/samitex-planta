@@ -105,7 +105,10 @@
 {% block content %}
 <!-- HEADER OF -->
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-    <div class="page-title">Orden {{ of.numero_of }}</div>
+    <div class="page-title">
+      {% if of.es_muestra %}<span style="background:#1a3a1a;color:#6fcf6f;border:1px solid #2a5a2a;border-radius:4px;font-size:12px;padding:2px 8px;margin-right:8px;font-weight:600;">MUESTRA</span>{% endif %}
+      {% if of.es_muestra %}Req. Muestra{% else %}Orden{% endif %} {{ of.numero_of }}
+    </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
         <a href="/of/" class="btn btn-secondary btn-sm">← Órdenes</a>
         <a href="/corte/{{ of.id }}" class="btn btn-primary btn-sm">▶ Seguimiento</a>
@@ -151,14 +154,14 @@
             <button class="btn btn-success btn-sm" onclick="activarOF()">✓ Activar OF</button>
             {% elif of.estado.value == 'BORRADOR' and not puede_activar %}
             <button class="btn btn-secondary btn-sm" disabled title="Gates pendientes">✗ Pendiente gates</button>
-            {% elif of.estado.value == 'EN_PROCESO' %}
-            <button class="btn btn-success btn-sm" onclick="completarOF()">✓ Marcar Completada</button>
             {% endif %}
             {% if of.estado.value == 'ACTIVA' and of.estado_docs.value == 'COMPLETA' and not of.tercerizado and not tiene_avance %}
-            <button class="btn btn-sm" style="background:#2a0a4e;border:1px solid #6d28d9;color:#c084fc" onclick="abrirModalTercerizar()">⬆ Tercerizar</button>
+            <button class="btn btn-sm" style="background:#2a0a4e;border:1px solid #6d28d9;color:#c084fc" onclick="abrirModalTercerizar()">⬆ Tercerizar OF</button>
+            {% elif of.estado.value == 'EN_PROCESO' and not of.tercerizado %}
+            <button class="btn btn-sm" style="background:#1a2a0a;border:1px solid #3a6d1a;color:#8fc45a" onclick="abrirModalTercFase()">⬆ Tercerizar fase</button>
             {% elif of.tercerizado and of.estado_tercerizado == 'PENDIENTE_ENVIO' %}
             <button class="btn btn-sm" style="background:#0a1a3e;border:1px solid #1d4ed8;color:#60a5fa" onclick="marcarEnviada()">📦 Marcar Enviada</button>
-            {% elif of.tercerizado and of.estado_tercerizado == 'ENVIADA' %}
+            {% elif of.tercerizado and of.estado_tercerizado in ('ENVIADA', 'RECIBIDA') and (of.juegos_recibidos or 0) < (of.total_juegos or 0) %}
             <button class="btn btn-success btn-sm" onclick="abrirModalRecepcion()">📥 Registrar Recepción</button>
             {% endif %}
             {% if of.tercerizado and of.estado_tercerizado in ('PENDIENTE_ENVIO', 'ENVIADA') %}
@@ -190,6 +193,7 @@
 {% set ROLES_DOC = ('UDP','COMERCIAL','COMERCIAL_MARCA','PLANEAMIENTO_MARCA','INGENIERIA','LOGISTICA','CALIDAD') %}
 {% set es_rol_doc = _rol in ROLES_DOC %}
 
+{% if not of.es_muestra %}
 <div class="detalle-grid">
     <!-- GATES OVERVIEW: solo para roles de gestión/supervisión -->
     {% if not es_rol_doc %}
@@ -345,9 +349,10 @@
         {% endif %}
     </div>
 </div>
+{% endif %}{# /es_muestra gates+docs #}
 
 <!-- CURVA DE TALLAS -->
-{% if of.prenda_catalogo_id %}
+{% if of.prenda_catalogo_id and not of.es_muestra %}
 <div class="card" style="margin-bottom:16px" id="card-curva-tallas">
     <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
         <span class="card-title">📐 Distribución por talla</span>
@@ -622,6 +627,45 @@
     </div>
 </div>
 
+<!-- MODAL TERCERIZACIÓN POR FASE -->
+<div class="modal-overlay" id="modal-terc-fase" style="display:none">
+    <div class="modal-box" style="width:500px">
+        <div class="modal-title" style="color:#8fc45a">⬆ Tercerizar fase</div>
+        <div style="font-size:12px;color:#888;margin-bottom:16px">
+            Selecciona la fase a tercerizar. Solo se muestran las fases con trabajo pendiente.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+            <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:6px">Fase *</label>
+                <div id="terc-fase-lista" style="display:flex;flex-wrap:wrap;gap:8px">
+                    <span style="font-size:12px;color:#555">Cargando fases...</span>
+                </div>
+                <input type="hidden" id="terc-fase-seleccionada">
+            </div>
+            <div>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Planta externa *</label>
+                <select id="terc-fase-planta-id" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                    <option value="">Cargando plantas...</option>
+                </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de envío</label>
+                    <input type="date" id="terc-fase-fecha-envio" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Recepción estimada</label>
+                    <input type="date" id="terc-fase-fecha-recep" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="cerrarModalTercFase()">Cancelar</button>
+            <button class="btn btn-sm" style="background:#1a4a0a;border:1px solid #3a8a1a;color:#b8f47a" onclick="tercerizar_fase()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL ACTUALIZAR FECHA RECEPCIÓN -->
 <div class="modal-overlay" id="modal-fecha-terc" style="display:none">
     <div class="modal-box" style="width:400px">
@@ -656,7 +700,8 @@
         <div style="display:flex;flex-direction:column;gap:12px">
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Juegos recibidos en esta entrega *</label>
-                <input type="number" id="inp-juegos-recibidos" min="1" placeholder="Ej: 50" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Juegos recibidos">
+                <input type="number" id="inp-juegos-recibidos" min="1" max="{{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }}" placeholder="Máx: {{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }} restantes" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Juegos recibidos">
+                <div style="font-size:10px;color:#767676;margin-top:3px">Faltan {{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }} juegos por recibir</div>
             </div>
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de recepción *</label>
@@ -891,7 +936,7 @@ async function cargarCurva() {
                 <th style="padding:6px 8px;text-align:right">Cantidad</th>
                 <th style="padding:6px 8px;text-align:right">%</th>
             </tr></thead>
-            <tbody>${skus.map(s => {
+            <tbody>${skus.filter(s => (dist[s.id] || 0) > 0).map(s => {
                 const qty = dist[s.id] || 0;
                 const pct = total > 0 ? Math.round(qty/total*100) : 0;
                 return `<tr style="border-bottom:1px solid #141414">
@@ -978,6 +1023,79 @@ function cerrarModalTercerizar() {
     document.getElementById('modal-terc').style.display = 'none';
 }
 
+async function abrirModalTercFase() {
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('terc-fase-fecha-envio').value = hoy;
+    document.getElementById('terc-fase-fecha-recep').value = '';
+    document.getElementById('terc-fase-seleccionada').value = '';
+
+    // Cargar fases pendientes
+    const listaEl = document.getElementById('terc-fase-lista');
+    listaEl.innerHTML = '<span style="font-size:12px;color:#555">Cargando...</span>';
+    const rf = await fetch(`/of/api/${OF_ID}/fases-pendientes`, {headers:{'x-csrf-token':getCsrfToken()}});
+    if (rf.ok) {
+        const fases = await rf.json();
+        if (fases.length === 0) {
+            listaEl.innerHTML = '<span style="font-size:12px;color:#f88">Todas las fases están completadas.</span>';
+        } else {
+            listaEl.innerHTML = '';
+            fases.forEach(f => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = f.nombre;
+                btn.dataset.faseId = f.fase_id;
+                btn.style.cssText = 'padding:6px 14px;border-radius:6px;border:1px solid #3a5a1a;background:#0d1a08;color:#8fc45a;cursor:pointer;font-size:12px';
+                btn.onclick = () => {
+                    document.querySelectorAll('#terc-fase-lista button').forEach(b => {
+                        b.style.background = '#0d1a08'; b.style.borderColor = '#3a5a1a'; b.style.color = '#8fc45a';
+                    });
+                    btn.style.background = '#1a4a0a'; btn.style.borderColor = '#6aaa2a'; btn.style.color = '#d0f890';
+                    document.getElementById('terc-fase-seleccionada').value = f.fase_id;
+                };
+                listaEl.appendChild(btn);
+            });
+        }
+    } else {
+        listaEl.innerHTML = '<span style="font-size:12px;color:#f88">Error cargando fases.</span>';
+    }
+
+    // Cargar plantas
+    const sel = document.getElementById('terc-fase-planta-id');
+    sel.innerHTML = '<option value="">Cargando...</option>';
+    const rp = await fetch('/plantas/api/');
+    if (rp.ok) {
+        const plantas = await rp.json();
+        sel.innerHTML = '<option value="">— Selecciona planta —</option>';
+        plantas.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id; opt.textContent = `${p.nombre} (${p.ruc})`;
+            sel.appendChild(opt);
+        });
+    }
+    document.getElementById('modal-terc-fase').style.display = 'flex';
+}
+
+function cerrarModalTercFase() {
+    document.getElementById('modal-terc-fase').style.display = 'none';
+}
+
+async function tercerizar_fase() {
+    const fase_id = document.getElementById('terc-fase-seleccionada').value;
+    const planta_id = parseInt(document.getElementById('terc-fase-planta-id').value);
+    if (!fase_id) return showToast('Selecciona una fase', 'warning');
+    if (!planta_id) return showToast('Selecciona una planta externa', 'warning');
+    const fecha_envio = document.getElementById('terc-fase-fecha-envio').value || null;
+    const fecha_recepcion_est = document.getElementById('terc-fase-fecha-recep').value || null;
+    const r = await fetch(`/of/api/${OF_ID}/tercerizar`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-csrf-token':getCsrfToken()},
+        body: JSON.stringify({planta_id, fecha_envio, fecha_recepcion_est, fase_id}),
+    });
+    const d = await r.json();
+    if (r.ok) location.reload();
+    else { cerrarModalTercFase(); showToast(d.detail || 'Error al tercerizar fase', 'error'); }
+}
+
 async function tercerizar() {
     const planta_id = parseInt(document.getElementById('terc-planta-id').value);
     if (!planta_id) return showToast('Selecciona una planta externa', 'warning');
@@ -1018,7 +1136,7 @@ async function registrarRecepcion() {
     if (!fecha) return showToast('Ingresa la fecha de recepción', 'warning');
     const r = await fetch(`/of/api/${OF_ID}/tercerizar/recepcion`, {
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{'Content-Type':'application/json','x-csrf-token':getCsrfToken()},
         body: JSON.stringify({juegos_recibidos: juegos, fecha_recepcion: fecha, observacion: obs}),
     });
     const d = await r.json();

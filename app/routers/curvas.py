@@ -237,8 +237,15 @@ def api_descargar_doc(
     return storage.serve(curva.ruta_archivo, curva.nombre_archivo)
 
 
+class CantidadItem(PydanticBase):
+    sku_id:   int
+    cantidad: int
+
 class VincularOFsBody(PydanticBase):
-    of_ids: List[int]
+    of_ids:    List[int]
+    cantidades: List[CantidadItem] = []
+
+
 
 
 @router.post("/api/curvas/{curva_id}/vincular-ofs")
@@ -304,15 +311,31 @@ def api_vincular_ofs(
                     usuario_id=current_user.id,
                 ))
 
+        # Actualizar detalle de la curva si vinieron cantidades modificadas
+        if body.cantidades:
+            cant_map = {item.sku_id: item.cantidad for item in body.cantidades}
+            for det in curva.detalle:
+                if det.sku_id in cant_map:
+                    det.cantidad = cant_map[det.sku_id]
+
         # Escribir distribución de tallas (reemplaza siempre — curva es la fuente única)
         db.query(OFTallaDistribucion).filter_by(of_id=of_id).delete()
-        for det in curva.detalle:
-            if det.cantidad > 0:
-                db.add(OFTallaDistribucion(
-                    of_id=of_id,
-                    sku_id=det.sku_id,
-                    cantidad=det.cantidad,
-                ))
+        if body.cantidades:
+            for item in body.cantidades:
+                if item.cantidad > 0:
+                    db.add(OFTallaDistribucion(
+                        of_id=of_id,
+                        sku_id=item.sku_id,
+                        cantidad=item.cantidad,
+                    ))
+        else:
+            for det in curva.detalle:
+                if det.cantidad > 0:
+                    db.add(OFTallaDistribucion(
+                        of_id=of_id,
+                        sku_id=det.sku_id,
+                        cantidad=det.cantidad,
+                    ))
 
         db.flush()
         actualizar_estado_docs(of, db)
