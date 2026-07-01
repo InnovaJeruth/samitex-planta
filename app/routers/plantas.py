@@ -130,4 +130,4 @@ def api_plantas(
     return [{"id": p.id, "nombre": p.nombre, "ruc": p.ruc, "encargado": p.encargado} for p in plantas]
 
 
-# ── API: crea
+class PlantaBody(P
