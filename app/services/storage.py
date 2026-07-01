@@ -13,9 +13,12 @@ API pública:
 """
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 from typing import Optional
+
+_log = logging.getLogger(__name__)
 
 from fastapi import UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
@@ -108,8 +111,14 @@ def _sb_storage_path(folder: str, filename: str) -> str:
 
 
 def _sb_save(content: bytes, folder: str, filename: str) -> str:
+    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_KEY:
+        raise RuntimeError(
+            "SUPABASE_URL y SUPABASE_SERVICE_KEY deben estar configuradas en las "
+            "variables de entorno de Render para subir archivos en producción."
+        )
     sb = _sb_client()
     path = _sb_storage_path(folder, filename)
+    _log.info("Supabase upload → bucket=%s path=%s bytes=%d", settings.SUPABASE_BUCKET, path, len(content))
     sb.storage.from_(settings.SUPABASE_BUCKET).upload(
         path, content, file_options={"upsert": "true"}
     )
