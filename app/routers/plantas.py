@@ -130,4 +130,85 @@ def api_plantas(
     return [{"id": p.id, "nombre": p.nombre, "ruc": p.ruc, "encargado": p.encargado} for p in plantas]
 
 
-# ── API: crea
+class PlantaBody(PydanticBase):
+    nombre:    str
+    ruc:       str
+    encargado: str
+    direccion: str
+
+
+# ── API: crear planta ──────────────────────────────────────────
+@router.post("/api/crear")
+def api_crear_planta(
+    body: PlantaBody,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _check_rol(current_user)
+    if not body.nombre or not body.ruc or not body.encargado or not body.direccion:
+        raise HTTPException(400, "Todos los campos son obligatorios")
+    if len(body.ruc) != 11 or not body.ruc.isdigit():
+        raise HTTPException(400, "RUC debe tener 11 dígitos numéricos")
+    planta = PlantaExterna(
+        nombre=body.nombre.strip(),
+        ruc=body.ruc.strip(),
+        encargado=body.encargado.strip(),
+        direccion=body.direccion.strip(),
+        activo=True,
+    )
+    db.add(planta)
+    db.commit()
+    db.refresh(planta)
+    return {"ok": True, "id": planta.id, "nombre": planta.nombre}
+
+
+# ── API: editar planta ─────────────────────────────────────────
+@router.put("/api/{planta_id}")
+def api_editar_planta(
+    planta_id: int,
+    body: PlantaBody,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _check_rol(current_user)
+    planta = db.query(PlantaExterna).filter_by(id=planta_id).first()
+    if not planta:
+        raise HTTPException(404, "Planta no encontrada")
+    planta.nombre    = body.nombre.strip()
+    planta.ruc       = body.ruc.strip()
+    planta.encargado = body.encargado.strip()
+    planta.direccion = body.direccion.strip()
+    db.commit()
+    return {"ok": True}
+
+
+# ── API: desactivar planta ─────────────────────────────────────
+@router.delete("/api/{planta_id}")
+def api_desactivar_planta(
+    planta_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _check_rol(current_user)
+    planta = db.query(PlantaExterna).filter_by(id=planta_id).first()
+    if not planta:
+        raise HTTPException(404, "Planta no encontrada")
+    planta.activo = False
+    db.commit()
+    return {"ok": True}
+
+
+# ── API: activar planta ────────────────────────────────────────
+@router.patch("/api/{planta_id}/activar")
+def api_activar_planta(
+    planta_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _check_rol(current_user)
+    planta = db.query(PlantaExterna).filter_by(id=planta_id).first()
+    if not planta:
+        raise HTTPException(404, "Planta no encontrada")
+    planta.activo = True
+    db.commit()
+    return {"ok": True}
