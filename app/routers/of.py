@@ -19,6 +19,7 @@ from app.models.of import OrdenFabricacion, EstadoOF, TipoPrendaEnum, TipoDocume
 from app.models.pieza import OFPieza, PlantillaPieza
 from app.models.catalogo import PrendaCatalogo, PrendaSku, TIPOS_BASE_PRENDA
 from app.models.fase import OFFaseEstado, FaseCatalogo, OFFaseTiempos
+from app.models.planta import PlantaExterna, TercRecepcion, TercHistorialFecha, TercSubprocesoLog
 from app.core.auth import get_current_user
 from app.core.templates import templates
 from app.models.usuario import Usuario
@@ -326,7 +327,9 @@ def detalle_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
+    of = db.query(OrdenFabricacion).options(
+        selectinload(OrdenFabricacion.terc_logs)
+    ).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
 
@@ -366,6 +369,7 @@ def detalle_of(
         "gates_permitidos": gates_permitidos,
         "tipo_cliente": tipo_cliente,
         "tiene_avance": tiene_avance,
+        "fases_catalogo": db.query(FaseCatalogo).order_by(FaseCatalogo.orden).all(),
     })
 
 
@@ -558,6 +562,8 @@ def cargar_plantilla(
             of_id=of_id, nombre=p.nombre, material=p.material_default,
             cantidad_x_prenda=p.cantidad_x_prenda, fusionado=p.fusionado_default,
             orden=p.orden,
+            codigo_pieza=p.codigo,
+            codigo_sap=p.codigo,
         )
         db.add(pieza)
         db.flush()
@@ -1172,3 +1178,176 @@ def api_guardar_tallas_dist(
 
     db.commit()
     return {"ok": True, "msg": "Distribución de tallas guardada"}
+
+
+# ── API: Tercerización ────────────────────────────────────────────────────────
+
+class TercBody(PydanticBase):
+    planta_id: int
+    fecha_envio: Optional[str] = None
+    fecha_recepcion_est: Optional[str] = None
+    fase_id: Optional[str] = None
+
+class RecepcionBody(PydanticBase):
+    juegos_recibidos: int
+    fecha_recepcion: str
+    observacion: Optional[str] = None
+
+class FechaBody(PydanticBase):
+    fecha_recepcion_est: str
+    motivo: Optional[str] = None
+
+
+@router.post("/api/{of_id}/tercerizar")
+def api_tercerizar(
+    of_id: int,
+    body: TercBody,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    of = db.query(OrdenFabricacion).options(
+        selectinload(OrdenFabricacion.piezas).selectinload(OFPieza.fases_estado)
+    ).filter_by(id=of_id).first()
+    if not of:
+        raise HTTPException(404, "OF no encontrada")
+    return of_service.tercerizar(
+        of, body.planta_id, body.fecha_envio, body.fecha_recepcion_est,
+        current_user, db, fase_id=body.fase_id,
+    )
+
+
+@router.post("/api/{of_id}/tercerizar/enviar")
+def api_marcar_enviada(
+    of_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
+    if not of:
+        raise HTTPException(404, "OF no encontrada")
+    return of_service.marcar_enviada(of, current_user, db)
+
+
+@router.post("/api/{of_id}/tercerizar/recepcion")
+def api_registrar_recepcion(
+    of_id: int,
+    body: RecepcionBody,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    of = db.query(OrdenFabricacion).options(
+        selectinload(OrdenFabricacion.piezas).selectinload(OFPieza.fases_estado)
+    ).filter_by(id=of_id).first()
+    if not of:
+        raise HTTPException(404, "OF no encontrada")
+    if not of.tercerizado:
+        raise HTTPException(400, "OF no está tercerizada")
+    from app.core.auth import get_rol
+    if get_rol(current_user) not in ("ADMIN", "PLANEADOR"):
+        raise HTTPException(403, "Sin permiso")
+
+    fecha_recep = _safe_date(body.fecha_recepcion)
+    # Obtener fase_id del TercSubprocesoLog más reciente (fase_tercerizada no existe en el modelo)
+    _log_fase = db.query(TercSubprocesoLog).filter_by(of_id=of_id).order_by(TercSubprocesoLog.id.desc()).first()
+    fase_id_guardada = _log_fase.fase_id if _log_fase else None
+
+    recep = TercRecepcion(
+        of_id=of_id,
+        planta_id=of.planta_id,
+        fase_id=fase_id_guardada,
+        juegos_recibidos=body.juegos_recibidos,
+        fecha_recepcion=fecha_recep,
+        observacion=body.observacion,
+        usuario_id=current_user.id,
+    )
+    db.add(recep)
+    of.juegos_recibidos = (of.juegos_recibidos or 0) + body.juegos_recibidos
+    of.fecha_recepcion_real = fecha_recep
+
+    recepcion_completa = of.juegos_recibidos >= (of.total_juegos or 0)
+    of.estado_tercerizado = "RECIBIDA" if recepcion_completa else "ENVIADA"
+
+    from datetime import datetime as dt
+    log = db.query(TercSubprocesoLog).filter_by(
+        of_id=of_id, fase_id=fase_id_guardada
+    ).order_by(TercSubprocesoLog.id.desc()).first()
+    if log:
+        log.juegos_recibidos = (log.juegos_recibidos or 0) + body.juegos_recibidos
+        log.fecha_recepcion_real = fecha_recep
+        if recepcion_completa:
+            log.estado = "COMPLETADO"
+            log.fecha_completado = dt.now()
+        log.usuario_recepcion_id = current_user.id
+        if body.observacion:
+            log.observacion = body.observacion
+
+    if recepcion_completa:
+        if fase_id_guardada:
+            for p in of.piezas:
+                for fe in p.fases_estado:
+                    if fe.fase_id == fase_id_guardada:
+                        fe.cantidad_actual = fe.max_cantidad
+                        fe.completada = True
+            # Escribir fin_real en OFFaseTiempos de la fase tercerizada
+            t = db.query(OFFaseTiempos).filter_by(
+                of_id=of_id, fase_id=fase_id_guardada
+            ).first()
+            if t is None:
+                t = OFFaseTiempos(of_id=of_id, fase_id=fase_id_guardada)
+                db.add(t)
+            t.fin_real = dt.combine(fecha_recep, dt.min.time())
+        of.tercerizado = False
+        # of.fase_tercerizada no existe en el modelo; fase queda en TercSubprocesoLog
+
+    db.commit()
+    return {"ok": True, "msg": f"Recepción registrada: {body.juegos_recibidos} juegos", "completa": recepcion_completa}
+
+
+@router.patch("/api/{of_id}/tercerizar/fecha")
+def api_actualizar_fecha(
+    of_id: int,
+    body: FechaBody,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
+    if not of:
+        raise HTTPException(404, "OF no encontrada")
+    return of_service.actualizar_fecha_recepcion(
+        of, body.fecha_recepcion_est, body.motivo, current_user, db
+    )
+
+
+@router.get("/api/{of_id}/fases-pendientes")
+def api_fases_pendientes(
+    of_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Fases con al menos una pieza sin completar en esta OF."""
+    from app.constants import ORDEN_FASES, NOMBRES_FASE
+    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
+    if not of:
+        raise HTTPException(404, "OF no encontrada")
+
+    estados = db.query(OFFaseEstado).filter_by(of_id=of_id).all()
+
+    # Fases que realmente tienen registros para esta OF
+    fases_con_registro = {e.fase_id for e in estados}
+    total_por_fase = {}
+    completadas_por_fase = {}
+    for e in estados:
+        total_por_fase[e.fase_id] = total_por_fase.get(e.fase_id, 0) + 1
+        if e.completada:
+            completadas_por_fase[e.fase_id] = completadas_por_fase.get(e.fase_id, 0) + 1
+
+    pendientes = []
+    for fid in ORDEN_FASES:
+        if fid not in fases_con_registro:
+            continue  # fase no aplica a esta OF
+        total = total_por_fase.get(fid, 0)
+        completadas = completadas_por_fase.get(fid, 0)
+        if completadas < total:
+            pendientes.append({"fase_id": fid, "nombre": NOMBRES_FASE.get(fid, fid)})
+
+    return pendientes

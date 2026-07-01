@@ -90,14 +90,16 @@ def catalogo_lista(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
     tipo_base:    str = "",
-    tipo_cliente: str = "",
+    tipo_cliente: str = "BASE",
     q:            str = "",
     solo_activos: str = "1",
 ):
     query = db.query(PrendaCatalogo)
     if tipo_base:
         query = query.filter(PrendaCatalogo.tipo_base == tipo_base)
-    if tipo_cliente:
+    if tipo_cliente == "VARIANTE":
+        query = query.filter(PrendaCatalogo.tipo_cliente != "BASE")
+    elif tipo_cliente:
         query = query.filter(PrendaCatalogo.tipo_cliente == tipo_cliente)
     if q:
         like = f"%{q}%"
@@ -506,6 +508,24 @@ def api_piezas_base_para_heredar(
     }
 
 
+@router.post("/api/{prenda_id}/imagen")
+def api_subir_imagen_prenda(
+    prenda_id: int,
+    imagen:    UploadFile = File(...),
+    db:        Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if _rol(current_user) not in ROLES_EDITOR:
+        raise HTTPException(403, "Sin permiso")
+    prenda = db.query(PrendaCatalogo).filter_by(id=prenda_id).first()
+    if not prenda:
+        raise HTTPException(404, "Prenda no encontrada")
+    _borrar_imagen(prenda.imagen_ruta)
+    prenda.imagen_ruta = _guardar_imagen(imagen, UPLOAD_PRENDA)
+    db.commit()
+    return {"ok": True, "imagen_ruta": prenda.imagen_ruta}
+
+
 @router.post("/api/piezas/{pieza_id}/imagen")
 def api_subir_imagen_pieza(
     pieza_id: int,
@@ -536,7 +556,9 @@ def api_lista_prendas(
     query = db.query(PrendaCatalogo).filter_by(activo=True)
     if tipo_base:
         query = query.filter(PrendaCatalogo.tipo_base == tipo_base)
-    if tipo_cliente:
+    if tipo_cliente == "VARIANTE":
+        query = query.filter(PrendaCatalogo.tipo_cliente != "BASE")
+    elif tipo_cliente:
         query = query.filter(PrendaCatalogo.tipo_cliente == tipo_cliente)
     prendas = query.order_by(PrendaCatalogo.tipo_cliente, PrendaCatalogo.tipo_base, PrendaCatalogo.nombre).all()
     return [
@@ -1487,6 +1509,7 @@ def api_vincular_muestra(
 # ── Endpoint genérico: vincular cualquier tipo de documento del catálogo a OFs ─
 
 _TIPOS_VINCULABLES = {"MUESTRA_APROBADA", "FICHA_TECNICA", "MOLDE"}
+_TIPO_CATALOGO_A_OF = {"MOLDE": "MOLDES_LECTRA"}  # catalogo usa MOLDE, documentos_of usa MOLDES_LECTRA
 
 class VincularDocBody(_PBase):
     tipo:   str
@@ -1533,7 +1556,7 @@ def api_vincular_documento(
     if not ofs:
         raise HTTPException(400, "No hay OFs activas para esta prenda")
 
-    tipo_doc = body.tipo
+    tipo_doc = _TIPO_CATALOGO_A_OF.get(body.tipo, body.tipo)
     enviadas = []
     for of in ofs:
         doc_ex = db.query(DocumentoOF).filter_by(of_id=of.id, tipo=tipo_doc).first()

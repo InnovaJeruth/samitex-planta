@@ -199,6 +199,9 @@ def puede_activar(of: OrdenFabricacion, db: Session) -> tuple[bool, List[str]]:
     Retorna (True, []) si todos los gates requeridos pasaron,
     o (False, [lista de gates pendientes]) si alguno falta.
     """
+    # Requerimientos de muestra no requieren gates documentales
+    if getattr(of, 'es_muestra', False):
+        return True, []
     gates = gates_para_activar(of, db)
     faltantes = [g.label for g in gates.values() if not g.pasado]
     return (len(faltantes) == 0, faltantes)

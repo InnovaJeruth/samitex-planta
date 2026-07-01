@@ -34,10 +34,13 @@ def seguimiento(of_id: int, request: Request, db: Session = Depends(get_db), cur
     if not of:
         raise HTTPException(404, "OF no encontrada")
     semaforo = calcular_semaforo(of.fecha_apt, of.estado.value == "COMPLETADA")
-    puede_registrar = get_rol(current_user) in ROLES_CORTE and not of.tercerizado and of.estado.value in ("ACTIVA", "EN_PROCESO")
+    # OF completa tercerizada → bloqueo total; subproceso → template filtra por fase
+    fase_tercerizada = getattr(of, 'fase_tercerizada', None)
+    puede_registrar = get_rol(current_user) in ROLES_CORTE and not (of.tercerizado and not fase_tercerizada) and of.estado.value in ("ACTIVA", "EN_PROCESO")
     return templates.TemplateResponse("corte/seguimiento.html", {
         "request": request, "of": of, "semaforo": semaforo,
-        "current_user": current_user, "puede_registrar": puede_registrar, "tercerizado": of.tercerizado,
+        "current_user": current_user, "puede_registrar": puede_registrar,
+        "tercerizado": of.tercerizado, "fase_tercerizada": fase_tercerizada,
     })
 
 
