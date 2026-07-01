@@ -20,7 +20,7 @@ class PlantaExterna(Base):
     ofs_tercerizadas  = relationship("OrdenFabricacion",   back_populates="planta",    foreign_keys="OrdenFabricacion.planta_id")
     historial_fechas  = relationship("TercHistorialFecha", back_populates="planta",    cascade="all, delete-orphan")
     recepciones       = relationship("TercRecepcion",      back_populates="planta",    cascade="all, delete-orphan")
-    subproceso_logs   = relationship("TercSubprocesoLog",  back_populates="planta",    cascade="all, delete-orphan")
+    terc_logs         = relationship("TercSubprocesoLog",  back_populates="planta",    cascade="all, delete-orphan")
 
 
 class TercHistorialFecha(Base):
@@ -78,8 +78,8 @@ class TercSubprocesoLog(Base):
     usuario_envio_id     = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     usuario_recepcion_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
 
-    of      = relationship("OrdenFabricacion", back_populates="subproceso_logs",  foreign_keys=[of_id])
-    planta  = relationship("PlantaExterna",    back_populates="subproceso_logs")
+    of      = relationship("OrdenFabricacion", back_populates="terc_logs",  foreign_keys=[of_id])
+    planta  = relationship("PlantaExterna",    back_populates="terc_logs")
     usuario_creo      = relationship("Usuario", foreign_keys=[usuario_creo_id])
     usuario_envio     = relationship("Usuario", foreign_keys=[usuario_envio_id])
     usuario_recepcion = relationship("Usuario", foreign_keys=[usuario_recepcion_id])

@@ -72,6 +72,8 @@ class OrdenFabricacion(Base):
     fecha_recepcion_real = Column(Date, nullable=True)
     estado_tercerizado   = Column(String(20), nullable=True)
     juegos_recibidos     = Column(Integer, default=0, nullable=False)
+    fase_tercerizada     = Column(String(5),  nullable=True)
+    es_muestra           = Column(Boolean, default=False, nullable=False, server_default="0")
     responsable_id       = Column(Integer, ForeignKey("usuarios.id"))
     created_at           = Column(DateTime, server_default=func.now())
     updated_at           = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -88,7 +90,7 @@ class OrdenFabricacion(Base):
                                          foreign_keys="OFFaseParada.of_id")
     historial_fechas_terc = relationship("TercHistorialFecha",  back_populates="of", cascade="all, delete-orphan")
     recepciones_terc      = relationship("TercRecepcion",       back_populates="of", cascade="all, delete-orphan")
-    subproceso_logs       = relationship("TercSubprocesoLog",  back_populates="of", cascade="all, delete-orphan", foreign_keys="TercSubprocesoLog.of_id")
+    terc_logs             = relationship("TercSubprocesoLog",  back_populates="of", cascade="all, delete-orphan", foreign_keys="TercSubprocesoLog.of_id")
     talla_distribucion    = relationship("OFTallaDistribucion", back_populates="of", cascade="all, delete-orphan")
 
 
