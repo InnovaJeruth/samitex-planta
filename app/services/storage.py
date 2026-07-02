@@ -102,8 +102,18 @@ def _local_delete(path: str) -> None:
 # ── Implementación Supabase ──────────────────────────────────────────────────
 
 def _sb_client():
-    from supabase import create_client
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+    from storage3 import create_client as _create
+    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_KEY:
+        raise RuntimeError(
+            "SUPABASE_URL y SUPABASE_SERVICE_KEY deben estar configuradas "
+            "en las variables de entorno de Render para subir archivos."
+        )
+    key = settings.SUPABASE_SERVICE_KEY
+    return _create(
+        f"{settings.SUPABASE_URL}/storage/v1/",
+        {"apiKey": key, "Authorization": f"Bearer {key}"},
+        is_async=False,
+    )
 
 
 def _sb_storage_path(folder: str, filename: str) -> str:
@@ -111,18 +121,11 @@ def _sb_storage_path(folder: str, filename: str) -> str:
 
 
 def _sb_save(content: bytes, folder: str, filename: str) -> str:
-    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_KEY:
-        raise RuntimeError(
-            "SUPABASE_URL y SUPABASE_SERVICE_KEY deben estar configuradas en las "
-            "variables de entorno de Render para subir archivos en producción."
-        )
     sb = _sb_client()
     path = _sb_storage_path(folder, filename)
     _log.info("Supabase upload → bucket=%s path=%s bytes=%d", settings.SUPABASE_BUCKET, path, len(content))
-    sb.storage.from_(settings.SUPABASE_BUCKET).upload(
-        path, content, file_options={"upsert": "true"}
-    )
-    return sb.storage.from_(settings.SUPABASE_BUCKET).get_public_url(path)
+    sb.from_(settings.SUPABASE_BUCKET).upload(path, content, file_options={"upsert": "true"})
+    return sb.from_(settings.SUPABASE_BUCKET).get_public_url(path)
 
 
 def _sb_copy(source: str, folder: str, filename: str) -> str:
@@ -139,9 +142,8 @@ def _sb_delete(url: str) -> None:
     try:
         sb = _sb_client()
         bucket = settings.SUPABASE_BUCKET
-        # URL pública: .../object/public/<bucket>/<path>
         marker = f"/object/public/{bucket}/"
         path = url.split(marker)[-1] if marker in url else url
-        sb.storage.from_(bucket).remove([path])
+        sb.from_(bucket).remove([path])
     except Exception:
         pass

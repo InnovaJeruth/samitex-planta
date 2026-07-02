@@ -14,7 +14,7 @@ psycopg2-binary==2.9.9             # conector PostgreSQL (producción / Supabase
 alembic==1.13.1                    # migraciones de BD
 
 # ─── Supabase Storage ─────────────────────────────────────────
-supabase==2.9.1                    # SDK para Supabase Storage (producción)
+storage3==2.31.0                   # cliente Supabase Storage (sin realtime/websockets)
 
 # ─── Validación de datos ─────────────────────────────────────
 pydantic[email]==2.11.7
