@@ -350,6 +350,22 @@ def api_archivar_prenda(
     return {"ok": True}
 
 
+@router.post("/api/{prenda_id}/activar")
+def api_activar_prenda(
+    prenda_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if _rol(current_user) not in ROLES_EDITOR:
+        raise HTTPException(403, "Sin permiso")
+    prenda = db.query(PrendaCatalogo).filter_by(id=prenda_id).first()
+    if not prenda:
+        raise HTTPException(404, "Prenda no encontrada")
+    prenda.activo = True
+    db.commit()
+    return {"ok": True}
+
+
 # ── API: CRUD Piezas ──────────────────────────────────────────────────────────
 
 def _auto_codigo_pieza(prenda: PrendaCatalogo, orden: int, db: Session) -> str:
@@ -471,9 +487,41 @@ def api_eliminar_pieza(
     return {"ok": True}
 
 
+@router.get("/api/{prenda_id}/bases-disponibles")
+def api_bases_disponibles(
+    prenda_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Retorna todas las prendas BASE activas del mismo tipo_base."""
+    prenda = db.query(PrendaCatalogo).filter_by(id=prenda_id).first()
+    if not prenda:
+        raise HTTPException(404, "Prenda no encontrada")
+    if prenda.tipo_cliente == "BASE":
+        raise HTTPException(400, "Esta prenda ya es BASE")
+
+    bases = (db.query(PrendaCatalogo)
+               .filter_by(tipo_base=prenda.tipo_base, tipo_cliente="BASE", activo=True)
+               .order_by(PrendaCatalogo.id)
+               .all())
+    if not bases:
+        raise HTTPException(404, f"No hay prenda BASE activa para el tipo '{prenda.tipo_base}'")
+
+    return [
+        {
+            "id":         b.id,
+            "codigo":     b.codigo,
+            "nombre":     b.nombre,
+            "num_piezas": len(b.plantilla_piezas),
+        }
+        for b in bases
+    ]
+
+
 @router.get("/api/{prenda_id}/piezas/base")
 def api_piezas_base_para_heredar(
     prenda_id: int,
+    base_id: int = None,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -483,9 +531,15 @@ def api_piezas_base_para_heredar(
     if prenda.tipo_cliente == "BASE":
         raise HTTPException(400, "Esta prenda ya es BASE")
 
-    prenda_base = (db.query(PrendaCatalogo)
-                   .filter_by(tipo_base=prenda.tipo_base, tipo_cliente="BASE", activo=True)
-                   .first())
+    if base_id:
+        prenda_base = db.query(PrendaCatalogo).filter_by(id=base_id, tipo_cliente="BASE", activo=True).first()
+        if not prenda_base:
+            raise HTTPException(404, "BASE seleccionada no encontrada")
+    else:
+        prenda_base = (db.query(PrendaCatalogo)
+                       .filter_by(tipo_base=prenda.tipo_base, tipo_cliente="BASE", activo=True)
+                       .order_by(PrendaCatalogo.id)
+                       .first())
     if not prenda_base:
         raise HTTPException(404, f"No hay prenda BASE activa para el tipo '{prenda.tipo_base}'")
 

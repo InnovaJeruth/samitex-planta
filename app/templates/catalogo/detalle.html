@@ -162,8 +162,12 @@
       {% endif %}
     </div>
     {% endif %}
-    {% if puede_editar and prenda.activo %}
+    {% if puede_editar %}
+    {% if prenda.activo %}
     <button class="btn btn-danger" style="width:100%;margin-top:10px;font-size:12px" onclick="archivarPrenda({{ prenda.id }})">🗃️ Archivar prenda</button>
+    {% else %}
+    <button class="btn btn-primary" style="width:100%;margin-top:10px;font-size:12px" onclick="activarPrenda({{ prenda.id }})">✅ Activar prenda</button>
+    {% endif %}
     {% endif %}
   </div>
 
@@ -899,6 +903,17 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Modal confirmación genérico -->
+<div id="modal-confirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:28px 28px 20px;min-width:300px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.6);">
+    <div id="modal-confirm-msg" style="font-size:14px;color:#e0e0e0;margin-bottom:20px;line-height:1.5;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button id="modal-confirm-cancel" style="background:#1e1e1e;border:1px solid #333;color:#aaa;padding:7px 18px;border-radius:6px;font-size:13px;cursor:pointer;">Cancelar</button>
+      <button id="modal-confirm-ok" style="background:#4a9fff;border:none;color:#fff;padding:7px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Confirmar</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -1143,12 +1158,59 @@ async function guardarPieza(){
   try{await fetch(url,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});toast(piezaId?'Pieza actualizada':'Pieza agregada');setTimeout(()=>location.reload(),1000);}catch(e){toast('Error','error');}
 }
 let _pendingPiezas=[];
-async function heredarBase(){try{const d=await apiFetch(`/catalogo/api/${PRENDA_ID}/piezas/base`);_pendingPiezas=d.piezas;_renderPendientes(d.prenda_base,d.piezas);}catch(e){toast(e.message,'error');}}
+async function heredarBase(){
+  try{
+    const bases=await apiFetch(`/catalogo/api/${PRENDA_ID}/bases-disponibles`);
+    if(bases.length===1){
+      const d=await apiFetch(`/catalogo/api/${PRENDA_ID}/piezas/base?base_id=${bases[0].id}`);
+      _pendingPiezas=d.piezas;_renderPendientes(d.prenda_base,d.piezas);
+    } else {
+      _mostrarSelectorBase(bases);
+    }
+  }catch(e){toast(e.message,'error');}
+}
+function _mostrarSelectorBase(bases){
+  let m=document.getElementById('modal-selector-base');
+  if(!m){
+    m=document.createElement('div');
+    m.id='modal-selector-base';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    document.body.appendChild(m);
+  }
+  m.innerHTML=`<div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:24px;min-width:340px;max-width:480px;">
+    <div style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:16px;">¿De qué BASE heredar?</div>
+    ${bases.map(b=>`<div onclick="_seleccionarBase(${b.id})" style="cursor:pointer;padding:12px;border:1px solid #2a2a2a;border-radius:6px;margin-bottom:8px;background:#0e0e0e;" onmouseover="this.style.borderColor='#4a9fff'" onmouseout="this.style.borderColor='#2a2a2a'">
+      <div style="font-size:13px;font-weight:600;color:#e0e0e0;">${b.nombre}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px;">${b.codigo} · ${b.num_piezas} piezas</div>
+    </div>`).join('')}
+    <button onclick="document.getElementById('modal-selector-base').remove()" style="margin-top:8px;background:#1e1e1e;border:1px solid #333;color:#aaa;padding:6px 16px;border-radius:6px;font-size:12px;cursor:pointer;">Cancelar</button>
+  </div>`;
+}
+async function _seleccionarBase(baseId){
+  document.getElementById('modal-selector-base')?.remove();
+  try{
+    const d=await apiFetch(`/catalogo/api/${PRENDA_ID}/piezas/base?base_id=${baseId}`);
+    _pendingPiezas=d.piezas;_renderPendientes(d.prenda_base,d.piezas);
+  }catch(e){toast(e.message,'error');}
+}
 function _renderPendientes(nb,piezas){const empty=document.getElementById('empty-piezas');if(empty)empty.style.display='none';let grid=document.getElementById('piezas-grid');if(!grid){grid=document.createElement('div');grid.className='piezas-grid';grid.id='piezas-grid';empty.parentNode.insertBefore(grid,empty);}grid.innerHTML=piezas.map((p,i)=>`<div class="pieza-card" id="pending-${i}" style="border-color:#2a3a4a"><div class="pieza-img">🧩</div><div class="pieza-body"><div style="margin-bottom:4px"><span style="font-size:10px;background:#0d2233;color:#4a9fff;border-radius:10px;padding:1px 8px;font-weight:600">De BASE</span></div><div class="pieza-nombre">${p.nombre}</div><div class="pieza-meta">Material: ${p.material_default}<br>Cantidad: ${p.cantidad_x_prenda} x prenda</div><div style="margin-top:8px"><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">Código único *</label><div style="display:flex;gap:4px;align-items:center"><input id="pcod-${i}" style="font-size:11px;font-family:monospace;background:#0f0f0f;border:1px solid #444;color:#e0e0e0;padding:4px 6px;border-radius:4px;flex:1;min-width:0" placeholder="Ej: CAM-ELEC-DEL" onkeydown="if(event.key==='Enter')guardarPendiente(${i})"><button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:11px" onclick="guardarPendiente(${i})">Guardar</button></div></div></div></div>`).join('');}
 async function guardarPendiente(i){const p=_pendingPiezas[i];const codigo=(document.getElementById(`pcod-${i}`)?.value||'').trim().toUpperCase();if(!codigo){toast('El código es obligatorio','error');return;}const fd=new FormData();fd.append('nombre',p.nombre);fd.append('codigo',codigo);fd.append('material_default',p.material_default);fd.append('cantidad_x_prenda',p.cantidad_x_prenda);fd.append('fusionado_default',p.fusionado_default);fd.append('orden',p.orden);try{const res=await fetch(`/catalogo/api/${PRENDA_ID}/piezas/agregar`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||'Error');}const data=await res.json();const card=document.getElementById(`pending-${i}`);card.id=`pieza-card-${data.id}`;card.style.borderColor='';card.innerHTML=`<div class="pieza-img">🧩</div><div class="pieza-body"><div style="font-size:10px;color:#555;font-family:monospace;margin-bottom:2px">${codigo}</div><div class="pieza-nombre">${p.nombre}</div><div class="pieza-meta">Material: ${p.material_default}<br>Cantidad: ${p.cantidad_x_prenda} x prenda</div></div>`;toast(`"${p.nombre}" guardada`);}catch(e){toast(e.message,'error');}}
 async function guardarCodigo(piezaId,nombre){const input=document.getElementById(`cod-${piezaId}`);const codigo=(input?.value||'').trim();if(!codigo){toast('Ingresa un código','error');return;}const fd=new FormData();fd.append('nombre',nombre);fd.append('codigo',codigo);try{const res=await fetch(`/catalogo/api/piezas/${piezaId}/editar`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||'Error');}toast('Código guardado');setTimeout(()=>location.reload(),1000);}catch(e){toast(e.message,'error');}}
 async function eliminarPieza(id){if(!confirm('¿Eliminar esta pieza?'))return;try{await apiFetch(`/catalogo/api/piezas/${id}/eliminar`,{method:'POST'});document.getElementById(`pieza-card-${id}`)?.remove();toast('Pieza eliminada');}catch(e){toast(e.message,'error');}}
-async function archivarPrenda(id){if(!confirm('¿Archivar esta prenda?'))return;try{await apiFetch(`/catalogo/api/${id}/archivar`,{method:'POST'});toast('Archivada');setTimeout(()=>window.location.href='/catalogo/',1200);}catch(e){toast(e.message,'error');}}
+function _confirmar(mensaje){
+  return new Promise(resolve=>{
+    const m=document.getElementById('modal-confirm');
+    document.getElementById('modal-confirm-msg').textContent=mensaje;
+    m.style.display='flex';
+    const ok=document.getElementById('modal-confirm-ok');
+    const cancel=document.getElementById('modal-confirm-cancel');
+    function cleanup(val){m.style.display='none';ok.onclick=null;cancel.onclick=null;resolve(val);}
+    ok.onclick=()=>cleanup(true);
+    cancel.onclick=()=>cleanup(false);
+  });
+}
+async function archivarPrenda(id){if(!await _confirmar('¿Archivar esta prenda? Dejará de aparecer en el catálogo activo.'))return;try{await apiFetch(`/catalogo/api/${id}/archivar`,{method:'POST'});toast('Archivada');setTimeout(()=>window.location.href='/catalogo/',1200);}catch(e){toast(e.message,'error');}}
+async function activarPrenda(id){if(!await _confirmar('¿Activar esta prenda? Volverá a estar disponible en el catálogo.'))return;try{await apiFetch(`/catalogo/api/${id}/activar`,{method:'POST'});toast('Prenda activada');setTimeout(()=>location.reload(),1000);}catch(e){toast(e.message,'error');}}
 
 // ── Vincular muestra a OFs ────────────────────────────────────────────────────
 async function vincularMuestra(){
