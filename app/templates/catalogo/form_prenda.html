@@ -32,7 +32,7 @@
     <div>
         <div class="preview-foto" id="foto-preview">
             {% if prenda and prenda.imagen_ruta %}
-            <img src="/{{ prenda.imagen_ruta }}" id="foto-img" alt="foto">
+            <img src="{{ prenda.imagen_ruta | media_url }}" id="foto-img" alt="foto">
             {% else %}
             <span id="foto-icon">👔</span>
             {% endif %}

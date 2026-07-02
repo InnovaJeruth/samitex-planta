@@ -75,7 +75,7 @@
     {% for p in prendas %}
     <div class="prenda-card" onclick="window.location='/catalogo/{{ p.id }}'">
         {% if p.imagen_ruta %}
-        <div class="prenda-img"><img src="/{{ p.imagen_ruta }}" alt="{{ p.nombre }}" loading="lazy"></div>
+        <div class="prenda-img"><img src="{{ p.imagen_ruta | media_url }}" alt="{{ p.nombre }}" loading="lazy"></div>
         {% else %}
         <div class="prenda-img-none">👔</div>
         {% endif %}

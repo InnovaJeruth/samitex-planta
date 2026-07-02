@@ -127,7 +127,7 @@
   <!-- Columna izquierda -->
   <div>
     {% if prenda.imagen_ruta %}
-    <img src="/{{ prenda.imagen_ruta }}" alt="{{ prenda.nombre }}" class="prenda-foto">
+    <img src="{{ prenda.imagen_ruta | media_url }}" alt="{{ prenda.nombre }}" class="prenda-foto">
     {% else %}
     <div class="prenda-foto-none">👔</div>
     {% endif %}
@@ -187,7 +187,7 @@
         <div class="piezas-grid" id="piezas-grid">
           {% for pieza in piezas %}
           <div class="pieza-card" id="pieza-card-{{ pieza.id }}">
-            <div class="pieza-img">{% if pieza.imagen_ruta %}<img src="/{{ pieza.imagen_ruta }}" alt="{{ pieza.nombre }}">{% else %}🧩{% endif %}</div>
+            <div class="pieza-img">{% if pieza.imagen_ruta %}<img src="{{ pieza.imagen_ruta | media_url }}" alt="{{ pieza.nombre }}">{% else %}🧩{% endif %}</div>
             <div class="pieza-body">
               {% if pieza.codigo %}
               <div style="font-size:10px;color:#555;font-family:monospace;margin-bottom:2px">{{ pieza.codigo }}</div>
