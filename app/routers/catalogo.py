@@ -5,9 +5,12 @@ Roles permitidos para CRUD: ADMIN, UDP, COMERCIAL_MARCA
 Roles solo lectura: todos los demas
 """
 import os
+import io
 import uuid
 import datetime
 from typing import Optional, List
+
+from PIL import Image
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, UploadFile, File
 from fastapi import Form as _Form
@@ -57,10 +60,21 @@ def _guardar_imagen(archivo: UploadFile, carpeta: str) -> str:
     ext = os.path.splitext(archivo.filename or "")[1].lower()
     if ext not in EXTS_IMAGEN:
         raise HTTPException(400, f"Formato no permitido. Use: {', '.join(EXTS_IMAGEN)}")
-    nombre = f"{uuid.uuid4().hex}{ext}"
-    ruta = os.path.join(carpeta, nombre)
-    with open(ruta, "wb") as f:
-        f.write(archivo.file.read())
+    # Procesar con Pillow: recortar al centro 1:1 y redimensionar a 600x600 JPG
+    try:
+        data = archivo.file.read()
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+        w, h = img.size
+        lado = min(w, h)
+        left = (w - lado) // 2
+        top  = (h - lado) // 2
+        img  = img.crop((left, top, left + lado, top + lado))
+        img  = img.resize((600, 600), Image.LANCZOS)
+        nombre = f"{uuid.uuid4().hex}.jpg"
+        ruta   = os.path.join(carpeta, nombre)
+        img.save(ruta, "JPEG", quality=85, optimize=True)
+    except Exception:
+        raise HTTPException(400, "No se pudo procesar la imagen. Verifica que el archivo no esté dañado.")
     return ruta
 
 

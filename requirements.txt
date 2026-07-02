@@ -23,6 +23,7 @@ passlib[bcrypt]==1.7.4             # requerido por dependencias (no usar para ha
 
 # ─── Uploads / Forms ─────────────────────────────────────────
 python-multipart==0.0.9            # upload de archivos
+Pillow==10.4.0                     # procesamiento de imágenes (resize, crop, compress)
 
 # ─── Utilidades ──────────────────────────────────────────────
 python-dotenv==1.0.1               # leer .env
