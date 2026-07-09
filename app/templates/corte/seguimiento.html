@@ -169,6 +169,7 @@
     {% if puede_registrar and not tercerizado %}
     <button class="btn-pausar" onclick="abrirModalPausar()" id="btn-pausar-global">⏸ Pausar OF</button>
     {% endif %}
+    <a href="/trazos/{{ of.id }}" class="btn btn-secondary btn-sm">Trazos (tela F1–F3)</a>
     <a href="/" class="btn btn-secondary btn-sm">← Dashboard</a>
 </div>
 
@@ -195,6 +196,13 @@
     <a href="/of/{{ of.id }}/detalle" class="btn btn-secondary btn-sm" style="margin-left:auto">Ver detalle</a>
 </div>
 {% endif %}
+
+<!-- Aviso: la tela (F1–F3) se gestiona en Placas -->
+<div style="font-size:12px;color:#8fb0c8;background:#12202c;border:1px solid #1d3a4d;border-radius:8px;padding:8px 12px;margin-bottom:12px">
+    ✂ Las fases de tela (Tizado, Tendido, Corte) se gestionan en
+    <a href="/trazos/{{ of.id }}" style="color:#7cc4ff;font-weight:600">Placas de corte</a>.
+    Al completarse ahí, se reflejan aquí automáticamente.
+</div>
 
 <!-- Franja de tarjetas por fase -->
 <div id="fase-strip" class="fase-strip">

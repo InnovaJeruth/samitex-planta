@@ -126,18 +126,29 @@ def catalogo_lista(
     prendas = query.order_by(PrendaCatalogo.tipo_base, PrendaCatalogo.nombre).all()
     for p in prendas:
         p._num_piezas = len(p.plantilla_piezas)
+        p._num_skus   = len(p.skus)
+
+    # Stats calculados sobre el resultado filtrado
+    total_bases       = sum(1 for p in prendas if p.tipo_cliente == "BASE")
+    total_variantes   = sum(1 for p in prendas if p.tipo_cliente != "BASE")
+    total_skus        = sum(p._num_skus for p in prendas)
+    total_piezas_base = sum(p._num_piezas for p in prendas if p.tipo_cliente == "BASE")
 
     return templates.TemplateResponse("catalogo/lista.html", {
-        "request":       request,
-        "current_user":  current_user,
-        "prendas":       prendas,
-        "tipos_base":    TIPOS_BASE_PRENDA,
-        "fits":          FITS_PRENDA,
-        "tipo_base":     tipo_base,
-        "tipo_cliente":  tipo_cliente,
-        "q":             q,
-        "solo_activos":  solo_activos,
-        "puede_editar":  _rol(current_user) in ROLES_EDITOR,
+        "request":            request,
+        "current_user":       current_user,
+        "prendas":            prendas,
+        "tipos_base":         TIPOS_BASE_PRENDA,
+        "fits":               FITS_PRENDA,
+        "tipo_base":          tipo_base,
+        "tipo_cliente":       tipo_cliente,
+        "q":                  q,
+        "solo_activos":       solo_activos,
+        "puede_editar":       _rol(current_user) in ROLES_EDITOR,
+        "total_bases":        total_bases,
+        "total_variantes":    total_variantes,
+        "total_skus":         total_skus,
+        "total_piezas_base":  total_piezas_base,
     })
 
 

@@ -22,7 +22,7 @@ from app.models.fase import OFFaseEstado, FaseCatalogo, OFFaseTiempos
 from app.models.planta import PlantaExterna, TercRecepcion, TercHistorialFecha, TercSubprocesoLog
 from app.core.auth import get_current_user
 from app.core.templates import templates
-from app.models.usuario import Usuario
+from app.models.usuario import Usuario, RolEnum
 from app.config import settings
 from app.services.gate_service import calcular_gates, puede_activar, gates_to_dict, puede_subir_gate, GATES, GATES_REQUERIDOS
 from app.services import of_service
@@ -48,9 +48,15 @@ def lista_ofs(
     q: str = "",
     estado: str = "",
     tipo_prenda: str = "",
+    prueba: str = "",
 ):
     page = max(1, page)
     query = db.query(OrdenFabricacion)
+    # Filtro OFs de prueba: "" = todas, "si" = solo prueba, "no" = excluir prueba
+    if prueba == "si":
+        query = query.filter(OrdenFabricacion.omitir_gates == True)
+    elif prueba == "no":
+        query = query.filter(OrdenFabricacion.omitir_gates == False)
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -85,6 +91,7 @@ def lista_ofs(
         "q": q,
         "estado": estado,
         "tipo_prenda": tipo_prenda,
+        "prueba": prueba,
         "estados_enum": [e.value for e in EstadoOF],
         "tipos_prenda_enum": [t.value for t in TipoPrendaEnum],
     })
@@ -92,6 +99,13 @@ def lista_ofs(
 
 # ── Plan Corte (Gantt) ────────────────────────────────────────
 ROLES_PLAN_CORTE = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "GERENCIA"}
+
+# Roles que pueden crear OFs de prueba (activan sin gates documentales)
+ROLES_PRUEBA = {"ADMIN", "PLANEADOR"}
+
+
+def _rol_str(usuario) -> str:
+    return usuario.rol.value if hasattr(usuario.rol, "value") else str(usuario.rol)
 
 
 @router.get("/plan-corte", response_class=HTMLResponse)
@@ -381,6 +395,8 @@ def crear_of_page(
     current_user: Usuario = Depends(get_current_user),
 ):
     usuarios = db.query(Usuario).filter(Usuario.activo == True).all()
+    # Responsable por defecto: el Planeador de Producción (si existe)
+    planeador = next((u for u in usuarios if _rol_str(u) == RolEnum.PLANEADOR.value), None)
     prendas  = (db.query(PrendaCatalogo)
                   .filter_by(activo=True)
                   .filter(PrendaCatalogo.tipo_cliente != "BASE")
@@ -392,6 +408,9 @@ def crear_of_page(
         "current_user": current_user,
         "prendas":      prendas,
         "tipos_base":   TIPOS_BASE_PRENDA,
+        "puede_prueba": _rol_str(current_user) in ROLES_PRUEBA,
+        "responsable_default_id": planeador.id if planeador else None,
+        "hoy": date.today().isoformat(),
     })
 
 
@@ -404,15 +423,21 @@ def crear_of(
     prenda_catalogo_id: int  = Form(None),
     total_juegos:       int  = Form(...),
     fecha_apt:          str  = Form(None),
+    fecha_sap:          str  = Form(None),
     responsable_id:     int  = Form(None),
     tipo_cliente:       str  = Form("INSTITUCION"),
     solped_prenda:      str  = Form(None),
     orden_compra:       str  = Form(None),
     solped_mp:          str  = Form(None),
     estampado_activo:   bool = Form(False),
+    omitir_gates:       bool = Form(False),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    # Solo roles autorizados pueden crear OFs de prueba (sin gates)
+    if omitir_gates and _rol_str(current_user) not in ROLES_PRUEBA:
+        raise HTTPException(403, "No tienes permiso para crear OFs de prueba")
+
     existe = db.query(OrdenFabricacion).filter_by(numero_of=numero_of).first()
     if existe:
         raise HTTPException(400, f"Ya existe una OF con número {numero_of}")
@@ -433,6 +458,7 @@ def crear_of(
         prenda_catalogo_id = prenda_catalogo_id,
         total_juegos       = total_juegos,
         fecha_creacion     = date.today(),
+        fecha_sap          = _safe_date(fecha_sap) if fecha_sap else date.today(),
         fecha_apt          = _safe_date(fecha_apt) if fecha_apt else None,
         responsable_id     = responsable_id,
         tipo_cliente       = tipo_cliente,
@@ -440,6 +466,7 @@ def crear_of(
         orden_compra       = orden_compra,
         solped_mp          = solped_mp,
         estampado_activo   = estampado_activo,
+        omitir_gates       = omitir_gates,
         estado             = EstadoOF.BORRADOR,
         estado_docs        = EstadoDocsEnum.PENDIENTE,
     )
@@ -637,6 +664,29 @@ _EXTENSIONES_PERMITIDAS = {
 }
 _MAX_BYTES = 20 * 1024 * 1024   # 20 MB (coincide con MAX_UPLOAD_MB en .env)
 
+# Firmas (magic bytes) por extensión, para validar que el contenido coincide.
+_MAGIC = {
+    ".pdf":  [b"%PDF"],
+    ".png":  [b"\x89PNG\r\n\x1a\n"],
+    ".jpg":  [b"\xff\xd8\xff"],
+    ".jpeg": [b"\xff\xd8\xff"],
+    ".xlsx": [b"PK\x03\x04"],
+    ".docx": [b"PK\x03\x04"],
+    ".xls":  [b"\xd0\xcf\x11\xe0"],
+    ".doc":  [b"\xd0\xcf\x11\xe0"],
+}
+
+
+def _magic_ok(contenido: bytes, ext: str) -> bool:
+    """True si los primeros bytes coinciden con la extensión. csv/txt/webp: sin firma estricta."""
+    if ext == ".webp":
+        return contenido[:4] == b"RIFF" and contenido[8:12] == b"WEBP"
+    firmas = _MAGIC.get(ext)
+    if not firmas:   # .csv, .txt → texto plano, sin verificación de firma
+        return True
+    head = contenido[:16]
+    return any(head.startswith(f) for f in firmas)
+
 
 # ── API: subir documento ──────────────────────────────────────
 @router.post("/api/{of_id}/documentos")
@@ -664,6 +714,13 @@ async def subir_documento(
             400,
             f"El archivo supera el límite de {_MAX_BYTES // 1024 // 1024} MB "
             f"(tamaño recibido: {len(contenido) // 1024 // 1024} MB)"
+        )
+    # Validar contenido: los magic bytes deben coincidir con la extensión
+    if not _magic_ok(contenido, ext):
+        raise HTTPException(
+            400,
+            f"El contenido del archivo no coincide con su extensión ({ext}). "
+            f"Sube un archivo válido."
         )
     await archivo.seek(0)   # rebobinar para que shutil pueda leerlo
 
@@ -736,10 +793,15 @@ def descargar_documento(
     doc = db.query(DocumentoOF).filter_by(id=doc_id).first()
     if not doc:
         raise HTTPException(404, "Documento no encontrado")
-    if not os.path.exists(doc.ruta_archivo):
+    # Seguridad: la ruta debe quedar dentro de UPLOAD_DIR (evita path traversal)
+    base = os.path.abspath(settings.UPLOAD_DIR)
+    real = os.path.abspath(doc.ruta_archivo or "")
+    if not (real == base or real.startswith(base + os.sep)):
+        raise HTTPException(403, "Ruta de archivo no permitida")
+    if not os.path.exists(real):
         raise HTTPException(404, "Archivo no encontrado en el servidor")
     return FileResponse(
-        path=doc.ruta_archivo,
+        path=real,
         filename=doc.nombre_archivo,
         media_type="application/octet-stream",
     )

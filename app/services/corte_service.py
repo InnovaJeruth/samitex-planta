@@ -316,7 +316,7 @@ def get_fases_strip(of: OrdenFabricacion, db: Session) -> list[dict]:
         cant_actual  = sum(fe.cantidad_actual for fe in fases_estado)
         cant_max     = sum(fe.max_cantidad    for fe in fases_estado)
 
-        if completadas == total_piezas and total_piezas > 0:
+        if (t and t.fin_real) or (completadas == total_piezas and total_piezas > 0):
             estado = "completada"
         elif cant_actual > 0 or (t and t.inicio_real):
             estado = "en_proceso"
@@ -344,7 +344,7 @@ def get_fases_strip(of: OrdenFabricacion, db: Session) -> list[dict]:
             "fin_programado":    t.fin_programado.strftime("%d/%m %H:%M")    if t and t.fin_programado    else None,
             "inicio_real":       t.inicio_real.strftime("%d/%m %H:%M")       if t and t.inicio_real       else None,
             "fin_real":          t.fin_real.strftime("%d/%m %H:%M")          if t and t.fin_real          else None,
-            "pct": round(cant_actual / cant_max * 100) if cant_max else 0,
+            "pct": 100 if (t and t.fin_real) else (round(cant_actual / cant_max * 100) if cant_max else 0),
         })
 
     return result

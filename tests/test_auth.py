@@ -37,8 +37,8 @@ class TestPassword:
 class TestJWT:
     def test_create_and_decode_roundtrip(self):
         token = create_access_token({"sub": "usuario1"})
-        sub = _decode_token(token)
-        assert sub == "usuario1"
+        payload = _decode_token(token)
+        assert payload["sub"] == "usuario1"
 
     def test_decode_returns_none_for_garbage(self):
         assert _decode_token("esto.no.es.jwt") is None
@@ -62,4 +62,4 @@ class TestJWT:
     def test_decode_returns_correct_sub_for_different_users(self):
         for username in ["admin", "supervisor", "planeador"]:
             token = create_access_token({"sub": username})
-            assert _decode_token(token) == username
+            assert _decode_token(token)["sub"] == username

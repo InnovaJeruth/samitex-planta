@@ -27,6 +27,11 @@ import app.models.pieza
 import app.models.fase
 import app.models.usuario
 import app.models.planta
+import app.models.catalogo
+import app.models.curva_tallas
+import app.models.ingenieria
+import app.models.parametro
+import app.models.trazo
 
 # Pre-configure all mappers so tests that don't use 'db' fixture can
 # instantiate model objects without triggering mapper init errors

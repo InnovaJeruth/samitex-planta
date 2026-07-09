@@ -2,152 +2,435 @@
 {% block title %}Nueva OF — Samitex{% endblock %}
 
 {% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-.of-grid   { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
-.of-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
-.progress-section { background:#141414; border:1px solid #2a2a2a; border-radius:8px; padding:14px; margin-bottom:16px; }
-.progress-label   { display:flex; justify-content:space-between; font-size:12px; color:#888; margin-bottom:6px; }
-.progress-bar     { height:6px; background:#111; border-radius:3px; }
-.progress-fill    { height:100%; border-radius:3px; background:#1a6fbe; transition:width .3s; }
-.req-dots         { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
-.req-dot          { width:8px; height:8px; border-radius:50%; }
-.req-dot.ok       { background:#4caf7d; }
-.req-dot.err      { background:#2a2a2a; border:1px solid #444; }
-.info-card        { background:#0d1a2e; border:1px solid #1a3a6f; border-radius:8px; padding:16px 18px; margin-bottom:16px; display:flex; align-items:flex-start; gap:12px; }
-.info-icon        { font-size:20px; flex-shrink:0; margin-top:1px; }
-.info-body h4     { font-size:13px; font-weight:600; color:#4a9fff; margin-bottom:4px; }
-.info-body p      { font-size:12px; color:#8ab4f8; line-height:1.5; margin:0; }
-.toast            { position:fixed; top:16px; right:16px; padding:12px 18px; border-radius:8px; font-size:13px; font-weight:500; z-index:999; opacity:0; transform:translateY(-8px); transition:all .2s; pointer-events:none; }
-.toast.show       { opacity:1; transform:translateY(0); }
-.toast-success    { background:#0d3320; border:1px solid #1d5f40; color:#4caf7d; }
-.toast-error      { background:#3a0a0a; border:1px solid #6a1a1a; color:#f88; }
+  :root {
+    --navy:      #1a2a5e;
+    --navy-hi:   #24397e;
+    --navy-line: #2c407e;
+    --gold:      #b09060;
+    --gold-hi:   #c8a877;
+    --bg-card:   #1a1a1a;
+    --bg-input:  #1e1e1e;
+    --bg-surface:#111;
+    --border:    #2a2a2a;
+    --border-hi: #383838;
+    --text-1:    #e0e0e0;
+    --text-2:    #aaa;
+    --text-3:    #6f6f6f;
+  }
 
-/* ── Combo buscable ── */
-.combo-wrap   { position:relative; }
-.combo-search {
-    width:100%; background:#0f0f0f; border:1px solid #333; color:#e0e0e0;
-    padding:8px 32px 8px 10px; border-radius:6px; font-size:13px; box-sizing:border-box;
-}
-.combo-search:focus { outline:none; border-color:#1a6fbe; }
-.combo-search.has-value { border-color:#1d5f40; color:#4caf7d; }
-.combo-arrow  {
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    color:#555; pointer-events:none; font-size:11px;
-}
-.combo-drop   {
-    position:absolute; z-index:200; left:0; right:0; top:calc(100% + 2px);
-    background:#1a1a1a; border:1px solid #333; border-radius:6px;
-    max-height:260px; overflow-y:auto; display:none; box-shadow:0 8px 20px rgba(0,0,0,.5);
-}
-.combo-drop.open { display:block; }
-.combo-group  { font-size:10px; font-weight:700; color:#555; letter-spacing:.06em;
-                text-transform:uppercase; padding:8px 12px 4px; }
-.combo-item   {
-    padding:9px 12px; font-size:13px; color:#ccc; cursor:pointer;
-    border-left:2px solid transparent; transition:background .1s;
-}
-.combo-item:hover, .combo-item.active { background:#252525; color:#fff; border-left-color:#1a6fbe; }
-.combo-empty  { padding:14px 12px; font-size:12px; color:#555; text-align:center; }
+  /* ── Page header ─────────────────────────────────── */
+  .of-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:20px; }
+  .of-head h1 { font-size:22px; font-weight:700; letter-spacing:-0.4px; color:#fff; }
+  .of-head .sub { font-size:12px; color:var(--text-3); margin-top:3px; }
+  .btn-back {
+    display:inline-flex; align-items:center; gap:7px;
+    background:#171717; color:var(--text-2);
+    border:1px solid var(--border); border-radius:10px;
+    padding:9px 15px; font-size:13px; font-weight:500; cursor:pointer;
+    text-decoration:none; white-space:nowrap;
+    transition:color 0.15s, border-color 0.15s;
+  }
+  .btn-back:hover { color:var(--text-1); border-color:var(--border-hi); }
+
+  /* ── Progress (pasos numerados) ──────────────────── */
+  .of-progress {
+    background:var(--bg-card); border:1px solid var(--border); border-radius:14px;
+    padding:20px 26px 22px; margin-bottom:18px;
+  }
+  .of-progress .prog-top {
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;
+  }
+  .of-progress .prog-top .t { font-size:13px; font-weight:600; color:var(--text-2); }
+  .of-progress .prog-top .c { font-size:13px; font-weight:600; color:var(--text-3); }
+  .of-progress .prog-top .c b { color:var(--gold); font-size:15px; }
+  .of-steps { position:relative; display:grid; grid-template-columns:repeat(4,1fr); }
+  .of-steps::before {
+    content:""; position:absolute; top:13px; left:12%; right:12%; height:2px;
+    background:var(--border); z-index:0;
+  }
+  .of-step { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .of-step .node {
+    width:28px; height:28px; border-radius:50%;
+    display:grid; place-items:center;
+    background:var(--bg-surface); border:2px solid var(--border);
+    font-size:12px; font-weight:700; color:var(--text-3);
+    transition:background 0.2s, border-color 0.2s, color 0.2s;
+  }
+  .of-step.done .node { background:var(--gold); border-color:var(--gold); color:#1a1305; }
+  .of-step .lbl { font-size:11px; color:var(--text-3); font-weight:500; }
+  .of-step.done .lbl { color:var(--text-1); }
+
+  /* ── Card ────────────────────────────────────────── */
+  .of-card {
+    background:var(--bg-card); border:1px solid var(--border); border-radius:14px;
+    padding:24px 26px 26px; margin-bottom:16px;
+  }
+  .of-card-title {
+    display:flex; align-items:center; gap:10px;
+    font-size:14.5px; font-weight:700; color:#fff; margin-bottom:20px;
+  }
+  .of-card-title .bar {
+    width:3px; height:16px; border-radius:2px;
+    background:linear-gradient(180deg, var(--gold), rgba(176,144,96,0.25));
+  }
+
+  /* ── Form grid ───────────────────────────────────── */
+  .of-form { display:grid; grid-template-columns:1fr 1fr; gap:18px 22px; }
+  .of-fld { display:flex; flex-direction:column; }
+  .of-fld.col-2 { grid-column:span 2; }
+  .of-fld label {
+    font-size:12.5px; font-weight:500; color:var(--text-2);
+    margin-bottom:7px; letter-spacing:0.2px;
+  }
+  .of-fld label .req { color:var(--gold); margin-left:2px; }
+  .of-fld .fld-hint { font-size:11px; color:var(--text-3); margin-top:5px; }
+
+  .of-ctrl { position:relative; display:flex; align-items:center; }
+  .of-ctrl .lead { position:absolute; left:13px; color:var(--text-3); pointer-events:none; z-index:1; }
+  .of-ctrl .chev { position:absolute; right:12px; color:var(--text-3); pointer-events:none; }
+  .of-ctrl .tag {
+    position:absolute; right:11px;
+    font-size:10px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase;
+    color:var(--text-3); background:#151515; border:1px solid var(--border);
+    padding:3px 7px; border-radius:5px;
+  }
+  .of-ctrl input, .of-ctrl select {
+    width:100%; height:44px;
+    background:var(--bg-input); color:var(--text-1);
+    border:1px solid var(--border); border-radius:10px;
+    font-family:inherit; font-size:13.5px;
+    padding:0 13px; outline:none; color-scheme:dark;
+    transition:border-color 0.15s, box-shadow 0.15s;
+  }
+  .of-ctrl.has-lead input, .of-ctrl.has-lead select { padding-left:40px; }
+  .of-ctrl select { -webkit-appearance:none; appearance:none; cursor:pointer; padding-right:36px; }
+  .of-ctrl input::placeholder { color:var(--text-3); }
+  .of-ctrl input:focus, .of-ctrl select:focus {
+    border-color:var(--gold); box-shadow:0 0 0 3px rgba(176,144,96,0.14);
+  }
+  .of-ctrl input[readonly] { color:var(--text-2); }
+  .of-ctrl option { background:#1a1a1a; color:var(--text-1); }
+
+  /* ── Combo buscable ──────────────────────────────── */
+  .combo-wrap { position:relative; width:100%; }
+  .combo-search {
+    width:100%; height:44px;
+    background:var(--bg-input); border:1px solid var(--border);
+    color:var(--text-1); padding:0 32px 0 40px;
+    border-radius:10px; font-family:inherit; font-size:13.5px;
+    outline:none; color-scheme:dark;
+    transition:border-color 0.15s, box-shadow 0.15s;
+  }
+  .combo-search::placeholder { color:var(--text-3); }
+  .combo-search:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(176,144,96,0.14); }
+  .combo-search.has-value { border-color:rgba(127,168,119,0.7); color:#a8d4a4; }
+  .combo-arrow {
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    color:var(--text-3); pointer-events:none; font-size:11px;
+  }
+  .combo-drop {
+    position:absolute; z-index:200; left:0; right:0; top:calc(100% + 4px);
+    background:#1e1e1e; border:1px solid var(--border); border-radius:10px;
+    max-height:260px; overflow-y:auto; display:none;
+    box-shadow:0 12px 28px rgba(0,0,0,0.6);
+  }
+  .combo-drop.open { display:block; }
+  .combo-group {
+    font-size:10px; font-weight:700; color:var(--text-3); letter-spacing:.07em;
+    text-transform:uppercase; padding:9px 14px 4px;
+  }
+  .combo-item {
+    padding:9px 14px; font-size:13px; color:var(--text-2); cursor:pointer;
+    border-left:2px solid transparent; transition:background 0.1s;
+  }
+  .combo-item:hover, .combo-item.active {
+    background:#252525; color:#fff; border-left-color:var(--gold);
+  }
+  .combo-empty { padding:14px; font-size:12px; color:var(--text-3); text-align:center; }
+  #preview-piezas { font-size:11px; color:var(--text-3); min-height:14px; margin-top:5px; }
+
+  /* ── Checkbox card ───────────────────────────────── */
+  .check-card {
+    grid-column:span 2;
+    display:flex; align-items:flex-start; gap:13px;
+    background:var(--bg-input); border:1px solid var(--border); border-radius:10px;
+    padding:14px 16px; cursor:pointer;
+    transition:border-color 0.15s;
+  }
+  .check-card:hover { border-color:var(--border-hi); }
+  .check-card input { position:absolute; opacity:0; pointer-events:none; }
+  .check-card .box {
+    width:20px; height:20px; flex:none; margin-top:1px;
+    border-radius:5px; border:2px solid var(--border-hi);
+    display:grid; place-items:center; background:#151515;
+    transition:all 0.15s;
+  }
+  .check-card .box svg { opacity:0; color:#1a1305; }
+  .check-card input:checked ~ .box { background:var(--gold); border-color:var(--gold); }
+  .check-card input:checked ~ .box svg { opacity:1; }
+  .check-card .txt .h { font-size:13.5px; font-weight:600; color:var(--text-1); }
+  .check-card .txt .h kbd {
+    font-size:10px; font-weight:600; color:var(--gold);
+    background:rgba(176,144,96,0.12); border:1px solid rgba(176,144,96,0.3);
+    border-radius:5px; padding:2px 6px; margin-left:8px; font-family:inherit;
+  }
+  .check-card .txt .d { font-size:11.5px; color:var(--text-3); margin-top:3px; }
+
+  /* ── Info box ────────────────────────────────────── */
+  .of-info {
+    display:flex; align-items:flex-start; gap:13px;
+    margin-top:20px;
+    background:linear-gradient(180deg, rgba(26,42,94,0.28), rgba(26,42,94,0.12));
+    border:1px solid rgba(44,64,126,0.6);
+    border-left:3px solid var(--navy-line);
+    border-radius:12px; padding:15px 17px;
+  }
+  .of-info .ic {
+    width:32px; height:32px; flex:none; border-radius:8px;
+    display:grid; place-items:center;
+    background:rgba(44,64,126,0.4); color:#8fa8e0;
+  }
+  .of-info .h { font-size:13px; font-weight:600; color:#b9c8ec; }
+  .of-info .d { font-size:12px; color:var(--text-2); margin-top:3px; line-height:1.5; }
+  .of-info .d b { color:var(--text-1); font-weight:600; }
+  #lista-piezas-preview { margin-top:8px; display:none; }
+  #piezas-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+
+  /* ── Footer acciones ─────────────────────────────── */
+  .of-actions {
+    display:flex; align-items:center; justify-content:flex-end; gap:12px;
+    margin-top:20px; padding-top:18px; border-top:1px solid var(--border);
+  }
+  .btn-of-cancel {
+    background:#171717; color:var(--text-2);
+    border:1px solid var(--border); border-radius:10px;
+    padding:10px 20px; font-family:inherit; font-size:13.5px; font-weight:500;
+    cursor:pointer; text-decoration:none;
+    transition:color 0.15s, border-color 0.15s;
+  }
+  .btn-of-cancel:hover { color:var(--text-1); border-color:var(--border-hi); }
+  .btn-of-save {
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--navy); color:#fff;
+    border:1px solid rgba(176,144,96,0.45); border-radius:10px;
+    padding:10px 22px; font-family:inherit; font-size:13.5px; font-weight:600;
+    cursor:pointer;
+    box-shadow:0 8px 22px -12px rgba(26,42,94,0.9), inset 0 1px 0 rgba(255,255,255,0.08);
+    transition:background 0.16s, transform 0.1s, border-color 0.16s;
+  }
+  .btn-of-save:hover { background:var(--navy-hi); border-color:rgba(176,144,96,0.7); }
+  .btn-of-save:active { transform:translateY(1px); }
+  .btn-of-save:disabled { opacity:0.65; cursor:not-allowed; }
+  .btn-of-save svg { color:var(--gold); }
+
+  /* ── Toast ───────────────────────────────────────── */
+  .toast {
+    position:fixed; top:16px; right:16px; padding:12px 18px;
+    border-radius:10px; font-size:13px; font-weight:500; z-index:999;
+    opacity:0; transform:translateY(-8px); transition:all .2s; pointer-events:none;
+  }
+  .toast.show { opacity:1; transform:translateY(0); }
+  .toast-success { background:#0d3320; border:1px solid #1d5f40; color:#4caf7d; }
+  .toast-error   { background:#3a0a0a; border:1px solid #6a1a1a; color:#f88; }
+
+  @media (max-width: 720px) {
+    .of-form { grid-template-columns:1fr; }
+    .of-fld.col-2, .check-card { grid-column:span 1; }
+    .of-steps { grid-template-columns:repeat(4,1fr); }
+    .of-step .lbl { display:none; }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <span class="page-title">Nueva Orden de Fabricación</span>
-    <a href="/" class="btn btn-secondary">← Volver</a>
+
+<!-- Header -->
+<div class="of-head">
+  <div>
+    <h1>Nueva Orden de Fabricación</h1>
+    <div class="sub">Completa los datos generales para registrar la OF</div>
+  </div>
+  <a href="/" class="btn-back">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Volver
+  </a>
 </div>
 
-<!-- PROGRESO -->
-<div class="progress-section">
-    <div class="progress-label">
-        <span>Datos obligatorios</span>
-        <span id="prog-txt">0 / 4</span>
-    </div>
-    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
-    <div class="req-dots" id="req-dots"></div>
+<!-- Progreso -->
+<div class="of-progress">
+  <div class="prog-top">
+    <span class="t">Datos obligatorios</span>
+    <span class="c"><b id="prog-txt">0</b> / 4</span>
+  </div>
+  <div class="of-steps">
+    <div class="of-step" id="step-1"><span class="node">1</span><span class="lbl">N° OF</span></div>
+    <div class="of-step" id="step-2"><span class="node">2</span><span class="lbl">Cliente</span></div>
+    <div class="of-step" id="step-3"><span class="node">3</span><span class="lbl">Prenda</span></div>
+    <div class="of-step" id="step-4"><span class="node">4</span><span class="lbl">Juegos</span></div>
+  </div>
+  <!-- Elementos ocultos para compat JS -->
+  <div id="req-dots" style="display:none"></div>
+  <div style="display:none"><div id="prog-fill"></div></div>
 </div>
 
-<!-- DATOS GENERALES -->
-<div class="card" style="margin-bottom:16px">
-    <div class="card-header"><span class="card-title">Datos generales</span></div>
-    <div class="of-grid">
-        <div class="form-group">
-            <label>N° OF *</label>
-            <input id="numero_of" placeholder="826501" oninput="actualizarProgreso()" aria-label="Número de OF">
-        </div>
-        <div class="form-group">
-            <label>Cliente *</label>
-            <input id="cliente" placeholder="Empresa S.A.C." oninput="actualizarProgreso()" aria-label="Cliente">
-        </div>
-    </div>
-    <div class="of-grid-3">
-        <div class="form-group">
-            <label>Prenda del catálogo *</label>
-            <!-- Combo buscable -->
-            <div class="combo-wrap" id="combo-wrap">
-                <input id="prenda-search" class="combo-search" type="text"
-                       placeholder="Buscar prenda..." autocomplete="off"
-                       oninput="filtrarPrendas()" onfocus="abrirDrop()" aria-label="Buscar prenda">
-                <span class="combo-arrow">▾</span>
-                <input type="hidden" id="prenda_catalogo_id">
-                <div class="combo-drop" id="combo-drop"></div>
-            </div>
-            <div id="preview-piezas" style="font-size:11px;color:#555;min-height:14px;margin-top:4px"></div>
-        </div>
-        <div class="form-group">
-            <label>Total Juegos *</label>
-            <input id="total_juegos" type="number" min="1" placeholder="170" oninput="actualizarProgreso()" aria-label="Total de juegos">
-        </div>
-        <div class="form-group">
-            <label>Fecha APT</label>
-            <input id="fecha_apt" type="date" style="border-color:#bf9000" aria-label="Fecha APT">
-        </div>
-    </div>
-    <div class="of-grid">
-        <div class="form-group">
-            <label>Tipo de Cliente *</label>
-            <select id="tipo_cliente" onchange="onTipoClienteChange()">
-                <option value="INSTITUCION">Institución</option>
-                <option value="MARCA">Marca</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Responsable</label>
-            <select id="responsable_id">
-                <option value="">Sin asignar</option>
-                {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nombre }}</option>{% endfor %}
-            </select>
-        </div>
-    </div>
-    <div class="of-grid">
-        <div class="form-group" style="align-self:end;padding-bottom:2px">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                <input id="estampado_activo" type="checkbox" style="width:auto">
-                Activar Estampado/Bordado (F8 + F9)
-            </label>
-        </div>
-    </div>
-</div>
+<!-- Datos generales -->
+<div class="of-card">
+  <div class="of-card-title"><span class="bar"></span>Datos generales</div>
 
-<!-- INFO: piezas auto -->
-<div class="info-card" id="info-piezas">
-    <div class="info-icon">🔧</div>
-    <div class="info-body">
-        <h4>Piezas generadas automáticamente</h4>
-        <p>Al subir la <strong>Ficha Técnica</strong>, las piezas se generarán desde la plantilla de la prenda seleccionada. No es necesario ingresarlas aquí.</p>
-        <div id="lista-piezas-preview" style="margin-top:8px;display:none">
-            <p style="color:#888;font-size:11px;margin-bottom:4px">Piezas de la plantilla:</p>
-            <div id="piezas-chips" style="display:flex;flex-wrap:wrap;gap:4px"></div>
-        </div>
-    </div>
-</div>
+  <div class="of-form">
 
-<!-- BOTONES -->
-<div style="display:flex;justify-content:flex-end;gap:10px;align-items:center">
-    <a href="/" class="btn btn-secondary">Cancelar</a>
-    <button class="btn btn-primary" id="btn-guardar" onclick="crearOF()" style="padding:10px 28px">
-        💾 Guardar Borrador
+    <!-- 1 · N° OF -->
+    <div class="of-fld">
+      <label>N° OF <span class="req">*</span></label>
+      <div class="of-ctrl">
+        <input id="numero_of" type="text" placeholder="826501"
+               oninput="actualizarProgreso()" aria-label="Número de OF">
+        <span class="tag">Auto</span>
+      </div>
+      <span class="fld-hint">Generado automáticamente por el sistema</span>
+    </div>
+
+    <!-- 2 · Cliente -->
+    <div class="of-fld">
+      <label>Cliente <span class="req">*</span></label>
+      <div class="of-ctrl has-lead">
+        <span class="lead"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M6 21V7l6-4 6 4v14M10 9h4M10 13h4M10 17h4"/></svg></span>
+        <input id="cliente" type="text" placeholder="Empresa S.A.C."
+               oninput="actualizarProgreso()" aria-label="Cliente">
+      </div>
+    </div>
+
+    <!-- 3 · Tipo de Cliente (antes de prenda) -->
+    <div class="of-fld">
+      <label>Tipo de Cliente <span class="req">*</span></label>
+      <div class="of-ctrl has-lead">
+        <span class="lead"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <select id="tipo_cliente" onchange="onTipoClienteChange()">
+          <option value="INSTITUCION">Institución</option>
+          <option value="MARCA">Marca</option>
+        </select>
+        <span class="chev"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      </div>
+    </div>
+
+    <!-- 4 · Prenda del catálogo (después del tipo) -->
+    <div class="of-fld">
+      <label>Prenda del catálogo <span class="req">*</span></label>
+      <div class="of-ctrl has-lead" style="display:block; height:auto;">
+        <div class="combo-wrap" id="combo-wrap" style="position:relative;">
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none;z-index:2;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input id="prenda-search" class="combo-search" type="text"
+                 placeholder="Buscar prenda..." autocomplete="off"
+                 oninput="filtrarPrendas()" onfocus="abrirDrop()" aria-label="Buscar prenda">
+          <span class="combo-arrow">▾</span>
+          <input type="hidden" id="prenda_catalogo_id">
+          <div class="combo-drop" id="combo-drop"></div>
+        </div>
+      </div>
+      <div id="preview-piezas"></div>
+      <span class="fld-hint">Filtrado según el tipo de cliente seleccionado</span>
+    </div>
+
+    <!-- 5 · Total Juegos -->
+    <div class="of-fld">
+      <label>Total Juegos <span class="req">*</span></label>
+      <div class="of-ctrl has-lead">
+        <span class="lead"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+        <input id="total_juegos" type="number" min="1" placeholder="170"
+               oninput="actualizarProgreso()" aria-label="Total de juegos">
+      </div>
+    </div>
+
+    <!-- 6 · Fecha APT -->
+    <div class="of-fld">
+      <label>Fecha APT</label>
+      <div class="of-ctrl has-lead">
+        <span class="lead"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+        <input id="fecha_apt" type="date" style="border-color:rgba(176,144,96,0.35);" aria-label="Fecha APT">
+      </div>
+    </div>
+
+    <!-- 6b · Fecha OF en SAP -->
+    <div class="of-fld">
+      <label>Fecha de la OF en SAP</label>
+      <div class="of-ctrl has-lead">
+        <span class="lead"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+        <input id="fecha_sap" type="date" value="{{ hoy }}" aria-label="Fecha de la OF en SAP">
+      </div>
+      <span class="fld-hint">Cuándo se creó/subió la OF en SAP. La fecha en este sistema se guarda automáticamente.</span>
+    </div>
+
+    <!-- 7 · Responsable -->
+    <div class="of-fld col-2">
+      <label>Responsable</label>
+      <div class="of-ctrl has-lead">
+        <span class="lead"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <select id="responsable_id">
+          <option value="" {% if not responsable_default_id %}selected{% endif %}>Sin asignar</option>
+          {% for u in usuarios %}<option value="{{ u.id }}" {% if u.id == responsable_default_id %}selected{% endif %}>{{ u.nombre }}</option>{% endfor %}
+        </select>
+        <span class="chev"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      </div>
+    </div>
+
+    <!-- 8 · Checkbox estampado -->
+    <label class="check-card">
+      <input id="estampado_activo" type="checkbox">
+      <span class="box">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </span>
+      <span class="txt">
+        <span class="h">Activar Estampado / Bordado <kbd>F8 + F9</kbd></span>
+        <span class="d">Habilita los procesos de estampado y bordado para esta orden</span>
+      </span>
+    </label>
+
+    {% if puede_prueba %}
+    <!-- 9 · Checkbox OF de prueba (sin gates documentales) -->
+    <label class="check-card">
+      <input id="omitir_gates" type="checkbox">
+      <span class="box">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </span>
+      <span class="txt">
+        <span class="h">OF de prueba <kbd>sin documentos</kbd></span>
+        <span class="d">Permite activar la OF sin gates documentales para trabajar solo el proceso de corte. Úsalo solo para recabar data.</span>
+      </span>
+    </label>
+    {% endif %}
+
+  </div>
+
+  <!-- Info: piezas auto -->
+  <div class="of-info" id="info-piezas">
+    <span class="ic">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+    </span>
+    <div>
+      <div class="h">Piezas generadas automáticamente</div>
+      <div class="d">Al subir la <b>Ficha Técnica</b>, las piezas se generarán desde la plantilla de la prenda seleccionada. No es necesario ingresarlas aquí.</div>
+      <div id="lista-piezas-preview">
+        <p style="color:var(--text-3);font-size:11px;margin-bottom:4px">Piezas de la plantilla:</p>
+        <div id="piezas-chips"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Acciones -->
+  <div class="of-actions">
+    <a href="/" class="btn-of-cancel">Cancelar</a>
+    <button class="btn-of-save" id="btn-guardar" onclick="crearOF()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Guardar Borrador
     </button>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -156,236 +439,204 @@
 {% block extra_scripts %}
 <script>
 function getCsrf(){
-    const m=document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-    return m ? m[1].split('.')[0] : '';
+  const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  return m ? m[1].split('.')[0] : '';
 }
 
 // ── Combo buscable ────────────────────────────────────────────
-let _prendas = [];   // lista completa cargada del servidor
-let _activeIdx = -1; // índice activo para navegación con teclado
+let _prendas  = [];
+let _activeIdx = -1;
 
 function abrirDrop(){
-    document.getElementById('combo-drop').classList.add('open');
-    if(_prendas.length === 0) cargarPrendas();
+  document.getElementById('combo-drop').classList.add('open');
+  if(_prendas.length === 0) cargarPrendas();
 }
-
 function cerrarDrop(){
-    document.getElementById('combo-drop').classList.remove('open');
-    _activeIdx = -1;
+  document.getElementById('combo-drop').classList.remove('open');
+  _activeIdx = -1;
 }
-
 function filtrarPrendas(){
-    const q = document.getElementById('prenda-search').value.trim().toLowerCase();
-    renderDrop(q);
-    // Si el usuario borra el texto, limpiar selección
-    if(!q){
-        document.getElementById('prenda_catalogo_id').value = '';
-        document.getElementById('prenda-search').classList.remove('has-value');
-        document.getElementById('preview-piezas').textContent = '';
-        document.getElementById('lista-piezas-preview').style.display = 'none';
-        actualizarProgreso();
-    }
-    document.getElementById('combo-drop').classList.add('open');
-}
-
-function renderDrop(filtro){
-    const drop = document.getElementById('combo-drop');
-    filtro = (filtro || '').toLowerCase();
-    // Filtrar
-    const resultado = filtro
-        ? _prendas.filter(p =>
-            p.codigo.toLowerCase().includes(filtro) ||
-            p.nombre.toLowerCase().includes(filtro) ||
-            p.tipo_base.toLowerCase().includes(filtro))
-        : _prendas;
-
-    if(resultado.length === 0){
-        drop.innerHTML = '<div class="combo-empty">Sin resultados</div>';
-        return;
-    }
-
-    // Agrupar por tipo_base
-    const grupos = {};
-    resultado.forEach(p => {
-        if(!grupos[p.tipo_base]) grupos[p.tipo_base] = [];
-        grupos[p.tipo_base].push(p);
-    });
-
-    let html = '';
-    Object.entries(grupos).forEach(([base, items]) => {
-        html += `<div class="combo-group">${base}</div>`;
-        items.forEach(p => {
-            html += `<div class="combo-item" data-id="${p.id}" data-nombre="${p.nombre}" data-tipo="${p.tipo_base}"
-                         onclick="seleccionarPrenda(${p.id},'${p.codigo.replace(/'/g,"\\'")} — ${p.nombre.replace(/'/g,"\\'")}','${p.tipo_base}','${p.nombre.replace(/'/g,"\\'")}')">
-                         <span style="font-family:monospace;font-size:11px;color:#666">${p.codigo}</span>
-                         &nbsp;—&nbsp;${p.nombre}
-                     </div>`;
-        });
-    });
-    drop.innerHTML = html;
-    _activeIdx = -1;
-}
-
-function seleccionarPrenda(id, label, tipo, nombre){
-    document.getElementById('prenda_catalogo_id').value = id;
-    document.getElementById('prenda-search').value = label;
-    document.getElementById('prenda-search').classList.add('has-value');
-    document.getElementById('preview-piezas').textContent = `→ ${nombre}`;
-    cerrarDrop();
+  const q = document.getElementById('prenda-search').value.trim().toLowerCase();
+  renderDrop(q);
+  if(!q){
+    document.getElementById('prenda_catalogo_id').value = '';
+    document.getElementById('prenda-search').classList.remove('has-value');
+    document.getElementById('preview-piezas').textContent = '';
+    document.getElementById('lista-piezas-preview').style.display = 'none';
     actualizarProgreso();
-    cargarPiezasPreview(id);
+  }
+  document.getElementById('combo-drop').classList.add('open');
 }
-
-// Navegación teclado en el combo
+function renderDrop(filtro){
+  const drop = document.getElementById('combo-drop');
+  filtro = (filtro || '').toLowerCase();
+  const resultado = filtro
+    ? _prendas.filter(p =>
+        p.codigo.toLowerCase().includes(filtro) ||
+        p.nombre.toLowerCase().includes(filtro) ||
+        p.tipo_base.toLowerCase().includes(filtro))
+    : _prendas;
+  if(!resultado.length){
+    drop.innerHTML = '<div class="combo-empty">Sin resultados</div>';
+    return;
+  }
+  const grupos = {};
+  resultado.forEach(p => {
+    if(!grupos[p.tipo_base]) grupos[p.tipo_base] = [];
+    grupos[p.tipo_base].push(p);
+  });
+  let html = '';
+  Object.entries(grupos).forEach(([base, items]) => {
+    html += `<div class="combo-group">${base}</div>`;
+    items.forEach(p => {
+      html += `<div class="combo-item" data-id="${p.id}"
+                   onclick="seleccionarPrenda(${p.id},'${p.codigo.replace(/'/g,"\\'")} — ${p.nombre.replace(/'/g,"\\'")}','${p.tipo_base}','${p.nombre.replace(/'/g,"\\'")}')">
+                   <span style="font-family:monospace;font-size:11px;color:var(--text-3)">${p.codigo}</span>
+                   &nbsp;—&nbsp;${p.nombre}
+               </div>`;
+    });
+  });
+  drop.innerHTML = html;
+  _activeIdx = -1;
+}
+function seleccionarPrenda(id, label, tipo, nombre){
+  document.getElementById('prenda_catalogo_id').value = id;
+  document.getElementById('prenda-search').value = label;
+  document.getElementById('prenda-search').classList.add('has-value');
+  document.getElementById('preview-piezas').textContent = `→ ${nombre}`;
+  cerrarDrop();
+  actualizarProgreso();
+  cargarPiezasPreview(id);
+}
 document.addEventListener('keydown', function(e){
-    const drop = document.getElementById('combo-drop');
-    if(!drop.classList.contains('open')) return;
-    const items = drop.querySelectorAll('.combo-item');
-    if(!items.length) return;
-    if(e.key === 'ArrowDown'){
-        e.preventDefault();
-        _activeIdx = Math.min(_activeIdx + 1, items.length - 1);
-    } else if(e.key === 'ArrowUp'){
-        e.preventDefault();
-        _activeIdx = Math.max(_activeIdx - 1, 0);
-    } else if(e.key === 'Enter' && _activeIdx >= 0){
-        e.preventDefault();
-        items[_activeIdx].click();
-        return;
-    } else if(e.key === 'Escape'){
-        cerrarDrop();
-        return;
-    }
-    items.forEach((it,i) => it.classList.toggle('active', i === _activeIdx));
-    if(_activeIdx >= 0) items[_activeIdx].scrollIntoView({block:'nearest'});
+  const drop = document.getElementById('combo-drop');
+  if(!drop.classList.contains('open')) return;
+  const items = drop.querySelectorAll('.combo-item');
+  if(!items.length) return;
+  if(e.key === 'ArrowDown'){ e.preventDefault(); _activeIdx = Math.min(_activeIdx+1, items.length-1); }
+  else if(e.key === 'ArrowUp'){ e.preventDefault(); _activeIdx = Math.max(_activeIdx-1, 0); }
+  else if(e.key === 'Enter' && _activeIdx >= 0){ e.preventDefault(); items[_activeIdx].click(); return; }
+  else if(e.key === 'Escape'){ cerrarDrop(); return; }
+  items.forEach((it,i) => it.classList.toggle('active', i === _activeIdx));
+  if(_activeIdx >= 0) items[_activeIdx].scrollIntoView({block:'nearest'});
 });
-
-// Cerrar al clic fuera
 document.addEventListener('click', function(e){
-    if(!document.getElementById('combo-wrap').contains(e.target)) cerrarDrop();
+  if(!document.getElementById('combo-wrap').contains(e.target)) cerrarDrop();
 });
 
 // ── Carga de prendas del servidor ─────────────────────────────
 async function cargarPrendas(){
-    const tc  = document.getElementById('tipo_cliente').value;
-    const drop = document.getElementById('combo-drop');
-    drop.innerHTML = '<div class="combo-empty">Cargando...</div>';
-    try {
-        _prendas = await fetch(`/catalogo/api/lista?tipo_cliente=${tc}`, {
-            headers: {'x-csrf-token': getCsrf()}
-        }).then(r => r.json());
-        renderDrop(document.getElementById('prenda-search').value.trim());
-    } catch(e) {
-        drop.innerHTML = '<div class="combo-empty">Error al cargar</div>';
-    }
+  const tc   = document.getElementById('tipo_cliente').value;
+  const drop = document.getElementById('combo-drop');
+  drop.innerHTML = '<div class="combo-empty">Cargando...</div>';
+  try {
+    _prendas = await fetch(`/catalogo/api/lista?tipo_cliente=${tc}`, {
+      headers: {'x-csrf-token': getCsrf()}
+    }).then(r => r.json());
+    renderDrop(document.getElementById('prenda-search').value.trim());
+  } catch(e) {
+    drop.innerHTML = '<div class="combo-empty">Error al cargar</div>';
+  }
 }
-
 async function onTipoClienteChange(){
-    // Limpiar selección actual al cambiar tipo cliente
-    _prendas = [];
-    document.getElementById('prenda_catalogo_id').value = '';
-    document.getElementById('prenda-search').value = '';
-    document.getElementById('prenda-search').classList.remove('has-value');
-    document.getElementById('preview-piezas').textContent = '';
-    document.getElementById('lista-piezas-preview').style.display = 'none';
-    document.getElementById('combo-drop').innerHTML = '';
-    actualizarProgreso();
-    await cargarPrendas();
+  _prendas = [];
+  document.getElementById('prenda_catalogo_id').value = '';
+  document.getElementById('prenda-search').value = '';
+  document.getElementById('prenda-search').classList.remove('has-value');
+  document.getElementById('preview-piezas').textContent = '';
+  document.getElementById('lista-piezas-preview').style.display = 'none';
+  document.getElementById('combo-drop').innerHTML = '';
+  actualizarProgreso();
+  await cargarPrendas();
 }
-
 async function cargarPiezasPreview(id){
-    const listDiv = document.getElementById('lista-piezas-preview');
-    const chips   = document.getElementById('piezas-chips');
-    chips.innerHTML = '';
-    if(!id){ listDiv.style.display='none'; return; }
-    try{
-        const piezas = await fetch(`/catalogo/api/${id}/piezas`,{
-            headers:{'x-csrf-token':getCsrf()}
-        }).then(r=>r.json());
-        piezas.forEach(p=>{
-            const chip=document.createElement('span');
-            chip.style.cssText='background:#1a2a40;color:#8ab4f8;border-radius:10px;padding:2px 8px;font-size:11px';
-            chip.textContent=p.nombre+(p.fusionado_default?' 🔥':'');
-            chips.appendChild(chip);
-        });
-        listDiv.style.display = piezas.length ? 'block' : 'none';
-    } catch(e){}
+  const listDiv = document.getElementById('lista-piezas-preview');
+  const chips   = document.getElementById('piezas-chips');
+  chips.innerHTML = '';
+  if(!id){ listDiv.style.display='none'; return; }
+  try {
+    const piezas = await fetch(`/catalogo/api/${id}/piezas`, {
+      headers: {'x-csrf-token': getCsrf()}
+    }).then(r => r.json());
+    piezas.forEach(p => {
+      const chip = document.createElement('span');
+      chip.style.cssText = 'background:rgba(26,42,94,0.5);color:#8ab4f8;border-radius:8px;padding:2px 9px;font-size:11px;border:1px solid rgba(44,64,126,0.5)';
+      chip.textContent = p.nombre + (p.fusionado_default ? ' 🔥' : '');
+      chips.appendChild(chip);
+    });
+    listDiv.style.display = piezas.length ? 'block' : 'none';
+  } catch(e){}
 }
 
 // ── Progreso ──────────────────────────────────────────────────
 function actualizarProgreso(){
-    const checks = [
-        !!document.getElementById('numero_of').value.trim(),
-        !!document.getElementById('cliente').value.trim(),
-        !!document.getElementById('prenda_catalogo_id').value,
-        !!document.getElementById('total_juegos').value,
-    ];
-    const ok  = checks.filter(Boolean).length;
-    const pct = Math.round(ok / checks.length * 100);
-    document.getElementById('prog-fill').style.width = pct + '%';
-    document.getElementById('prog-txt').textContent  = `${ok} / ${checks.length}`;
-    document.getElementById('req-dots').innerHTML =
-        checks.map(c => `<span class="req-dot ${c?'ok':'err'}"></span>`).join('');
+  const checks = [
+    !!document.getElementById('numero_of').value.trim(),
+    !!document.getElementById('cliente').value.trim(),
+    !!document.getElementById('prenda_catalogo_id').value,
+    !!document.getElementById('total_juegos').value,
+  ];
+  const ok = checks.filter(Boolean).length;
+  document.getElementById('prog-txt').textContent = ok;
+  checks.forEach((c, i) => {
+    const step = document.getElementById(`step-${i+1}`);
+    if(step) step.classList.toggle('done', c);
+  });
 }
 
 // ── Crear OF ──────────────────────────────────────────────────
 async function crearOF(){
-    const numero_of          = document.getElementById('numero_of').value.trim();
-    const cliente            = document.getElementById('cliente').value.trim();
-    const prenda_catalogo_id = document.getElementById('prenda_catalogo_id').value;
-    const total_juegos       = parseInt(document.getElementById('total_juegos').value);
-
-    if(!numero_of || !cliente || !prenda_catalogo_id || !total_juegos){
-        mostrarToast('Completa los campos obligatorios (N° OF, Cliente, Prenda, Juegos)', 'error');
-        return;
-    }
-
-    const btn = document.getElementById('btn-guardar');
-    btn.disabled = true;
-
-    // tipo_prenda: buscar en _prendas
-    const prenda = _prendas.find(p => p.id == prenda_catalogo_id);
-    const tipo_prenda = prenda ? prenda.tipo_base : 'OTRO';
-
-    const fd = new FormData();
-    fd.append('numero_of',          numero_of);
-    fd.append('cliente',            cliente);
-    fd.append('tipo_prenda',        tipo_prenda);
-    fd.append('prenda_catalogo_id', prenda_catalogo_id);
-    fd.append('total_juegos',       total_juegos);
-    fd.append('tipo_cliente',       document.getElementById('tipo_cliente').value || 'INSTITUCION');
-    fd.append('estampado_activo',   document.getElementById('estampado_activo').checked);
-
-    const fecha_apt = document.getElementById('fecha_apt').value;
-    if(fecha_apt) fd.append('fecha_apt', fecha_apt);
-
-    const resp_id = document.getElementById('responsable_id').value;
-    if(resp_id) fd.append('responsable_id', resp_id);
-
-    mostrarToast('Guardando...', 'success');
-    const res = await fetch('/of/api/crear', {
-        method:'POST', body:fd,
-        headers:{'x-csrf-token':getCsrf()}
-    });
-    if(!res.ok){
-        const d = await res.json().catch(()=>({}));
-        mostrarToast(d.detail || 'Error al crear OF', 'error');
-        btn.disabled = false;
-        return;
-    }
-    const { id: of_id, numero_of: nof } = await res.json();
-    mostrarToast(`OF ${nof} guardada como borrador ✓`, 'success');
-    setTimeout(()=> window.location.href = `/of/${of_id}/detalle`, 1200);
+  const numero_of          = document.getElementById('numero_of').value.trim();
+  const cliente            = document.getElementById('cliente').value.trim();
+  const prenda_catalogo_id = document.getElementById('prenda_catalogo_id').value;
+  const total_juegos       = parseInt(document.getElementById('total_juegos').value);
+  if(!numero_of || !cliente || !prenda_catalogo_id || !total_juegos){
+    mostrarToast('Completa los campos obligatorios (N° OF, Cliente, Prenda, Juegos)', 'error');
+    return;
+  }
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+  const prenda    = _prendas.find(p => p.id == prenda_catalogo_id);
+  const tipo_prenda = prenda ? prenda.tipo_base : 'OTRO';
+  const fd = new FormData();
+  fd.append('numero_of',          numero_of);
+  fd.append('cliente',            cliente);
+  fd.append('tipo_prenda',        tipo_prenda);
+  fd.append('prenda_catalogo_id', prenda_catalogo_id);
+  fd.append('total_juegos',       total_juegos);
+  fd.append('tipo_cliente',       document.getElementById('tipo_cliente').value || 'INSTITUCION');
+  fd.append('estampado_activo',   document.getElementById('estampado_activo').checked);
+  const _og = document.getElementById('omitir_gates');
+  if(_og) fd.append('omitir_gates', _og.checked);
+  const fecha_apt = document.getElementById('fecha_apt').value;
+  if(fecha_apt) fd.append('fecha_apt', fecha_apt);
+  const fecha_sap = document.getElementById('fecha_sap').value;
+  if(fecha_sap) fd.append('fecha_sap', fecha_sap);
+  const resp_id = document.getElementById('responsable_id').value;
+  if(resp_id) fd.append('responsable_id', resp_id);
+  mostrarToast('Guardando...', 'success');
+  const res = await fetch('/of/api/crear', {
+    method:'POST', body:fd,
+    headers:{'x-csrf-token': getCsrf()}
+  });
+  if(!res.ok){
+    const d = await res.json().catch(()=>({}));
+    mostrarToast(d.detail || 'Error al crear OF', 'error');
+    btn.disabled = false;
+    return;
+  }
+  const { id: of_id, numero_of: nof } = await res.json();
+  mostrarToast(`OF ${nof} guardada como borrador ✓`, 'success');
+  setTimeout(() => window.location.href = `/of/${of_id}/detalle`, 1200);
 }
 
 function mostrarToast(msg, tipo='success'){
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className   = `toast toast-${tipo} show`;
-    setTimeout(()=> t.classList.remove('show'), 3500);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `toast toast-${tipo} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// Cargar prendas al iniciar (tipo INSTITUCION por defecto)
 cargarPrendas();
 actualizarProgreso();
 </script>

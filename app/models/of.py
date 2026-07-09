@@ -53,7 +53,8 @@ class OrdenFabricacion(Base):
     tipo_prenda          = Column(String(50),  nullable=False)
     prenda_catalogo_id   = Column(Integer, ForeignKey("prendas_catalogo.id"), nullable=True)
     total_juegos         = Column(Integer, nullable=False)
-    fecha_creacion       = Column(Date, nullable=False, default=_dt.date.today)
+    fecha_creacion       = Column(Date, nullable=False, default=_dt.date.today)  # fecha de creación en ESTE sistema
+    fecha_sap            = Column(Date, nullable=True)   # fecha en que la OF se creó/subió en SAP
     fecha_apt            = Column(Date, nullable=True)
     estado               = Column(Enum(EstadoOF), default=EstadoOF.BORRADOR)
     tipo_cliente         = Column(Enum(TipoClienteEnum), default=TipoClienteEnum.INSTITUCION, nullable=False)
@@ -72,6 +73,9 @@ class OrdenFabricacion(Base):
     fecha_recepcion_real = Column(Date, nullable=True)
     estado_tercerizado   = Column(String(20), nullable=True)
     juegos_recibidos     = Column(Integer, default=0, nullable=False)
+    es_muestra           = Column(Boolean, default=False, nullable=False)  # Requerimiento de Muestra (sin gates)
+    omitir_gates         = Column(Boolean, default=False, nullable=False)  # OF de prueba: se activa sin gates documentales
+    max_capas            = Column(Integer, nullable=True)   # tope de capas por placa (override; default global MAX_CAPAS_DEFAULT)
     responsable_id       = Column(Integer, ForeignKey("usuarios.id"))
     created_at           = Column(DateTime, server_default=func.now())
     updated_at           = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -89,6 +93,7 @@ class OrdenFabricacion(Base):
     historial_fechas_terc = relationship("TercHistorialFecha",  back_populates="of", cascade="all, delete-orphan")
     recepciones_terc      = relationship("TercRecepcion",       back_populates="of", cascade="all, delete-orphan")
     talla_distribucion    = relationship("OFTallaDistribucion", back_populates="of", cascade="all, delete-orphan")
+    terc_logs             = relationship("TercSubprocesoLog",   back_populates="of", cascade="all, delete-orphan", foreign_keys="TercSubprocesoLog.of_id")
 
 
 class DocumentoOF(Base):
