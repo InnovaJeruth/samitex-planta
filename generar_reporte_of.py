@@ -73,7 +73,7 @@ def reporte_of(of, db) -> str:
     lines.append(f"> **Prenda:** {fmt(of.tipo_prenda)} · **Juegos:** {of.total_juegos} · **Estado:** {estado_val}")
     lines.append(f"> **APT:** {fmt(of.fecha_apt)} · **Inicio plan:** {fmt(of.fecha_inicio_plan)} · **Tipo cliente:** {fmt(of.tipo_cliente)}")
     if of.tercerizado:
-        lines.append(f"> ⚠️ **Tercerizada** → {of.planta_externa or '—'} | Estado: {of.estado_tercerizado or '—'} | Recepción est.: {fmt(of.fecha_recepcion_est)}")
+        lines.append(f"> ⚠️ **Tercerizada** → {(of.planta.nombre if of.planta else None) or '—'} | Estado: {of.estado_tercerizado or '—'} | Recepción est.: {fmt(of.fecha_recepcion_est)}")
     lines.append("")
 
     # Piezas y fases

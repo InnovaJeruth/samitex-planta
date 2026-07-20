@@ -7,12 +7,16 @@ from typing import Optional
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.of import OrdenFabricacion, EstadoOF, EstadoDocsEnum
+from app.models.of import OrdenFabricacion, EstadoOF, EstadoDocsEnum, OFTallaDistribucion
 from app.models.fase import OFFaseEstado, OFFaseTiempos, FaseCatalogo
 from app.models.pieza import OFPieza, PlantillaPieza
+from app.models.catalogo import PrendaSku
 from app.models.planta import PlantaExterna, TercHistorialFecha, TercSubprocesoLog, TercRecepcion
 from app.models.usuario import Usuario
 from app.constants import ORDEN_FASES
+
+# Fases de tela (van por pieza / trazo, no por talla)
+TELA_FASES = {"F1", "F2", "F3"}
 from app.services.gate_service import puede_activar
 
 
@@ -112,19 +116,93 @@ def actualizar_estado_docs(of: OrdenFabricacion, db: Session) -> None:
 # ── Piezas / Fases ────────────────────────────────────────────
 
 def crear_fases_pieza(pieza: OFPieza, of: OrdenFabricacion, db: Session) -> None:
-    """Crea los registros OFFaseEstado para cada fase aplicable de esta pieza."""
+    """Crea los registros OFFaseEstado para cada fase aplicable de esta pieza.
+
+    - OF con corte_por_talla y curva cargada: F1–F3 por pieza (tela); F4–F7 por pieza×talla.
+    - OF por pieza (viejas) o sin distribución: una fila por pieza×fase (sku_id NULL).
+    """
+    cxp = pieza.cantidad_x_prenda or 1
+    por_talla = bool(getattr(of, "corte_por_talla", False))
+    dist = []
+    if por_talla:
+        dist = (
+            db.query(OFTallaDistribucion, PrendaSku)
+            .join(PrendaSku, PrendaSku.id == OFTallaDistribucion.sku_id)
+            .filter(OFTallaDistribucion.of_id == of.id)
+            .all()
+        )
+
     for fid in ORDEN_FASES:
         if fid in ("F8", "F9") and not of.estampado_activo:
             continue
         if fid == "F5" and not pieza.fusionado:
             continue
-        estado = OFFaseEstado(
-            of_id=of.id,
-            pieza_id=pieza.id,
-            fase_id=fid,
-            max_cantidad=of.total_juegos * pieza.cantidad_x_prenda,
-        )
-        db.add(estado)
+
+        if por_talla and dist and fid not in TELA_FASES:
+            # F4–F7: una fila por talla
+            for d, sku in dist:
+                db.add(OFFaseEstado(
+                    of_id=of.id, pieza_id=pieza.id, fase_id=fid,
+                    sku_id=sku.id, talla=sku.talla,
+                    max_cantidad=(d.cantidad or 0) * cxp,
+                ))
+        else:
+            # F1–F3 (tela) o flujo por pieza: una fila por pieza
+            db.add(OFFaseEstado(
+                of_id=of.id, pieza_id=pieza.id, fase_id=fid,
+                max_cantidad=of.total_juegos * cxp,
+            ))
+
+
+def regenerar_fases_talla(of: OrdenFabricacion, db: Session) -> None:
+    """Asegura las filas F4–F7 por (pieza, talla) para OFs corte_por_talla.
+
+    Idempotente: si una fase ya tiene filas por talla, no la toca. Si tiene una
+    fila por pieza (sku NULL, sin avance) — creada antes de vincular la curva —,
+    la reemplaza por filas por talla desde la distribución. No toca F1–F3 (tela).
+    Se usa al vincular la curva a una OF que ya tiene piezas.
+    """
+    if not getattr(of, "corte_por_talla", False):
+        return
+    dist = (
+        db.query(OFTallaDistribucion, PrendaSku)
+        .join(PrendaSku, PrendaSku.id == OFTallaDistribucion.sku_id)
+        .filter(OFTallaDistribucion.of_id == of.id)
+        .all()
+    )
+    piezas = db.query(OFPieza).filter_by(of_id=of.id).all()
+    if not dist or not piezas:
+        return
+
+    cambiado = False
+    for pieza in piezas:
+        cxp = pieza.cantidad_x_prenda or 1
+        for fid in ORDEN_FASES:
+            if fid in TELA_FASES:
+                continue
+            if fid in ("F8", "F9") and not of.estampado_activo:
+                continue
+            if fid == "F5" and not pieza.fusionado:
+                continue
+            filas = db.query(OFFaseEstado).filter_by(
+                of_id=of.id, pieza_id=pieza.id, fase_id=fid
+            ).all()
+            if any(f.sku_id is not None for f in filas):
+                continue  # ya está por talla
+            null_rows = [f for f in filas if f.sku_id is None]
+            if any((f.cantidad_actual or 0) > 0 for f in null_rows):
+                continue  # tiene avance → no tocar
+            for f in null_rows:
+                db.delete(f)
+            for d, sku in dist:
+                db.add(OFFaseEstado(
+                    of_id=of.id, pieza_id=pieza.id, fase_id=fid,
+                    sku_id=sku.id, talla=sku.talla,
+                    max_cantidad=(d.cantidad or 0) * cxp,
+                ))
+            cambiado = True
+    if cambiado:
+        db.commit()
 
 
 def auto_generar_piezas(of: OrdenFabricacion, db: Session) -> None:
@@ -138,7 +216,10 @@ def auto_generar_piezas(of: OrdenFabricacion, db: Session) -> None:
     if of.piezas:
         return  # Guard: evita duplicar piezas
 
-    if of.prenda_catalogo_id:
+    if of.prenda_catalogo_id and of.prenda_catalogo is not None:
+        # Ficha efectiva: si la prenda es una variante que hereda, toma las piezas de su base.
+        plantillas = sorted(of.prenda_catalogo.piezas_efectivas, key=lambda p: p.orden)
+    elif of.prenda_catalogo_id:
         plantillas = (
             db.query(PlantillaPieza)
             .filter_by(prenda_catalogo_id=of.prenda_catalogo_id)
@@ -227,9 +308,7 @@ def tercerizar(
 
     of.tercerizado = True
     of.planta_id = planta.id
-    of.planta_externa = planta.nombre
     of.estado_tercerizado = "PENDIENTE_ENVIO"
-    of.fase_tercerizada = fase_id
     of.juegos_recibidos = 0
     if fecha_envio:
         of.fecha_envio = _parse_date(fecha_envio)
@@ -330,14 +409,14 @@ def registrar_recepcion(
     if of.estado_tercerizado not in ("PENDIENTE_ENVIO", "ENVIADA"):
         raise HTTPException(400, f"No se puede registrar recepción en estado '{of.estado_tercerizado}'")
     if juegos_recibidos < 1:
-        raise HTTPException(400, "juegos_recibidos debe ser >= 1")
+        raise HTTPException(400, "Las prendas recibidas deben ser >= 1")
 
     ya_recibidos = of.juegos_recibidos or 0
     pendientes = of.total_juegos - ya_recibidos
     if juegos_recibidos > pendientes:
         raise HTTPException(
             400,
-            f"Solo quedan {pendientes} juegos pendientes de recibir (total OF: {of.total_juegos})",
+            f"Solo quedan {pendientes} prendas pendientes de recibir (total OF: {of.total_juegos})",
         )
 
     fecha = _parse_date(fecha_recepcion)

@@ -277,7 +277,7 @@ def api_vincular_ofs(
     if not body.of_ids:
         raise HTTPException(400, "Selecciona al menos una OF")
 
-    from app.services.of_service import actualizar_estado_docs
+    from app.services.of_service import actualizar_estado_docs, regenerar_fases_talla
     from app.models.of import OFTallaDistribucion
 
     ya_vinculados = {v.of_id for v in curva.vinculos}
@@ -359,6 +359,8 @@ def api_vincular_ofs(
 
         db.flush()
         actualizar_estado_docs(of, db)
+        # Regenerar F4–F7 por talla si la OF ya tiene piezas (curva vinculada después)
+        regenerar_fases_talla(of, db)
         enviadas.append(of.numero_of)
 
     db.commit()

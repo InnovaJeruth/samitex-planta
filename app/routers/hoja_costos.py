@@ -118,7 +118,7 @@ def _calcular_subtotal(
     precio: Optional[float],
     factor_conversion: float = 1.0,
     moneda: Optional[str] = None,
-    tipo_cambio: float = 3.70,
+    tipo_cambio: float = 3.45,
 ) -> Optional[float]:
     """subtotal en soles = consumo × (1+pct) / factor_conversion × precio_SO_por_UC"""
     if precio is None:
@@ -126,6 +126,33 @@ def _calcular_subtotal(
     factor = max(factor_conversion, 0.000001)
     precio_so = precio * tipo_cambio if (moneda and moneda != 'SO') else precio
     return round(consumo * (1 + pct) / factor * precio_so, 4)
+
+
+# Parámetros de costeo (del HDC; ajustables luego)
+TC_HDC       = 3.45     # tipo de cambio USD→S/
+GIF_PCT      = 0.124    # gastos indirectos de fabricación (% sobre costo primo)
+MARGEN_CV    = 0.90     # el costo de producción es 90% → precio = costo / 0.90
+
+
+def _costo_full(prenda, total_mp, total_avios, tc=TC_HDC):
+    """Completa el costo estimado: insumos + servicios + MOD + GIF + margen.
+    Servicios y MOD vienen del HDC en USD → se pasan a soles con `tc`."""
+    total_serv = round(sum((s.costo or 0) for s in prenda.servicios_efectivos) * tc, 2)
+    total_mod  = round(sum((m.subtotal or 0) for m in prenda.mod_efectivos) * tc, 2)
+    costo_primo = round((total_mp or 0) + (total_avios or 0) + total_serv + total_mod, 2)
+    gif = round(costo_primo * GIF_PCT, 2)
+    costo_prod = round(costo_primo + gif, 2)
+    total = round(costo_prod / MARGEN_CV, 2) if MARGEN_CV else costo_prod
+    return {
+        "total_servicios":  total_serv,
+        "total_mod":        total_mod,
+        "costo_primo":      costo_primo,
+        "gif":              gif,
+        "gif_pct":          GIF_PCT,
+        "costo_produccion": costo_prod,
+        "margen_cv":        MARGEN_CV,
+        "total_general":    total,
+    }
 
 
 def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
@@ -138,7 +165,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
         mp_configs   = {}
         avio_configs = {}
     else:
-        base = (
+        base = prenda.base or (
             db.query(PrendaCatalogo)
             .filter_by(tipo_base=prenda.tipo_base, tipo_cliente="BASE", activo=True)
             .first()
@@ -162,7 +189,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
         consumo  = cfg.consumo_override if (cfg and cfg.consumo_override) else mp.consumo_unitario
         precio   = mp.precio_referencia
         fc       = getattr(mp, 'factor_conversion', 1.0) or 1.0
-        subtotal = _calcular_subtotal(consumo, mp.pct_adicional, precio, fc, mp.moneda, 3.70)
+        subtotal = _calcular_subtotal(consumo, mp.pct_adicional, precio, fc, mp.moneda, TC_HDC)
         lineas.append({
             "tipo":             "MP",
             "item_id":          mp.id,
@@ -189,7 +216,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
                 continue
             fc       = getattr(mp, 'factor_conversion', 1.0) or 1.0
             precio   = mp.precio_referencia
-            subtotal = _calcular_subtotal(mp.consumo_unitario, mp.pct_adicional, precio, fc, mp.moneda, 3.70)
+            subtotal = _calcular_subtotal(mp.consumo_unitario, mp.pct_adicional, precio, fc, mp.moneda, TC_HDC)
             lineas.append({
                 "tipo":              "MP",
                 "item_id":           mp.id,
@@ -220,7 +247,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
         consumo  = cfg.consumo_override if (cfg and cfg.consumo_override) else avio.consumo_unitario
         precio   = avio.precio
         fc       = getattr(avio, 'factor_conversion', 1.0) or 1.0
-        subtotal = _calcular_subtotal(consumo, avio.pct_adicional, precio, fc, avio.moneda, 3.70)
+        subtotal = _calcular_subtotal(consumo, avio.pct_adicional, precio, fc, avio.moneda, TC_HDC)
         lineas.append({
             "tipo":             "AVIO",
             "item_id":          avio.id,
@@ -247,7 +274,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
                 continue
             fc       = getattr(avio, 'factor_conversion', 1.0) or 1.0
             precio   = avio.precio
-            subtotal = _calcular_subtotal(avio.consumo_unitario, avio.pct_adicional, precio, fc, avio.moneda, 3.70)
+            subtotal = _calcular_subtotal(avio.consumo_unitario, avio.pct_adicional, precio, fc, avio.moneda, TC_HDC)
             lineas.append({
                 "tipo":              "AVIO",
                 "item_id":           avio.id,
@@ -267,16 +294,18 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
             })
             orden += 1
 
-    total_mp    = sum(l["subtotal"] for l in lineas if l["tipo"] == "MP"   and l["subtotal"] is not None)
-    total_avios = sum(l["subtotal"] for l in lineas if l["tipo"] == "AVIO" and l["subtotal"] is not None)
-    tipo_cambio_default = 3.70
+    total_mp    = round(sum(l["subtotal"] for l in lineas if l["tipo"] == "MP"   and l["subtotal"] is not None), 2)
+    total_avios = round(sum(l["subtotal"] for l in lineas if l["tipo"] == "AVIO" and l["subtotal"] is not None), 2)
 
+    full = _costo_full(prenda, total_mp, total_avios)
     return {
-        "lineas":       lineas,
-        "total_mp":     round(total_mp, 2),
-        "total_avios":  round(total_avios, 2),
-        "total_general": round(total_mp + total_avios, 2),
-        "aviso":        None,
+        "lineas":        lineas,
+        "total_mp":      total_mp,
+        "total_avios":   total_avios,
+        "total_insumos": round(total_mp + total_avios, 2),
+        **full,                              # servicios, mod, gif, costo_primo, produccion, total_general
+        "tipo_cambio":   TC_HDC,
+        "aviso":         None,
     }
 
 
@@ -357,17 +386,17 @@ def api_guardar_hoja(
 
     # Calcular totales
     lineas_data = body.lineas
-    tc = body.tipo_cambio or 3.70
-    total_mp    = sum(
+    tc = body.tipo_cambio or TC_HDC
+    total_mp    = round(sum(
         _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot,
                            l.factor_conversion, l.moneda, tc) or 0
-        for l in lineas_data if l.tipo == "MP"
-    )
-    total_avios = sum(
+        for l in lineas_data if l.tipo == "MP"), 2)
+    total_avios = round(sum(
         _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot,
                            l.factor_conversion, l.moneda, tc) or 0
-        for l in lineas_data if l.tipo == "AVIO"
-    )
+        for l in lineas_data if l.tipo == "AVIO"), 2)
+    # Costo completo: + servicios + MOD + GIF + margen (de la base, heredado)
+    full = _costo_full(prenda, total_mp, total_avios, tc)
 
     # Buscar hoja BORRADOR existente para reutilizar (no aprobada)
     hoja = (
@@ -390,11 +419,11 @@ def api_guardar_hoja(
 
     hoja.estado        = "BORRADOR"
     hoja.moneda_base   = body.moneda_base
-    hoja.tipo_cambio   = body.tipo_cambio or 3.70
+    hoja.tipo_cambio   = body.tipo_cambio or TC_HDC
     hoja.notas         = body.notas
-    hoja.total_mp      = round(total_mp, 2)
-    hoja.total_avios   = round(total_avios, 2)
-    hoja.total_general = round(total_mp + total_avios, 2)
+    hoja.total_mp      = total_mp
+    hoja.total_avios   = total_avios
+    hoja.total_general = full["total_general"]     # costo total (insumos + servicios + MOD + GIF + margen)
     hoja.updated_at    = datetime.utcnow()
 
     for i, l in enumerate(lineas_data):

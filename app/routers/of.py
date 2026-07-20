@@ -98,7 +98,7 @@ def lista_ofs(
 
 
 # ── Plan Corte (Gantt) ────────────────────────────────────────
-ROLES_PLAN_CORTE = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "GERENCIA"}
+ROLES_PLAN_CORTE = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "JEFE_PLANTA", "GERENCIA"}
 
 # Roles que pueden crear OFs de prueba (activan sin gates documentales)
 ROLES_PRUEBA = {"ADMIN", "PLANEADOR"}
@@ -442,7 +442,7 @@ def crear_of(
     if existe:
         raise HTTPException(400, f"Ya existe una OF con número {numero_of}")
     if total_juegos < 1:
-        raise HTTPException(400, "El total de juegos debe ser mayor a 0")
+        raise HTTPException(400, "El total de prendas debe ser mayor a 0")
 
     # Si se envía prenda_catalogo_id, resolver el tipo_prenda desde el catálogo
     if prenda_catalogo_id:
@@ -474,6 +474,43 @@ def crear_of(
     db.commit()
     db.refresh(of)
     return {"id": of.id, "numero_of": of.numero_of, "estado": of.estado}
+
+
+# ── Importar OFs desde el Excel de SAP (COIS) ─────────────────
+ROLES_IMPORT_OF = {"ADMIN", "PLANEADOR"}
+
+
+@router.get("/import-sap", response_class=HTMLResponse)
+def import_sap_page(request: Request, current_user: Usuario = Depends(get_current_user)):
+    if _rol_str(current_user) not in ROLES_IMPORT_OF:
+        raise HTTPException(403, "Sin permiso para importar OFs")
+    return templates.TemplateResponse("of/import_sap.html", {
+        "request": request, "current_user": current_user,
+    })
+
+
+@router.post("/api/import-sap")
+async def import_sap(
+    archivo: UploadFile = File(...),
+    cliente: str = Form(None),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if _rol_str(current_user) not in ROLES_IMPORT_OF:
+        raise HTTPException(403, "Sin permiso para importar OFs")
+    nombre = (archivo.filename or "").lower()
+    if not nombre.endswith((".xlsx", ".xlsm")):
+        raise HTTPException(400, "El archivo debe ser .xlsx")
+    if not cliente or not cliente.strip():
+        raise HTTPException(400, "Ingresa el nombre del cliente antes de importar")
+    contenido = await archivo.read()
+    from app.services import of_import_service
+    try:
+        resumen = of_import_service.importar_excel_sap(
+            contenido, db, usuario_id=current_user.id, cliente=cliente.strip())
+    except Exception as e:
+        raise HTTPException(400, f"No se pudo leer el Excel: {e}")
+    return resumen
 
 
 # ── API: buscar OFs por número (usado por modal paradas) ─────
@@ -783,6 +820,33 @@ async def subir_documento(
     return {"mensaje": "Documento subido", "archivo": archivo.filename}
 
 
+# ── API: auditoría de documentos (gates) ─────────────────────
+@router.get("/api/{of_id}/auditoria-docs")
+def auditoria_docs(
+    of_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Historial de acciones sobre documentos/gates de la OF (quién subió/reemplazó y cuándo)."""
+    rows = (
+        db.query(AuditoriaDocumentoOF)
+        .filter_by(of_id=of_id)
+        .order_by(AuditoriaDocumentoOF.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    return [
+        {
+            "tipo": r.tipo,
+            "accion": r.accion,
+            "nombre_archivo": r.nombre_archivo,
+            "usuario": r.usuario.nombre if r.usuario else None,
+            "fecha": r.created_at.strftime("%d/%m/%Y %H:%M") if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
 # ── API: descargar documento ──────────────────────────────────
 @router.get("/api/documentos/{doc_id}/descargar")
 def descargar_documento(
@@ -928,20 +992,37 @@ def actualizar_codigos(
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
     tipo_cliente = of.tipo_cliente.value if of.tipo_cliente else "INSTITUCION"
 
+    cambios = []  # (gate_id, accion, valor) para auditoría
+
+    def _aplicar(gate_id, campo, valor):
+        actual = getattr(of, campo) or None
+        nuevo = (valor or None)
+        if nuevo == actual:
+            return
+        setattr(of, campo, nuevo)
+        accion = "REGISTRADO" if not actual else ("ELIMINADO" if not nuevo else "MODIFICADO")
+        cambios.append((gate_id, accion, nuevo))
+
     if body.solped_prenda is not None:
         if rol not in ("ADMIN", "PLANEADOR") and not puede_subir_gate(rol, "SOLPED_PRENDA", tipo_cliente):
             raise HTTPException(403, f"Tu rol ({rol}) no puede actualizar SOLPED Prenda")
-        of.solped_prenda = body.solped_prenda or None
+        _aplicar("SOLPED_PRENDA", "solped_prenda", body.solped_prenda)
 
     if body.solped_mp is not None:
         if rol not in ("ADMIN", "PLANEADOR") and not puede_subir_gate(rol, "SOLPED_MP", tipo_cliente):
             raise HTTPException(403, f"Tu rol ({rol}) no puede actualizar SOLPED MP")
-        of.solped_mp = body.solped_mp or None
+        _aplicar("SOLPED_MP", "solped_mp", body.solped_mp)
 
     if body.orden_compra is not None:
         if rol not in ("ADMIN", "PLANEADOR") and not puede_subir_gate(rol, "ORDEN_COMPRA", tipo_cliente):
             raise HTTPException(403, f"Tu rol ({rol}) no puede actualizar Orden de Compra")
-        of.orden_compra = body.orden_compra or None
+        _aplicar("ORDEN_COMPRA", "orden_compra", body.orden_compra)
+
+    for gate_id, accion, valor in cambios:
+        db.add(AuditoriaDocumentoOF(
+            of_id=of_id, tipo=gate_id, accion=accion,
+            nombre_archivo=valor, usuario_id=current_user.id,
+        ))
 
     db.commit()
     _actualizar_estado_docs(of, db)
@@ -1362,7 +1443,7 @@ def api_registrar_recepcion(
         # of.fase_tercerizada no existe en el modelo; fase queda en TercSubprocesoLog
 
     db.commit()
-    return {"ok": True, "msg": f"Recepción registrada: {body.juegos_recibidos} juegos", "completa": recepcion_completa}
+    return {"ok": True, "msg": f"Recepción registrada: {body.juegos_recibidos} prendas", "completa": recepcion_completa}
 
 
 @router.patch("/api/{of_id}/tercerizar/fecha")

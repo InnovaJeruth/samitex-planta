@@ -25,7 +25,20 @@ from app.models.ingenieria import (
     IngIshikawaCausa,
 )
 
-router = APIRouter(prefix="/ing", tags=["Ingeniería"])
+from app.models.of import OrdenFabricacion
+from app.core.auth import get_current_user
+
+# Auth a nivel de router: TODAS las rutas /ing exigen sesión iniciada.
+router = APIRouter(prefix="/ing", tags=["Ingeniería"], dependencies=[Depends(get_current_user)])
+
+
+def _resolve_of_id(db: Session, of_numero: str) -> Optional[int]:
+    """Resuelve el id interno de la OF a partir de su número (clave de negocio).
+    Devuelve None si la OF aún no está cargada — la ficha se guarda igual."""
+    if not of_numero:
+        return None
+    of = db.query(OrdenFabricacion.id).filter(OrdenFabricacion.numero_of == of_numero).first()
+    return of[0] if of else None
 
 
 @router.get("/fichas", response_class=FileResponse)
@@ -54,6 +67,7 @@ class SamIn(BaseModel):
 def crear_sam(data: SamIn, db: Session = Depends(get_db)):
     rec = IngSamRegistro(
         of_numero=data.of_numero,
+        of_id=_resolve_of_id(db, data.of_numero),
         fecha=data.fecha,
         operario=data.operario,
         fase=data.fase,
@@ -104,6 +118,7 @@ class ParadaIn(BaseModel):
 @router.post("/paradas", status_code=201)
 def crear_parada(data: ParadaIn, db: Session = Depends(get_db)):
     rec = IngParadaRegistro(**data.model_dump())
+    rec.of_id = _resolve_of_id(db, data.of_numero)
     db.add(rec)
     db.commit()
     db.refresh(rec)
@@ -139,6 +154,7 @@ class MuestreoIn(BaseModel):
 @router.post("/muestreo", status_code=201)
 def crear_muestreo(data: MuestreoIn, db: Session = Depends(get_db)):
     rec = IngMuestreoObs(**data.model_dump())
+    rec.of_id = _resolve_of_id(db, data.of_numero)
     db.add(rec)
     db.commit()
     db.refresh(rec)
@@ -179,6 +195,7 @@ class TendidoIn(BaseModel):
 @router.post("/tendido", status_code=201)
 def crear_tendido(data: TendidoIn, db: Session = Depends(get_db)):
     rec = IngTendidoFicha(**data.model_dump())
+    rec.of_id = _resolve_of_id(db, data.of_numero)
     db.add(rec)
     db.commit()
     db.refresh(rec)
@@ -224,6 +241,7 @@ class CalidadIn(BaseModel):
 @router.post("/calidad", status_code=201)
 def crear_calidad(data: CalidadIn, db: Session = Depends(get_db)):
     rec = IngCalidadInspeccion(**data.model_dump())
+    rec.of_id = _resolve_of_id(db, data.of_numero)
     db.add(rec)
     db.commit()
     db.refresh(rec)
@@ -270,6 +288,7 @@ class OleIn(BaseModel):
 @router.post("/ole", status_code=201)
 def crear_ole(data: OleIn, db: Session = Depends(get_db)):
     rec = IngOleDiario(**data.model_dump())
+    rec.of_id = _resolve_of_id(db, data.of_numero)
     db.add(rec)
     db.commit()
     db.refresh(rec)
@@ -311,6 +330,7 @@ class FusionadoIn(BaseModel):
 @router.post("/fusionado", status_code=201)
 def crear_fusionado(data: FusionadoIn, db: Session = Depends(get_db)):
     rec = IngFusionadoParam(**data.model_dump())
+    rec.of_id = _resolve_of_id(db, data.of_numero)
     db.add(rec)
     db.commit()
     db.refresh(rec)
@@ -350,6 +370,7 @@ class HabilitadoIn(BaseModel):
 @router.post("/habilitado", status_code=201)
 def crear_habilitado(data: HabilitadoIn, db: Session = Depends(get_db)):
     rec = IngHabilitadoCierre(**data.model_dump())
+    rec.of_id = _resolve_of_id(db, data.of_numero)
     db.add(rec)
     db.commit()
     db.refresh(rec)

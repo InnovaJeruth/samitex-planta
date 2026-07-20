@@ -15,7 +15,7 @@ class CurvaTallas(Base):
     __tablename__ = "curvas_tallas"
 
     id                 = Column(Integer,     primary_key=True, index=True)
-    prenda_catalogo_id = Column(Integer,     ForeignKey("prendas_catalogo.id", ondelete="RESTRICT"),
+    prenda_catalogo_id = Column(Integer,     ForeignKey("prendas_catalogo.id", ondelete="NO ACTION"),
                                 nullable=False, index=True)
     nombre             = Column(String(150), nullable=True)    # ej: "Pedido junio 2026"
     notas              = Column(String(500), nullable=True)
@@ -45,7 +45,7 @@ class CurvaTallasDetalle(Base):
     id       = Column(Integer, primary_key=True, index=True)
     curva_id = Column(Integer, ForeignKey("curvas_tallas.id", ondelete="CASCADE"),
                       nullable=False, index=True)
-    sku_id   = Column(Integer, ForeignKey("prenda_skus.id",   ondelete="RESTRICT"),
+    sku_id   = Column(Integer, ForeignKey("prenda_skus.id",   ondelete="NO ACTION"),
                       nullable=False)
     talla    = Column(String(20), nullable=False)   # desnormalizado para lectura rápida
     cantidad = Column(Integer,    nullable=False, default=0)

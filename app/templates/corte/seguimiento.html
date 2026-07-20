@@ -158,7 +158,7 @@
 <div class="of-header">
     <div>
         <div class="of-numero">OF {{ of.numero_of }}</div>
-        <div class="of-sub">{{ of.cliente }} · {{ of.tipo_prenda.value }} · {{ of.total_juegos }} juegos</div>
+        <div class="of-sub">{{ of.cliente }} · {% if of.prenda_catalogo %}{{ of.prenda_catalogo.nombre }}{% if of.prenda_catalogo.fit %} ({{ of.prenda_catalogo.fit }}){% endif %}{% else %}{{ of.tipo_prenda.value if of.tipo_prenda.value is defined else of.tipo_prenda }}{% endif %} · {{ of.total_juegos }} prendas</div>
     </div>
     <span style="width:12px;height:12px;border-radius:50%;background:{{ semaforo.color }};display:inline-block;flex-shrink:0" title="{{ semaforo.estado }}"></span>
     <span class="badge badge-{{ of.estado.value.lower() }}">{{ of.estado.value }}</span>
@@ -170,7 +170,42 @@
     <button class="btn-pausar" onclick="abrirModalPausar()" id="btn-pausar-global">⏸ Pausar OF</button>
     {% endif %}
     <a href="/trazos/{{ of.id }}" class="btn btn-secondary btn-sm">Trazos (tela F1–F3)</a>
+    <a href="/of/{{ of.id }}/reporte-pdf" class="btn btn-secondary btn-sm" target="_blank">📄 PDF</a>
     <a href="/" class="btn btn-secondary btn-sm">← Dashboard</a>
+</div>
+
+<!-- Tira de métricas -->
+{% set av = metricas.avance_global %}
+{% set dv = metricas.consumo_desvio_pct %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px">
+    <div style="background:#151515;border:1px solid #222;border-radius:8px;padding:12px 14px">
+        <div style="font-size:12px;color:#888">Total prendas</div>
+        <div style="font-size:24px;font-weight:600">{{ metricas.total_prendas }}</div>
+    </div>
+    <div style="background:#151515;border:1px solid #222;border-radius:8px;padding:12px 14px">
+        <div style="font-size:12px;color:#888">Avance global</div>
+        <div style="font-size:24px;font-weight:600;color:{% if av >= 100 %}#4caf7d{% elif av > 0 %}#e6a817{% else %}#888{% endif %}">{{ av }}%</div>
+    </div>
+    <div style="background:#151515;border:1px solid #222;border-radius:8px;padding:12px 14px">
+        <div style="font-size:12px;color:#888">Consumo tela</div>
+        {% if dv is not none %}
+        <div style="font-size:24px;font-weight:600;color:{% if dv > 0 %}#e06060{% else %}#4caf7d{% endif %}">{{ '+' if dv > 0 else '' }}{{ dv }}%</div>
+        <div style="font-size:11px;color:#767676">{{ metricas.consumo_real }} vs {{ metricas.consumo_proy }} m/prenda</div>
+        {% else %}
+        <div style="font-size:24px;font-weight:600;color:#888">—</div>
+        <div style="font-size:11px;color:#767676">sin consumo teórico</div>
+        {% endif %}
+    </div>
+    <div style="background:#151515;border:1px solid #222;border-radius:8px;padding:12px 14px">
+        <div style="font-size:12px;color:#888">Tiempo de corte</div>
+        {% if metricas.tiempo_corte_min is not none %}
+        <div style="font-size:24px;font-weight:600">{{ metricas.tiempo_corte_min }} min</div>
+        <div style="font-size:11px;color:#767676">{% if metricas.tiempo_paradas_min %}{{ metricas.tiempo_paradas_min }} en paradas{% else %}sin paradas{% endif %}</div>
+        {% else %}
+        <div style="font-size:24px;font-weight:600;color:#888">—</div>
+        <div style="font-size:11px;color:#767676">tela F1–F3</div>
+        {% endif %}
+    </div>
 </div>
 
 <!-- Panel paradas activas -->
@@ -186,7 +221,7 @@
 <div style="background:#1a0a2e;border:1px solid #4c1d95;border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
     <span style="font-size:20px">🏭</span>
     <div>
-        <strong style="color:#c084fc">OF Tercerizada — {{ of.planta_externa }}</strong>
+        <strong style="color:#c084fc">OF Tercerizada — {{ of.planta.nombre if of.planta else '' }}</strong>
         <div style="font-size:12px;color:#888;margin-top:3px">
             El seguimiento de fases no aplica. Estado:
             <span style="color:#e0e0e0;font-weight:600">{{ (of.estado_tercerizado or 'PENDIENTE_ENVIO').replace('_',' ') }}</span>
@@ -214,6 +249,11 @@
     <span style="font-size:12px;color:#767676">Cargando...</span>
 </div>
 
+<!-- Modal piezas por talla (F4–F7) -->
+<div id="talla-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:flex-start;justify-content:center;overflow:auto;padding:40px 16px">
+    <div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:18px 20px;max-width:900px;width:100%" id="talla-modal-body"></div>
+</div>
+
 <!-- Tabla avance por piezas -->
 <div class="card" style="margin-bottom:16px">
     <div class="card-header">
@@ -238,13 +278,24 @@
     </div>
 </div>
 
-<!-- Historial -->
-<div class="card">
-    <div class="card-header">
-        <span class="card-title" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888">Registros de cantidad</span>
-    </div>
-    <div id="hist-container">
-        <div style="text-align:center;padding:20px;color:#767676;font-size:12px">Sin registros</div>
+<!-- Historial (en modal para no cargar la página) -->
+<div style="margin:14px 0">
+    <button class="btn btn-secondary" onclick="abrirHistorial()">
+        Ver historial de avance
+        <span id="hist-count" style="margin-left:6px;font-size:11px;background:#2a2a2a;color:#aaa;border-radius:20px;padding:1px 8px"></span>
+    </button>
+</div>
+
+<!-- Modal historial -->
+<div class="modal-overlay" id="modal-historial">
+    <div class="modal-box" style="width:960px;max-width:96vw">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <span class="card-title" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#ccc">Registros de cantidad</span>
+            <button class="btn btn-secondary" onclick="cerrarHistorial()">Cerrar</button>
+        </div>
+        <div id="hist-container" style="max-height:70vh;overflow:auto">
+            <div style="text-align:center;padding:20px;color:#767676;font-size:12px">Sin registros</div>
+        </div>
     </div>
 </div>
 
@@ -355,6 +406,11 @@ const FASES_NOMBRES = {
     F8:'Estampado', F9:'Auditoría', F5:'Fusionado', F6:'Calidad', F7:'Habilitado'
 };
 const ORDEN_FASES = ['F1','F2','F3','F4','F8','F9','F5','F6','F7'];
+// Fases visibles según rol (null = todas). Corte/gestión ven todo.
+const FASES_VISIBLES = {{ fases_visibles|tojson }};
+function filtrarFasesRol(fases) {
+    return FASES_VISIBLES ? fases.filter(f => FASES_VISIBLES.includes(f)) : fases;
+}
 let estadoActual = null;
 let _piezaId = null, _faseId = null, _maxRestante = 0;
 
@@ -373,12 +429,193 @@ async function cargarEstado() {
         }
         estadoActual = await resEstado.json();
         const historial = await resHist.json().catch(() => []);
-        renderTabla();
+        if (estadoActual.corte_por_talla) {
+            try {
+                const rt = await fetch(`/corte/api/${OF_ID}/estado-talla`);
+                renderTalla(await rt.json());
+            } catch(e) {
+                document.getElementById('tabla-container').innerHTML =
+                    `<div style="text-align:center;padding:40px;color:#e06060">Error vista por talla: ${e.message}</div>`;
+            }
+        } else {
+            renderTabla();
+        }
         renderHistorial(historial);
     } catch(e) {
         document.getElementById('tabla-container').innerHTML =
             `<div style="text-align:center;padding:40px;color:#e06060">Error de red: ${e.message}</div>`;
     }
+}
+
+// ── Render vista por talla (OFs corte_por_talla, F4–F7) ───────
+let _tallaData = null, _modalSku = null;
+
+function renderTalla(d) {
+    _tallaData = d;
+    document.getElementById('fase-tabs').innerHTML = '';
+    const cont = document.getElementById('tabla-container');
+    if (!d.tallas || !d.tallas.length) {
+        const btnGen = {{ 'true' if puede_registrar and of.estado.value == "ACTIVA" else 'false' }}
+            ? `<br><br><button class="btn btn-primary btn-sm" onclick="generarPiezas()">🔄 Generar piezas desde catálogo</button>`
+            : '';
+        cont.innerHTML =
+            `<div style="text-align:center;padding:40px;color:#767676">La curva de tallas está vinculada, pero esta OF aún no tiene piezas.<br>Genéralas para desplegar el avance por talla (F4–F7).${btnGen}</div>`;
+        return;
+    }
+    const fases = filtrarFasesRol(d.fases);
+    // Barra bulk SOLO de la fase actual (primera no completada en todas las tallas).
+    // La cascada impide avanzar una fase posterior, así que mostramos únicamente esa.
+    let faseActual = null;
+    for (const f of fases) {
+        if (!d.tallas.every(t => (t.fases[f] || {}).done)) { faseActual = f; break; }
+    }
+    let bulkBar = '';
+    if (d.puede_registrar && faseActual) {
+        const fnm = FASES_NOMBRES[faseActual] || faseActual;
+        bulkBar = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#151515;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;margin-bottom:12px">
+            <b style="font-size:12px;color:#ccc">Fase actual: <span style="color:#e6a817">${fnm}</span> · todas las tallas</b>
+            <button class="btn btn-sm" style="background:#1a3a5a;color:#7cc4ff" onclick="faseBulk('${faseActual}',false)">+ Registrar cantidad…</button>
+            <button class="btn btn-sm" style="background:#0d3320;color:#4caf7d" onclick="faseBulk('${faseActual}',true)">✓ Completar ${fnm} (todas)</button>
+        </div>`;
+    }
+    // Color por avance de una fase
+    const segColor = p => p >= 100 ? '#4caf7d' : (p > 0 ? '#e6a817' : '#3a3a3a');
+    let h = '';
+    d.tallas.forEach(t => {
+        const pcts = fases.map(f => { const r = t.fases[f] || {pct:0, done:false}; return r.done ? 100 : (r.pct || 0); });
+        const glob = pcts.length ? Math.round(pcts.reduce((a,b)=>a+b,0) / pcts.length) : 0;
+        const segs = fases.map((f,i) => {
+            const p = pcts[i];
+            return `<div style="flex:1;min-width:38px">
+                <div style="height:8px;border-radius:3px;background:#111;overflow:hidden"><div style="height:100%;width:${p}%;background:${segColor(p)}"></div></div>
+                <div style="font-size:10px;color:#767676;text-align:center;margin-top:2px">${(FASES_NOMBRES[f]||f).substring(0,3).toUpperCase()}</div>
+            </div>`;
+        }).join('');
+        h += `<div style="display:flex;align-items:center;gap:12px;padding:9px 4px;border-top:1px solid #1e1e1e">
+            <div style="width:56px;flex-shrink:0"><b style="font-size:14px">${t.talla}</b><div style="font-size:11px;color:#767676">${t.meta} prd</div></div>
+            <div style="flex:1;display:flex;gap:8px">${segs}</div>
+            <div style="width:40px;text-align:right;font-size:13px;font-weight:600;color:${segColor(glob)}">${glob}%</div>
+            <button class="btn btn-sm" style="background:#1a3a5a;color:#7cc4ff;flex-shrink:0" onclick="abrirTallaModal(${t.sku_id})">Ver</button>
+        </div>`;
+    });
+    cont.innerHTML = bulkBar + h;
+}
+
+// Bulk por fase: aplica a TODAS las tallas/piezas de la fase en una acción
+async function faseBulk(fase_id, completar) {
+    const fnm = FASES_NOMBRES[fase_id] || fase_id;
+    const enviar = async (body) => {
+        try {
+            const r = await fetch(`/corte/api/${OF_ID}/fase-bulk`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json','x-csrf-token':_getCsrfToken()},
+                body: JSON.stringify(body),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) { mostrarToast(d.detail || 'Error', 'error'); return; }
+            mostrarToast(`${fnm}: ${d.aplicadas} aplicadas${d.saltadas ? `, ${d.saltadas} saltadas` : ''}`, d.aplicadas ? 'success' : 'warning');
+            refreshTalla();
+        } catch (e) { mostrarToast(e.message, 'error'); }
+    };
+    if (completar) {
+        showConfirm(`¿Completar ${fnm} en TODAS las tallas? Marca el 100% de lo restante en cada talla.`,
+            () => enviar({fase_id, completar: true}), 'Completar todo');
+    } else {
+        const c = await showNumber({
+            msg: `Registrar en ${fnm} — todas las tallas`,
+            hint: 'Prendas por talla (se aplica a cada talla con su tope).', min: 1,
+        });
+        if (c === undefined || c === null) return;
+        enviar({fase_id, cantidad: c});
+    }
+}
+
+function _tallaBy(sku) { return (_tallaData.tallas || []).find(t => t.sku_id === sku); }
+function faseActualTalla(p, fases) { for (const f of fases) { const c = p.fases[f]; if (c && !c.completada) return f; } return null; }
+
+function abrirTallaModal(sku) {
+    _modalSku = sku;
+    const t = _tallaBy(sku); if (!t) return;
+    const fases = filtrarFasesRol(_tallaData.fases);
+    const puede = _tallaData.puede_registrar;
+    // fases con al menos una pieza pendiente (para el bulk)
+    const pendientes = fases.filter(f => t.piezas.some(p => p.fases[f] && !p.fases[f].completada));
+    let bulk = '';
+    if (puede && pendientes.length) {
+        bulk = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#151515;border:1px solid #2a2a2a;border-radius:8px;padding:10px;margin-bottom:12px">
+            <b style="font-size:12px;color:#ccc">Todas las piezas:</b>
+            <select id="bulk-fase" style="background:#111;border:1px solid #333;color:#eee;border-radius:6px;padding:5px 8px;font-size:12px">
+              ${pendientes.map(f => `<option value="${f}">${FASES_NOMBRES[f]||f}</option>`).join('')}
+            </select>
+            <input id="bulk-cant" type="number" min="1" placeholder="prendas" style="width:90px;background:#111;border:1px solid #333;color:#eee;border-radius:6px;padding:5px 8px;font-size:12px">
+            <button class="btn btn-sm" style="background:#1a3a5a;color:#7cc4ff" onclick="bulkTalla(${sku}, false)">Registrar en todas</button>
+            <button class="btn btn-sm" style="background:#0d3320;color:#4caf7d" onclick="bulkTalla(${sku}, true)">Completar todas</button>
+        </div>`;
+    }
+    let rows = t.piezas.map(p => {
+        const fa = faseActualTalla(p, fases);
+        let reg = '';
+        if (puede) {
+            const cell = fa ? p.fases[fa] : null;
+            const rest = cell ? (cell.max - cell.cantidad) : 0;
+            const pnm = (p.nombre || '').replace(/'/g, "\\'");
+            reg = fa
+                ? `<span style="font-size:11px;color:#e6a817">${FASES_NOMBRES[fa]||fa}</span> `
+                  + `<button class="btn btn-sm" style="background:#1a3a5a;color:#7cc4ff" onclick="avTalla(${p.pieza_id},'${fa}',${sku},${rest},'${pnm}')">+ Avance</button> `
+                  + `<button class="btn btn-sm" style="background:#0d3320;color:#4caf7d" onclick="compTalla(${p.pieza_id},'${fa}',${sku},'${pnm}')">Completar</button>`
+                : '<span style="font-size:11px;color:#4caf7d">completa ✓</span>';
+        }
+        return `<tr><td style="padding:6px 8px">${p.nombre}${p.fusionado ? ' <span style="font-size:9px;color:#7cc4ff">(fus)</span>' : ''}</td>`
+            + fases.map(f => { const c = p.fases[f]; return `<td class="fc">${c ? (c.completada ? '✓' : (c.cantidad + '/' + c.max)) : '–'}</td>`; }).join('')
+            + (puede ? `<td style="white-space:nowrap">${reg}</td>` : '') + '</tr>';
+    }).join('');
+    const body = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <h3 style="margin:0;font-size:16px">Talla ${t.talla} · ${t.meta} prendas</h3>
+            <button class="btn btn-sm" onclick="cerrarTallaModal()">✕</button>
+        </div>${bulk}
+        <div style="overflow-x:auto"><table class="pt"><thead><tr><th>Pieza</th>
+            ${fases.map(f => `<th class="fc">${(FASES_NOMBRES[f]||f).substring(0,3).toUpperCase()}</th>`).join('')}
+            ${puede ? '<th>Registrar</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    document.getElementById('talla-modal-body').innerHTML = body;
+    document.getElementById('talla-modal').style.display = 'flex';
+}
+function cerrarTallaModal() { _modalSku = null; document.getElementById('talla-modal').style.display = 'none'; }
+
+async function refreshTalla() {
+    try {
+        const r = await fetch(`/corte/api/${OF_ID}/estado-talla`);
+        renderTalla(await r.json());
+        if (_modalSku != null) abrirTallaModal(_modalSku);
+    } catch(e) { /* noop */ }
+}
+async function avTalla(pieza_id, fase_id, sku_id, restante, pieza_nombre) {
+    const fnm = FASES_NOMBRES[fase_id] || fase_id;
+    const c = await showNumber({
+        msg: `Avance de ${pieza_nombre || 'pieza'} — ${fnm}`,
+        hint: `Máx. ${restante} restantes en esta talla`,
+        min: 1, max: restante, value: restante,
+        okLabel: 'Registrar avance',
+    });
+    if (c == null) return;
+    await postCorte('/avance', {pieza_id, fase_id, cantidad: c, sku_id});
+}
+async function compTalla(pieza_id, fase_id, sku_id, pieza_nombre) {
+    const fnm = FASES_NOMBRES[fase_id] || fase_id;
+    showConfirm(`¿Completar ${fnm} de ${pieza_nombre || 'esta pieza'}? Marca el 100% de lo restante.`,
+        () => postCorte('/completar', {pieza_id, fase_id, sku_id}), 'Completar');
+}
+async function bulkTalla(sku_id, completar) {
+    const fase_id = document.getElementById('bulk-fase').value;
+    const cant = parseInt(document.getElementById('bulk-cant').value) || null;
+    if (!completar && !cant) { alert('Ingresa la cantidad (prendas) o usa Completar todas.'); return; }
+    await postCorte('/talla-bulk', {sku_id, fase_id, cantidad: cant, completar});
+}
+async function postCorte(path, body) {
+    try {
+        const r = await fetch(`/corte/api/${OF_ID}${path}`, {method:'POST', headers:{'Content-Type':'application/json','x-csrf-token':_getCsrfToken()}, body: JSON.stringify(body)});
+        if (!r.ok) { const d = await r.json().catch(() => ({})); alert(d.detail || 'Error'); return; }
+        refreshTalla();
+    } catch(e) { alert(e.message); }
 }
 
 // ── Render tabla ──────────────────────────────────────────────
@@ -398,7 +635,7 @@ function renderTabla() {
     // Fases aplicables
     const fasesSet = new Set();
     piezas.forEach(p => Object.keys(p.fases).forEach(f => fasesSet.add(f)));
-    const fases = ORDEN_FASES.filter(f => fasesSet.has(f));
+    const fases = filtrarFasesRol(ORDEN_FASES.filter(f => fasesSet.has(f)));
 
     // Tabs
     renderTabs(piezas, fases);
@@ -549,13 +786,15 @@ function cambiarFaseBulk(faseId) {
 
 // ── Render historial ──────────────────────────────────────────
 function renderHistorial(registros) {
+    var _c = document.getElementById('hist-count');
+    if (_c) _c.textContent = registros.length ? registros.length : '';
     if (!registros.length) {
         document.getElementById('hist-container').innerHTML =
             '<div style="text-align:center;padding:20px;color:#767676;font-size:12px">Sin registros</div>';
         return;
     }
     let html = `<div style="overflow-x:auto"><table class="hist-table"><thead><tr>
-        <th>Fecha</th><th>Pieza</th><th>Fase</th><th>Cantidad</th><th>Usuario</th><th>Observación</th>
+        <th>Fecha</th><th>Pieza</th><th>Talla</th><th>Fase</th><th>Cantidad</th><th>Usuario</th><th>Observación</th>
     </tr></thead><tbody>`;
     registros.forEach(r => {
         const fecha = new Date(r.created_at).toLocaleString('es-PE', {
@@ -564,6 +803,7 @@ function renderHistorial(registros) {
         html += `<tr>
             <td style="color:#666">${fecha}</td>
             <td>${r.pieza_nombre}</td>
+            <td style="color:#7cc4ff">${r.talla||'—'}</td>
             <td><span style="color:#e6a817;font-weight:600">${FASES_NOMBRES[r.fase_id]||r.fase_id}</span></td>
             <td style="color:#4caf7d;font-weight:700">+${r.cantidad}</td>
             <td style="color:#888">${r.usuario_nombre}</td>
@@ -573,6 +813,9 @@ function renderHistorial(registros) {
     html += '</tbody></table></div>';
     document.getElementById('hist-container').innerHTML = html;
 }
+
+function abrirHistorial() { document.getElementById('modal-historial').classList.add('show'); }
+function cerrarHistorial() { document.getElementById('modal-historial').classList.remove('show'); }
 
 // ── Modal ─────────────────────────────────────────────────────
 function abrirModal(piezaId, faseId, nombrePieza, restante) {
@@ -827,7 +1070,14 @@ function renderStrip(fases) {
             : '';
         const pctStyle = f.estado === 'completada' ? 'width:100%' : `width:${f.pct}%`;
         let boton = '';
-        if (!PUEDE_REGISTRAR) {
+        const esTela = ['F1','F2','F3'].includes(f.fase_id);
+        if (esTela) {
+            // La tela (F1–F3) se opera en la pantalla de Placas
+            boton = `<a class="btn-iniciar" href="/trazos/${OF_ID}" style="text-decoration:none;display:inline-block;background:#12233a;color:#7cc4ff;border:1px solid #24425f">🧵 Ir a Placas</a>`;
+        } else if (f.fase_id === 'F4') {
+            // El Numerado se opera en el módulo de Paquetes
+            boton = `<a class="btn-iniciar" href="/paquetes/${OF_ID}" style="text-decoration:none;display:inline-block;background:#12233a;color:#7cc4ff;border:1px solid #24425f">📦 Ir a Paquetes</a>`;
+        } else if (!PUEDE_REGISTRAR) {
             boton = '';
         } else if (f.estado === 'completada') {
             boton = `<button class="btn-iniciar" disabled style="background:#0a1f12;color:#1d5f40">✓ Completada</button>`;
@@ -838,8 +1088,13 @@ function renderStrip(fases) {
         } else {
             boton = `<button class="btn-iniciar" disabled title="Fase anterior sin avance">🔒 Bloqueada</button>`;
         }
+        const pctNum = f.estado === 'completada' ? 100 : (f.pct || 0);
+        const pctColor = pctNum >= 100 ? '#4caf7d' : (pctNum > 0 ? '#e6a817' : '#767676');
         return `<div class="fsc fsc-${cls}">
-            <div class="fsc-nombre">${f.fase_id} ${f.nombre}</div>
+            <div class="fsc-nombre" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <span>${f.fase_id} ${f.nombre}</span>
+                <span style="font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:${pctColor}">${pctNum}%</span>
+            </div>
             <div class="fsc-times">${tiemposPlan}<br>${tiemposReal}</div>
             <div class="fsc-pct"><div class="fsc-pct-fill" style="${pctStyle}"></div></div>
             ${boton}
@@ -1021,6 +1276,45 @@ document.addEventListener('DOMContentLoaded', function() {
     cargarEstado();
     cargarStrip();
     cargarParadas();
+    initLive();
 });
+
+// ── Actualización en vivo (WebSocket) ─────────────────────────
+function refrescarTodo() { cargarEstado(); cargarStrip(); cargarParadas(); }
+
+function initLive() {
+    var badge = document.createElement('div');
+    badge.id = 'live-badge';
+    badge.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9998;font-size:11px;padding:5px 10px;border-radius:16px;border:1px solid #333;background:#141414;color:#9a9a9a;display:flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(0,0,0,.4);';
+    badge.innerHTML = '<span id="live-dot" style="width:8px;height:8px;border-radius:50%;background:#666;display:inline-block"></span><span id="live-text">Conectando…</span>';
+    document.body.appendChild(badge);
+    var reconnectMs = 2000, ws = null;
+    function set(color, label) {
+        var d = document.getElementById('live-dot'), t = document.getElementById('live-text');
+        if (d) d.style.background = color;
+        if (t) t.textContent = label;
+    }
+    function pulse() {
+        var d = document.getElementById('live-dot'); if (!d) return;
+        d.style.transition = 'none'; d.style.transform = 'scale(2)';
+        setTimeout(function(){ d.style.transition = 'transform .45s'; d.style.transform = 'scale(1)'; }, 30);
+    }
+    function connect() {
+        var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        try { ws = new WebSocket(proto + '://' + location.host + '/ws/of/' + OF_ID); }
+        catch (e) { set('#e06060', 'Sin conexión'); return; }
+        ws.onopen = function(){ set('#4caf7d', 'En vivo'); reconnectMs = 2000; };
+        ws.onmessage = function(ev){
+            var msg = {}; try { msg = JSON.parse(ev.data); } catch(_) {}
+            refrescarTodo();
+            var quien = (msg.data && msg.data.por) ? ' · ' + msg.data.por : '';
+            set('#4caf7d', 'Actualizado ' + new Date().toLocaleTimeString() + quien);
+            pulse();
+        };
+        ws.onclose = function(){ set('#e6a817', 'Reconectando…'); setTimeout(connect, reconnectMs); reconnectMs = Math.min(reconnectMs * 1.5, 15000); };
+        ws.onerror = function(){ try { ws.close(); } catch(_) {} };
+    }
+    connect();
+}
 </script>
 {% endblock %}

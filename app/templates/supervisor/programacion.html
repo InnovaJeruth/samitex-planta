@@ -104,7 +104,7 @@
         <div class="of-strip of-strip-{{ item.color }}"></div>
         <div>
             <div class="of-num">{{ item.of.numero_of }}</div>
-            <div class="of-meta">{{ item.of.cliente }} · {{ item.of.tipo_prenda.value }} · {{ item.of.total_juegos }} juegos</div>
+            <div class="of-meta">{{ item.of.cliente }} · {{ item.of.tipo_prenda.value if item.of.tipo_prenda.value is defined else item.of.tipo_prenda }} · {{ item.of.total_juegos }} prendas</div>
         </div>
         <span class="badge badge-{{ item.of.estado.value.lower() }}" style="font-size:10px">{{ item.of.estado.value }}</span>
         <div class="of-fecha-plan">

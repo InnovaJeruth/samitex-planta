@@ -8,7 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.config import settings
 from app.database.connection import engine, Base
 from app.routers import auth, dashboard, of, corte, piezas, admin, ws, plantas, comercial, supervisor, telegram_bot, pdf_report
-from app.routers import ingenieria, catalogo, curvas, hoja_costos, trazos
+from app.routers import ingenieria, catalogo, curvas, hoja_costos, trazos, paquetes
 from app.core.csrf import (
     new_token, sign_token, verify_signed, is_exempt,
     CSRF_COOKIE, CSRF_HEADER,
@@ -22,6 +22,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)
+
+# Seed idempotente de datos de referencia (fases_catalogo). Sin esto, una BD
+# recién creada no tiene las 9 fases y falla al crear of_fases_estado (FK).
+try:
+    from app.database.seed import seed_fases_catalogo
+    _n_fases = seed_fases_catalogo()
+    if _n_fases:
+        logger.info("Seed: %d fases insertadas en fases_catalogo", _n_fases)
+except Exception as _e:
+    logger.warning("No se pudo sembrar fases_catalogo: %s", _e)
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
@@ -47,7 +57,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"]        = "DENY"
+        response.headers["X-Frame-Options"]        = "SAMEORIGIN"
         response.headers["Referrer-Policy"]        = "strict-origin-when-cross-origin"
 
         response.set_cookie(
@@ -68,6 +78,15 @@ app = FastAPI(
 )
 
 app.add_middleware(CSRFMiddleware)
+
+
+@app.on_event("startup")
+async def _capturar_loop():
+    """Guarda el event loop para que los endpoints síncronos puedan emitir
+    notificaciones WebSocket (ws_manager.notify_of)."""
+    import asyncio
+    from app.core.websocket_manager import ws_manager
+    ws_manager.set_loop(asyncio.get_running_loop())
 
 
 @app.exception_handler(401)
@@ -109,3 +128,4 @@ app.include_router(catalogo.router,    prefix="/catalogo",    tags=["Catalogo de
 app.include_router(hoja_costos.router, prefix="/catalogo",    tags=["Hoja de Costos"])
 app.include_router(curvas.router,      prefix="/curvas",      tags=["Curvas de Tallas"])
 app.include_router(trazos.router,      prefix="/trazos",      tags=["Trazos de Corte"])
+app.include_router(paquetes.router,    prefix="/paquetes",    tags=["Paquetes / Numeración"])

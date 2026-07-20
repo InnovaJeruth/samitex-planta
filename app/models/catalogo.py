@@ -1,7 +1,7 @@
 """
 Catálogo de prendas — Samitex Planta
 """
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Index, Text
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Index, Text, CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -37,8 +37,20 @@ class PrendaCatalogo(Base):
     imagen_ruta    = Column(String(500), nullable=True)
     tipo_cliente   = Column(String(20),  nullable=False, server_default="BASE")
     fit            = Column(String(30),  nullable=True)
-    color          = Column(String(50),  nullable=True)   # solo variantes
+    color          = Column(String(50),  nullable=True)   # color del producto (un material SAP = un color)
     composicion    = Column(String(200), nullable=True)   # ej: 50%COTTON 50%POLYESTER
+    # --- Jerarquía base → variante (self-FK, patrón adjacency list) ---
+    # BASE: base_id = NULL (plantilla técnica: piezas/materiales/consumos, fit).
+    # VARIANTE (MARCA/INSTITUCION): base_id → su base; aporta color + material_sap.
+    base_id        = Column(Integer, ForeignKey("prendas_catalogo.id", ondelete="NO ACTION"),
+                            nullable=True, index=True)
+    # --- Enlace con SAP y estado de ficha técnica ---
+    material_sap   = Column(String(30),  nullable=True, unique=True, index=True)  # Nº material SAP (llave con la OF)
+    familia        = Column(String(120), nullable=True)   # agrupador comercial (ej. "SCHELLENGER MODERN")
+    bom_sap        = Column(String(30),  nullable=True)   # Nº lista de materiales SAP (desempate de fit si aplica)
+    estado_ficha   = Column(String(15),  nullable=False, server_default="PENDIENTE")  # PENDIENTE / COMPLETA
+    # Variante: True = usa la ficha de su base (herencia viva); False = ficha propia (override).
+    hereda_ficha   = Column(Boolean,     nullable=False, default=True, server_default='1')
     activo         = Column(Boolean,     default=True,  nullable=False)
     creado_por_rol = Column(String(30),  nullable=True)
     created_at     = Column(DateTime,    server_default=func.now())
@@ -62,8 +74,43 @@ class PrendaCatalogo(Base):
     hojas_costos     = relationship("HojaCostos",        back_populates="prenda",
                                     cascade="all, delete-orphan", order_by="HojaCostos.created_at")
 
+    # Jerarquía base ↔ variantes (self-referencial)
+    base       = relationship("PrendaCatalogo", remote_side=[id], backref="variantes")
+
+    def _hereda_de_base(self):
+        """True si esta prenda es una variante que hereda la ficha de su base."""
+        return bool(self.base_id and self.hereda_ficha and self.base is not None)
+
+    @property
+    def piezas_efectivas(self):
+        """Piezas aplicables: heredadas de la base (variante que hereda) o propias."""
+        return self.base.plantilla_piezas if self._hereda_de_base() else self.plantilla_piezas
+
+    @property
+    def materiales_efectivos(self):
+        """Materiales (MP) aplicables: heredados de la base o propios."""
+        return self.base.materiales if self._hereda_de_base() else self.materiales
+
+    @property
+    def avios_efectivos(self):
+        """Avíos aplicables: heredados de la base o propios."""
+        return self.base.avios if self._hereda_de_base() else self.avios
+
+    @property
+    def servicios_efectivos(self):
+        """Servicios de terceros aplicables: heredados de la base o propios."""
+        return self.base.servicios if self._hereda_de_base() else self.servicios
+
+    @property
+    def mod_efectivos(self):
+        """Operaciones de MOD aplicables: heredadas de la base o propias."""
+        return self.base.mod_operaciones if self._hereda_de_base() else self.mod_operaciones
+
     __table_args__ = (
         Index("ix_prendas_catalogo_tipo_activo", "tipo_base", "activo"),
+        # Integridad de subtipo: una BASE no cuelga de otra prenda (base_id NULL).
+        CheckConstraint("NOT (tipo_cliente = 'BASE' AND base_id IS NOT NULL)",
+                        name="ck_prenda_base_sin_padre"),
     )
 
 
@@ -362,3 +409,61 @@ class PrecioHistorico(Base):
     __table_args__ = (
         Index("ix_precios_historicos_item", "tipo", "item_id"),
     )
+
+
+# ── Otros servicios (terceros) y Mano de obra directa (ficha de costos) ──────
+SERVICIOS_TERCEROS = ["LAVANDERIA", "TEÑIDO", "BORDADO", "ESTAMPADO", "OTROS"]
+
+
+class CatalogoServicio(Base):
+    """Servicio de tercero de la ficha (lavandería, teñido, bordado, estampado…).
+    Se define en la prenda BASE; las variantes lo heredan."""
+    __tablename__ = "catalogo_servicios"
+
+    id                 = Column(Integer,     primary_key=True, index=True)
+    prenda_catalogo_id = Column(Integer,     ForeignKey("prendas_catalogo.id", ondelete="CASCADE"),
+                                nullable=False, index=True)
+    nombre             = Column(String(60),  nullable=False)   # LAVANDERIA / BORDADO / ...
+    costo              = Column(Float,       nullable=True)     # costo por prenda (moneda base)
+    moneda             = Column(String(5),   nullable=True)
+    proveedor          = Column(String(150), nullable=True)
+    orden              = Column(Integer,     nullable=False, default=0)
+    activo             = Column(Boolean,     default=True, nullable=False)
+
+    prenda = relationship("PrendaCatalogo", backref="servicios")
+
+    __table_args__ = (
+        Index("ix_catalogo_servicios_prenda", "prenda_catalogo_id"),
+    )
+
+
+class CatalogoMod(Base):
+    """Mano de obra directa por operación (CORTE / COSTURA / ACABADO).
+    Se define en la prenda BASE; las variantes la heredan.
+    min_req = min_std / %eficiencia ;  subtotal = min_req × costo_minuto (derivados)."""
+    __tablename__ = "catalogo_mod"
+
+    id                 = Column(Integer,     primary_key=True, index=True)
+    prenda_catalogo_id = Column(Integer,     ForeignKey("prendas_catalogo.id", ondelete="CASCADE"),
+                                nullable=False, index=True)
+    operacion          = Column(String(40),  nullable=False)   # CORTE / COSTURA / ACABADO
+    min_std            = Column(Float,       nullable=False, default=0.0)
+    pct_eficiencia     = Column(Float,       nullable=False, default=1.0)   # 0.80 = 80%
+    costo_minuto       = Column(Float,       nullable=False, default=0.0)
+    moneda             = Column(String(5),   nullable=True)
+    orden              = Column(Integer,     nullable=False, default=0)
+    activo             = Column(Boolean,     default=True, nullable=False)
+
+    prenda = relationship("PrendaCatalogo", backref="mod_operaciones")
+
+    __table_args__ = (
+        Index("ix_catalogo_mod_prenda", "prenda_catalogo_id"),
+    )
+
+    @property
+    def min_requerido(self):
+        return round(self.min_std / self.pct_eficiencia, 4) if self.pct_eficiencia else self.min_std
+
+    @property
+    def subtotal(self):
+        return round(self.min_requerido * (self.costo_minuto or 0), 4)

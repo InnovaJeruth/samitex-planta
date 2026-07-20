@@ -27,7 +27,7 @@ class OFCreate(BaseModel):
     @classmethod
     def total_juegos_positivo(cls, v):
         if v < 1:
-            raise ValueError("Total de juegos debe ser mayor a 0")
+            raise ValueError("Total de prendas debe ser mayor a 0")
         return v
 
 

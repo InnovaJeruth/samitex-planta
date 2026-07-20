@@ -360,7 +360,7 @@
       <div><div class="dp-label">APT</div><div class="dp-value" id="dpApt"></div></div>
     </div>
     <div class="dp-row2">
-      <div><div class="dp-label">Total Juegos</div><div class="dp-value" id="dpJuegos"></div></div>
+      <div><div class="dp-label">Total Prendas</div><div class="dp-value" id="dpJuegos"></div></div>
       <div><div class="dp-label">Piezas</div><div class="dp-value" id="dpPiezas"></div></div>
     </div>
     <div class="dp-prog">
@@ -417,7 +417,7 @@ const ofMeta = {
     juegos:     {{ of.total_juegos or 0 }},
     piezas:     {{ of.piezas | length }},
     terc:       {{ 'true' if of.tercerizado else 'false' }},
-    planta:     {{ (of.planta_externa or '') | tojson }},
+    planta:     {{ (of.planta.nombre if of.planta else '') | tojson }},
     terc_est:      {{ (of.estado_tercerizado or '') | tojson }},
     color:         {{ item.color_class | tojson }},
     fases_con_real:{{ item.fases_con_real | tojson }},
@@ -463,8 +463,8 @@ async function patchPlan(ofId, payload) {
         return new Promise(resolve => {
           const overlay = document.getElementById('gcCapOverlay');
           document.getElementById('gcCapMsg').innerHTML =
-            `El día <strong>${fmtDMY(data.fecha)}</strong> ya tiene <strong>${data.carga_actual} juegos</strong> programados.<br>` +
-            `Esta OF agrega <strong>${data.of_juegos} juegos</strong> → total <strong>${data.nueva_carga}</strong> ` +
+            `El día <strong>${fmtDMY(data.fecha)}</strong> ya tiene <strong>${data.carga_actual} prendas</strong> programadas.<br>` +
+            `Esta OF agrega <strong>${data.of_juegos} prendas</strong> → total <strong>${data.nueva_carga}</strong> ` +
             `(máx. ${data.capacidad_max}, exceso: <span style="color:#e05030">${data.exceso}</span>).`;
           // Cerrar config modal si está abierto para evitar interferencia
           document.getElementById('cap-overlay').classList.remove('show');
@@ -1277,7 +1277,7 @@ async function guardarCapacidad() {
     const lbl = document.getElementById('cap-label');
     if (lbl) lbl.textContent = val;
     renderCargaBars();
-    showToast(`✓ Capacidad actualizada: ${val} juegos/día`, 'success');
+    showToast(`✓ Capacidad actualizada: ${val} prendas/día`, 'success');
   } else {
     showToast('Error al guardar', 'error');
   }
@@ -1305,9 +1305,9 @@ setTimeout(function() { renderCargaBars(); renderCumplimiento(); }, 100);
 <div class="modal-overlay" id="cap-overlay" style="z-index:1100">
   <div class="modal-box" style="max-width:320px">
     <div class="modal-titulo">⚙ Capacidad diaria de Corte</div>
-    <div style="font-size:12px;color:#767676;margin-bottom:12px">Máximo de juegos programables por día</div>
+    <div style="font-size:12px;color:#767676;margin-bottom:12px">Máximo de prendas programables por día</div>
     <div class="modal-field">
-      <label>Juegos / día</label>
+      <label>Prendas / día</label>
       <input type="number" id="inp-capacidad" min="1"
         style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:16px">
     </div>

@@ -30,6 +30,11 @@ def _fase_anterior(fase_id: str, of: OrdenFabricacion) -> str | None:
     return orden[idx - 1] if idx > 0 else None
 
 
+def _es_tela(fid: str) -> bool:
+    """Fases de tela (van por pieza/trazo, no por talla)."""
+    return fid in ("F1", "F2", "F3")
+
+
 def _total_cantidad_fase(of_id: int, fase_id: str, db: Session) -> int:
     """Suma cantidad_actual de todos los registros de una fase para una OF."""
     result = db.query(func.sum(OFFaseEstado.cantidad_actual)).filter_by(
@@ -72,24 +77,26 @@ def registrar_avance(
     usuario_id: int,
     observacion: str | None,
     db: Session,
+    sku_id: int | None = None,
 ) -> OFFaseEstado:
-    estado = db.query(OFFaseEstado).filter_by(
-        of_id=of.id, pieza_id=pieza.id, fase_id=fase_id
-    ).first()
+    # sku_id != None → OF por talla en fase F4–F7 (opera sobre la fila de esa talla)
+    q = db.query(OFFaseEstado).filter_by(of_id=of.id, pieza_id=pieza.id, fase_id=fase_id)
+    if sku_id is not None:
+        q = q.filter_by(sku_id=sku_id)
+    estado = q.first()
     if not estado:
         raise HTTPException(404, "Estado de fase no encontrado")
     if estado.completada:
         raise HTTPException(400, "Esta fase ya está completada")
 
     # ── Gate Fusionado → Calidad ─────────────────────────────────────────────
-    # Ninguna pieza puede entrar a F6 hasta que todas las piezas con fusionado=True
-    # hayan completado F5.
+    # F6 requiere que las piezas fusionables hayan completado F5 (misma talla si aplica).
     if fase_id == "F6":
-        piezas_fus = db.query(OFPieza).filter_by(of_id=of.id, fusionado=True).all()
-        for pf in piezas_fus:
-            f5 = db.query(OFFaseEstado).filter_by(
-                of_id=of.id, pieza_id=pf.id, fase_id="F5"
-            ).first()
+        for pf in db.query(OFPieza).filter_by(of_id=of.id, fusionado=True).all():
+            fq = db.query(OFFaseEstado).filter_by(of_id=of.id, pieza_id=pf.id, fase_id="F5")
+            if sku_id is not None:
+                fq = fq.filter_by(sku_id=sku_id)
+            f5 = fq.first()
             if not f5 or not f5.completada:
                 raise HTTPException(
                     400,
@@ -98,42 +105,53 @@ def registrar_avance(
                 )
     # ─────────────────────────────────────────────────────────────────────────
 
-    # ── Bloque 3: Restricción cascada por pieza ────────────────────────────────
-    # Compara contra la fase anterior de ESTA pieza (respeta fusionado/no-fusionado).
+    # ── Cascada ────────────────────────────────────────────────────────────────
     fase_prev = _fase_anterior_pieza(fase_id, of, pieza, db)
     if fase_prev:
-        est_prev = db.query(OFFaseEstado).filter_by(
-            of_id=of.id, pieza_id=pieza.id, fase_id=fase_prev
-        ).first()
-        disponible_prev = est_prev.cantidad_actual if est_prev else 0
-        if estado.cantidad_actual + cantidad > disponible_prev:
-            disponible = max(disponible_prev - estado.cantidad_actual, 0)
-            raise HTTPException(
-                400,
-                f"Solo puedes registrar {disponible} unidades en {fase_id}. "
-                f"La fase anterior ({fase_prev}) solo tiene {disponible_prev} unidades."
+        if sku_id is not None and _es_tela(fase_prev):
+            # Frontera tela→talla (F4): la fase de tela debe estar completa (gestionada por placas)
+            est_prev = db.query(OFFaseEstado).filter_by(
+                of_id=of.id, pieza_id=pieza.id, fase_id=fase_prev
+            ).first()
+            if not (est_prev and est_prev.completada):
+                raise HTTPException(
+                    400,
+                    f"No se puede avanzar: la fase de tela anterior ({fase_prev}) "
+                    f"aún no está completa (se gestiona en Placas)."
+                )
+        else:
+            pq = db.query(OFFaseEstado).filter_by(
+                of_id=of.id, pieza_id=pieza.id, fase_id=fase_prev
             )
+            if sku_id is not None:
+                pq = pq.filter_by(sku_id=sku_id)
+            est_prev = pq.first()
+            disponible_prev = est_prev.cantidad_actual if est_prev else 0
+            if estado.cantidad_actual + cantidad > disponible_prev:
+                disponible = max(disponible_prev - estado.cantidad_actual, 0)
+                raise HTTPException(
+                    400,
+                    f"Solo puedes registrar {disponible} unidades en {fase_id}. "
+                    f"La fase anterior ({fase_prev}) solo tiene {disponible_prev} unidades."
+                )
     # ─────────────────────────────────────────────────────────────────────────
 
     restante = estado.max_cantidad - estado.cantidad_actual
     if cantidad > restante:
         raise HTTPException(400, f"Cantidad excede el máximo restante ({restante})")
 
-    # ── Bloque 2: Poblar fecha_inicio al primer avance de esta pieza×fase ────
     if estado.fecha_inicio is None:
         estado.fecha_inicio = datetime.now()
-    # ─────────────────────────────────────────────────────────────────────────
 
     estado.cantidad_actual += cantidad
 
-    # Registrar en el log
     registro = AvanceRegistro(
         of_id=of.id, pieza_id=pieza.id, fase_id=fase_id,
+        sku_id=sku_id, talla=estado.talla,
         cantidad=cantidad, usuario_id=usuario_id, observacion=observacion,
     )
     db.add(registro)
 
-    # Actualizar estado de la OF
     if of.estado == EstadoOF.ACTIVA:
         of.estado = EstadoOF.EN_PROCESO
 
@@ -148,29 +166,58 @@ def completar_fase(
     fase_id: str,
     usuario_id: int,
     db: Session,
+    sku_id: int | None = None,
 ) -> OFFaseEstado:
-    estado = db.query(OFFaseEstado).filter_by(
-        of_id=of.id, pieza_id=pieza.id, fase_id=fase_id
-    ).first()
+    q = db.query(OFFaseEstado).filter_by(of_id=of.id, pieza_id=pieza.id, fase_id=fase_id)
+    if sku_id is not None:
+        q = q.filter_by(sku_id=sku_id)
+    estado = q.first()
     if not estado:
         raise HTTPException(404, "Estado de fase no encontrado")
 
     restante = estado.max_cantidad - estado.cantidad_actual
     if restante > 0:
-        # Validar cascada antes de completar
-        fase_prev = _fase_anterior(fase_id, of)
-        if fase_prev:
-            total_prev = _total_cantidad_fase(of.id, fase_prev, db)
-            total_actual_fase = _total_cantidad_fase(of.id, fase_id, db)
-            if total_actual_fase + restante > total_prev:
-                disponible = max(total_prev - total_actual_fase, 0)
-                raise HTTPException(
-                    400,
-                    f"No se puede completar: solo hay {disponible} unidades disponibles "
-                    f"según la fase anterior ({fase_prev})."
-                )
+        if sku_id is None:
+            # Ruta por pieza (comportamiento original): cascada por totales de fase
+            fase_prev = _fase_anterior(fase_id, of)
+            if fase_prev:
+                total_prev = _total_cantidad_fase(of.id, fase_prev, db)
+                total_actual_fase = _total_cantidad_fase(of.id, fase_id, db)
+                if total_actual_fase + restante > total_prev:
+                    disponible = max(total_prev - total_actual_fase, 0)
+                    raise HTTPException(
+                        400,
+                        f"No se puede completar: solo hay {disponible} unidades disponibles "
+                        f"según la fase anterior ({fase_prev})."
+                    )
+        else:
+            # Ruta por talla: cascada por (pieza, talla); frontera tela→talla requiere tela completa
+            fase_prev = _fase_anterior_pieza(fase_id, of, pieza, db)
+            if fase_prev and _es_tela(fase_prev):
+                est_prev = db.query(OFFaseEstado).filter_by(
+                    of_id=of.id, pieza_id=pieza.id, fase_id=fase_prev
+                ).first()
+                if not (est_prev and est_prev.completada):
+                    raise HTTPException(
+                        400,
+                        f"No se puede completar: la fase de tela anterior ({fase_prev}) "
+                        f"aún no está completa (se gestiona en Placas)."
+                    )
+            elif fase_prev:
+                est_prev = db.query(OFFaseEstado).filter_by(
+                    of_id=of.id, pieza_id=pieza.id, fase_id=fase_prev, sku_id=sku_id
+                ).first()
+                disponible_prev = est_prev.cantidad_actual if est_prev else 0
+                if estado.cantidad_actual + restante > disponible_prev:
+                    disponible = max(disponible_prev - estado.cantidad_actual, 0)
+                    raise HTTPException(
+                        400,
+                        f"No se puede completar: solo hay {disponible} unidades disponibles "
+                        f"según la fase anterior ({fase_prev})."
+                    )
         registro = AvanceRegistro(
             of_id=of.id, pieza_id=pieza.id, fase_id=fase_id,
+            sku_id=sku_id, talla=estado.talla,
             cantidad=restante, usuario_id=usuario_id, observacion="Completado",
         )
         db.add(registro)
@@ -196,14 +243,12 @@ def completar_fase(
 
 
 def _verificar_fase_completa(of: OrdenFabricacion, fase_id: str, db: Session):
-    """Si todas las piezas de la fase están completas, registra fin_real en of_fase_tiempos."""
-    piezas = db.query(OFPieza).filter_by(of_id=of.id).all()
-    for p in piezas:
-        fe = db.query(OFFaseEstado).filter_by(
-            of_id=of.id, pieza_id=p.id, fase_id=fase_id
-        ).first()
-        if fe and not fe.completada:
-            return  # Aún hay piezas pendientes
+    """Si TODAS las filas de la fase (pieza × talla) están completas, registra fin_real."""
+    rows = db.query(OFFaseEstado).filter_by(of_id=of.id, fase_id=fase_id).all()
+    if not rows:
+        return
+    if any(not fe.completada for fe in rows):
+        return  # Aún hay filas pendientes
     # Todas completas → registrar fin_real
     tiempos = db.query(OFFaseTiempos).filter_by(of_id=of.id, fase_id=fase_id).first()
     if tiempos and tiempos.fin_real is None:
@@ -215,12 +260,22 @@ def _verificar_fase_completa(of: OrdenFabricacion, fase_id: str, db: Session):
 
 
 def _verificar_of_completada(of: OrdenFabricacion, db: Session):
-    """Marca la OF como COMPLETADA si F7 de todas las piezas está completo."""
-    piezas = db.query(OFPieza).filter_by(of_id=of.id).all()
-    for p in piezas:
-        f7 = db.query(OFFaseEstado).filter_by(of_id=of.id, pieza_id=p.id, fase_id="F7").first()
-        if not f7 or not f7.completada:
-            return
+    """Marca la OF como COMPLETADA cuando termina el corte.
+
+    Si la OF ya tiene hoja de numeración (paquetes), el cierre lo gobiernan los
+    paquetes (todos ENTREGADOS), no la fase F7 del sistema viejo. Sin hoja,
+    se mantiene el criterio original (todas las filas de F7 completas)."""
+    from app.services import paquete_service
+    res = paquete_service.resumen_calidad_of(of.id, db)
+    if res["hay_hoja"]:
+        if res["calidad_done"]:
+            of.estado = EstadoOF.COMPLETADA
+        return
+    rows = db.query(OFFaseEstado).filter_by(of_id=of.id, fase_id="F7").all()
+    if not rows:
+        return
+    if any(not f7.completada for f7 in rows):
+        return
     of.estado = EstadoOF.COMPLETADA
 
 

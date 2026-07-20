@@ -104,7 +104,7 @@ def catalogo_lista(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
     tipo_base:    str = "",
-    tipo_cliente: str = "BASE",
+    tipo_cliente: str = "",
     q:            str = "",
     solo_activos: str = "1",
 ):
@@ -182,15 +182,16 @@ def catalogo_detalle(
     if not prenda:
         raise HTTPException(404, "Prenda no encontrada")
 
-    piezas     = sorted(prenda.plantilla_piezas, key=lambda p: p.orden)
+    # Piezas efectivas: propias (base o variante con ficha propia) o heredadas de la base.
+    piezas     = sorted(prenda.piezas_efectivas, key=lambda p: p.orden)
     documentos = sorted(prenda.documentos, key=lambda d: d.created_at or datetime.datetime.min, reverse=True)
 
-    # Resolver prenda BASE
+    # Resolver prenda BASE (prioriza el FK base_id; fallback al viejo match por tipo_base)
     if prenda.tipo_cliente == "BASE":
         prenda_base        = prenda
         prenda_base_nombre = None
     else:
-        prenda_base = (
+        prenda_base = prenda.base or (
             db.query(PrendaCatalogo)
             .filter_by(tipo_base=prenda.tipo_base, tipo_cliente="BASE", activo=True)
             .first()
@@ -220,6 +221,12 @@ def catalogo_detalle(
     # Tab SKUs
     tallas = sorted(prenda.skus, key=lambda t: t.orden)
 
+    # Tabs Servicios + MOD (heredados de la base o propios)
+    servicios = sorted(prenda.servicios_efectivos, key=lambda s: s.orden)
+    mod_ops   = sorted(prenda.mod_efectivos, key=lambda m: m.orden)
+    mod_total = round(sum((m.subtotal or 0) for m in mod_ops), 4)
+    servicios_total = round(sum((s.costo or 0) for s in servicios), 4)
+
     return templates.TemplateResponse("catalogo/detalle.html", {
         "request":             request,
         "current_user":        current_user,
@@ -242,6 +249,10 @@ def catalogo_detalle(
         "tipos_mp":            TIPOS_MP,
         "unidades_mp":         UNIDADES_MP,
         "tallas":              tallas,
+        "servicios":           servicios,
+        "mod_ops":             mod_ops,
+        "mod_total":           mod_total,
+        "servicios_total":     servicios_total,
     })
 
 
@@ -279,6 +290,7 @@ def api_crear_prenda(
     fit:           str  = Form(""),
     descripcion:   str  = Form(""),
     composicion:   str  = Form(""),
+    base_id:       Optional[int] = Form(None),
     imagen:        Optional[UploadFile] = File(None),
     db:            Session = Depends(get_db),
     current_user:  Usuario = Depends(get_current_user),
@@ -296,6 +308,14 @@ def api_crear_prenda(
     if db.query(PrendaCatalogo).filter_by(codigo=codigo.upper().strip()).first():
         raise HTTPException(409, f"Ya existe una prenda con el codigo '{codigo}'")
 
+    # Integridad de subtipo: una BASE no cuelga de otra; una variante debe apuntar a una BASE real.
+    if tipo_cliente == "BASE":
+        base_id = None
+    elif base_id:
+        base = db.query(PrendaCatalogo).filter_by(id=base_id).first()
+        if not base or base.tipo_cliente != "BASE":
+            raise HTTPException(400, "base_id debe apuntar a una prenda BASE existente")
+
     imagen_ruta = None
     if imagen and imagen.filename:
         imagen_ruta = _guardar_imagen(imagen, UPLOAD_PRENDA)
@@ -305,6 +325,7 @@ def api_crear_prenda(
         nombre         = nombre.strip(),
         tipo_base      = tipo_base,
         tipo_cliente   = tipo_cliente,
+        base_id        = base_id,
         fit            = fit or None,
         descripcion    = descripcion.strip() or None,
         composicion    = composicion.strip() or None,
@@ -316,6 +337,28 @@ def api_crear_prenda(
     db.commit()
     db.refresh(prenda)
     return {"ok": True, "id": prenda.id, "codigo": prenda.codigo}
+
+
+@router.post("/api/{prenda_id}/hereda-ficha")
+def api_toggle_hereda_ficha(
+    prenda_id: int,
+    hereda: bool = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Alterna si una variante usa la ficha de su base (herencia viva) o ficha propia."""
+    if _rol(current_user) not in ROLES_EDITOR:
+        raise HTTPException(403, "Sin permiso")
+    prenda = db.query(PrendaCatalogo).filter_by(id=prenda_id).first()
+    if not prenda:
+        raise HTTPException(404, "Prenda no encontrada")
+    if prenda.tipo_cliente == "BASE":
+        raise HTTPException(400, "Una prenda base no hereda ficha")
+    if not prenda.base_id:
+        raise HTTPException(400, "Esta variante no tiene base asignada")
+    prenda.hereda_ficha = bool(hereda)
+    db.commit()
+    return {"ok": True, "hereda_ficha": prenda.hereda_ficha}
 
 
 @router.post("/api/{prenda_id}/editar")
@@ -1504,7 +1547,7 @@ def api_ofs_activas(
         db.query(OrdenFabricacion)
           .filter(
               OrdenFabricacion.prenda_catalogo_id == prenda_id,
-              OrdenFabricacion.estado == EstadoOF.BORRADOR,
+              OrdenFabricacion.estado.in_([EstadoOF.BORRADOR, EstadoOF.ACTIVA, EstadoOF.EN_PROCESO]),
           ).order_by(OrdenFabricacion.numero_of).all()
     )
     return [

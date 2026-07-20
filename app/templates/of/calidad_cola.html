@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}Cola de Calidad — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .cq-wrap { max-width:1150px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .cq-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .cq-head h1 { font-size:20px; font-weight:700; color:#fff; margin:0; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .tab { font-size:13px; border:1px solid #333; background:#1a1a1a; color:#bbb; border-radius:20px; padding:5px 14px; cursor:pointer; }
+  .tab.active { background:#164; border-color:#164; color:#fff; }
+  .cq-card { background:#141414; border:1px solid #262626; border-radius:10px; padding:14px 16px; }
+  .grp { background:#141414; border:1px solid #262626; border-radius:10px; padding:10px 14px; margin-bottom:12px; }
+  .grp-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding-bottom:8px; margin-bottom:4px; border-bottom:1px solid #222; }
+  table.pq { width:100%; border-collapse:collapse; font-size:13px; }
+  table.pq th { text-align:left; padding:7px 8px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #262626; }
+  table.pq td { padding:7px 8px; border-bottom:1px solid #1c1c1c; vertical-align:top; }
+  .in { background:#161616; border:1px solid #3a3a3a; color:#eee; border-radius:6px; padding:5px 8px; }
+  select.in { min-width:120px; }
+  .btn { font-size:12px; border:1px solid #444; background:#222; color:#ddd; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .btn:hover { background:#2c2c2c; } .btn.primary { background:#164; border-color:#164; color:#fff; } .btn.danger { color:#f88; border-color:#622; }
+  .st { font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px; }
+  .st-val { background:#2d2400; color:#e6c14a; } .st-sby { background:#3a1500; color:#f0a060; } .st-ent { background:#0f2a17; color:#6fdf9a; }
+  .dot { width:11px; height:11px; border-radius:3px; border:1px solid #2a2a2a; display:inline-block; vertical-align:-1px; }
+  .rej { font-size:11px; color:#bbb; background:#181818; border:1px solid #242424; border-radius:6px; padding:4px 8px; margin-top:4px; }
+  .rej b { color:#f0a060; }
+  .panel { background:#101820; border:1px solid #223; border-radius:8px; padding:10px; margin-top:6px; }
+  .oflink { color:#7cc4ff; text-decoration:none; } .oflink:hover { text-decoration:underline; }
+  .ov { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:1000; }
+  .ov.on { display:flex; }
+  .mdl { background:#161616; border:1px solid #333; border-radius:12px; padding:20px 22px; max-width:380px; width:90%; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  .mdl h3 { margin:0 0 8px; font-size:16px; color:#fff; }
+  .mdl p { margin:0 0 18px; font-size:13px; color:#bbb; line-height:1.4; }
+  .mdl .row { display:flex; gap:8px; justify-content:flex-end; }
+  .mdl .btn { padding:7px 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cq-wrap">
+  <div class="cq-head">
+    <h1>Cola de Calidad</h1>
+    <span id="cq-sub" style="color:#999;font-size:13px">Paquetes de todas las OFs activas</span>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <span class="tab active" data-f="pendientes" onclick="setFiltro(this)">Pendientes</span>
+    <span class="tab" data-f="por_validar" onclick="setFiltro(this)">Por validar</span>
+    <span class="tab" data-f="standby" onclick="setFiltro(this)">Stand-by</span>
+    <span class="tab" data-f="entregados" onclick="setFiltro(this)">Entregados</span>
+  </div>
+
+  <div id="lista"><span style="color:#777">Cargando…</span></div>
+</div>
+
+<div class="ov" id="cq-modal"><div class="mdl">
+  <h3 id="cq-modal-t">Confirmar</h3>
+  <p id="cq-modal-m"></p>
+  <div class="row">
+    <button class="btn" id="cq-modal-no">Cancelar</button>
+    <button class="btn primary" id="cq-modal-yes">Aceptar</button>
+  </div>
+</div></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PUEDE_CAL = {{ 'true' if puede_calidad else 'false' }};
+const PUEDE_REP = {{ 'true' if puede_reproceso else 'false' }};
+let PAQ = [], MOTIVOS = [], FILTRO = 'pendientes';
+const BORRADOR = {};
+const URL_OF = new URLSearchParams(location.search).get('of');
+
+function csrf(){ try { return getCsrfToken(); } catch(e){ return ''; } }
+async function api(url, opts={}){
+  opts.headers = Object.assign({'Content-Type':'application/json','x-csrf-token':csrf()}, opts.headers||{});
+  const r = await fetch(url, opts);
+  if(!r.ok){ const d = await r.json().catch(()=>({})); throw new Error(d.detail||'Error'); }
+  return r.json();
+}
+function stClass(e){ return {POR_VALIDAR:'st-val',STAND_BY:'st-sby',ENTREGADO:'st-ent'}[e]||'st-val'; }
+function stLabel(e){ return {POR_VALIDAR:'Por validar',STAND_BY:'Stand-by',ENTREGADO:'Entregado'}[e]||e; }
+function colorDot(c){ const bg = (c==='BLANCO')?'#e8e8e8':(c==='AMARILLO'?'#e0a93b':'#556'); return `<span class="dot" style="background:${bg}"></span> ${c||'—'}`; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+async function load(){
+  const qp = URL_OF ? `&of=${URL_OF}` : '';
+  const d = await api(`/paquetes/api/calidad/data?filtro=${FILTRO}${qp}`);
+  PAQ = d.paquetes; MOTIVOS = d.motivos||[];
+  const sub=document.getElementById('cq-sub');
+  if(sub) sub.textContent = URL_OF ? (PAQ.length ? `OF ${PAQ[0].numero_of}` : `OF ${URL_OF}`)
+                                   : 'Paquetes de todas las OFs activas';
+  render();
+}
+function setFiltro(el){
+  document.querySelectorAll('#tabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); FILTRO = el.dataset.f; load();
+}
+
+function rechazoLinea(r){
+  let acc=''; const abierto=(r.estado==='PENDIENTE'||r.estado==='EN_REPROCESO');
+  if(abierto && PUEDE_REP) acc+=` <button class="btn" onclick="reingresar(${r.id})">Reingresar</button>`;
+  return `<div class="rej"><b>${esc(r.codigo||'')}</b> ${esc(r.descripcion||'')} · ${r.cantidad}u
+    · ${esc(r.destino||'—')}${r.rehacer?' · rehacer':''} · <i>${esc(r.estado)}</i>${acc}</div>`;
+}
+function cap(d){ return (d||'').charAt(0)+(d||'').slice(1).toLowerCase(); }
+function permitidosDe(motivo_id){
+  const m=MOTIVOS.find(x=>x.id==motivo_id)||{};
+  let arr=[m.destino||"CORTE"];
+  if(m.destinos_alt) arr=arr.concat(m.destinos_alt.split(",").map(s=>s.trim()).filter(Boolean));
+  return arr;
+}
+function destBoxHTML(id, permitidos){
+  if(permitidos.length<=1){
+    const d=permitidos[0]||"CORTE";
+    return `<span style="font-size:13px">Destino: <b>${cap(d)}</b></span><input type="hidden" id="dest-${id}" value="${d}">`;
+  }
+  return `<label style="font-size:12px;color:#999">Destino</label><select class="in" id="dest-${id}">`
+    + permitidos.map(d=>`<option value="${d}">${cap(d)}</option>`).join('') + `</select>`;
+}
+function rehVis(id){
+  const sel=document.getElementById('dest-'+id), box=document.getElementById('rehbox-'+id);
+  const dest = sel? sel.value : (document.getElementById('dest-'+id)||{}).value;
+  if(box) box.style.display = (dest==='CORTE')?'inline-flex':'none';
+}
+function onDefecto(id){
+  const mid=parseInt(document.getElementById('mot-'+id).value);
+  const m=MOTIVOS.find(x=>x.id==mid)||{};
+  const permitidos=permitidosDe(mid);
+  document.getElementById('destbox-'+id).innerHTML=destBoxHTML(id,permitidos);
+  const sel=document.getElementById('dest-'+id);
+  if(sel) sel.onchange=()=>rehVis(id);
+  rehVis(id);
+  const reh=document.getElementById('reh-'+id);
+  if(reh){                                   // defecto irrecuperable → rehacer fijo
+    if(m.rehacer_default){ reh.checked=true; reh.disabled=true; }
+    else { reh.disabled=false; }
+  }
+}
+function panelRechazo(p){
+  if(!MOTIVOS.length) return '<div class="panel">Sin catálogo de defectos.</div>';
+  const draft = BORRADOR[p.id]||[];
+  const opts = MOTIVOS.map(m=>`<option value="${m.id}">${esc(m.codigo)} · ${esc(m.descripcion)}</option>`).join('');
+  const lineas = draft.map((d,i)=>{ const m=MOTIVOS.find(x=>x.id==d.motivo_id)||{};
+    return `<div class="rej"><b>${esc(m.codigo||'')}</b> ${d.cantidad}u · ${esc(cap(d.destino))}${d.rehacer?' · rehacer':''}
+      <button class="btn" onclick="delRechazo(${p.id},${i})">✕</button></div>`; }).join('');
+  return `<div class="panel">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select class="in" id="mot-${p.id}" onchange="onDefecto(${p.id})">${opts}</select>
+      <input class="in" id="cant-${p.id}" type="number" min="1" placeholder="u" style="width:60px">
+      <span id="destbox-${p.id}"></span>
+      <label id="rehbox-${p.id}" style="font-size:12px;color:#999;display:none;align-items:center;gap:4px"><input type="checkbox" id="reh-${p.id}"> rehacer (usa tela)</label>
+      <button class="btn" onclick="addRechazo(${p.id})">+ Agregar otro</button>
+    </div>
+    <div style="margin-top:6px">${lineas}</div>
+    <div style="margin-top:8px">
+      <button class="btn danger" onclick="rechazarYConfirmar(${p.id})">Rechazar y validar</button>
+      <button class="btn primary" onclick="aprobar(${p.id})">Aprobar completo</button>
+      <span style="font-size:11px;color:#777;margin-left:8px">Toma lo que esté en los campos aunque no lo agregues a la lista</span></div>
+  </div>`;
+}
+function acciones(p){
+  if(p.estado==='POR_VALIDAR' && PUEDE_CAL)
+    return `<button class="btn primary" onclick="aprobar(${p.id})">Aprobar todo</button>
+            <button class="btn danger" onclick="togglePanel(${p.id})">Registrar rechazos</button>`;
+  return '';
+}
+function grupos(){
+  const g={};
+  for(const p of PAQ){
+    const k=p.of_id+'|'+p.sku_id;
+    if(!g[k]) g[k]={sku_id:p.sku_id, of_id:p.of_id, talla:p.talla, color:p.color,
+                    numero_of:p.numero_of, piezas:[], min:Infinity, max:-Infinity};
+    g[k].piezas.push(p);
+    if(p.numero_desde<g[k].min) g[k].min=p.numero_desde;
+    if(p.numero_hasta>g[k].max) g[k].max=p.numero_hasta;
+  }
+  return Object.values(g).sort((a,b)=>
+    (a.numero_of+'').localeCompare(b.numero_of+'') ||
+    (a.talla+'').localeCompare(b.talla+'',undefined,{numeric:true}));
+}
+function render(){
+  const box=document.getElementById('lista');
+  if(!PAQ.length){ box.innerHTML='<span style="color:#777">Nada en esta bandeja.</span>'; return; }
+  let h='';
+  for(const g of grupos()){
+    const porValidar=g.piezas.filter(p=>p.estado==='POR_VALIDAR').length;
+    const btn=(porValidar && PUEDE_CAL)
+      ? `<button class="btn primary" onclick="aprobarTalla(${g.of_id},${g.sku_id},this)">Aprobar toda la talla (${porValidar})</button>` : '';
+    h+=`<div class="grp"><div class="grp-head">
+        <div><a class="oflink" href="/paquetes/${g.of_id}">${esc(g.numero_of)}</a>
+          <b style="font-size:16px;margin:0 8px">${esc(g.talla)}</b>${colorDot(g.color)}
+          <span style="color:#777;font-size:12px">· ${g.piezas.length} piezas · ${g.min}–${g.max}</span></div>
+        <div>${btn}</div></div>
+      <table class="pq"><tbody>`;
+    for(const p of g.piezas){
+      const rej=(p.rechazos||[]).map(rechazoLinea).join('');
+      const panel=(p.estado==='POR_VALIDAR' && PUEDE_CAL && BORRADOR[p.id]!==undefined)?panelRechazo(p):'';
+      h+=`<tr>
+        <td>${esc(p.pieza||'')}${p.fusiona?' <span style="color:#c79cff;font-size:10px">(fus)</span>':''}</td>
+        <td><b>${p.numero}</b></td>
+        <td style="font-variant-numeric:tabular-nums">${p.numero_desde}–${p.numero_hasta}</td>
+        <td>${p.cantidad}u</td><td style="font-size:12px">${p.aprobadas}/${p.en_reproceso}/${p.merma}</td>
+        <td><span class="st ${stClass(p.estado)}">${stLabel(p.estado)}</span></td>
+        <td style="white-space:nowrap">${acciones(p)}</td></tr>`;
+      if(rej||panel) h+=`<tr><td colspan="7">${rej}${panel}</td></tr>`;
+    }
+    h+='</tbody></table></div>';
+  }
+  box.innerHTML=h;
+  Object.keys(BORRADOR).forEach(id=>{ if(document.getElementById('mot-'+id)) onDefecto(id); });
+}
+function confirmar(msg, titulo){
+  return new Promise(res=>{
+    const ov=document.getElementById('cq-modal');
+    document.getElementById('cq-modal-t').textContent=titulo||'Confirmar';
+    document.getElementById('cq-modal-m').textContent=msg;
+    ov.classList.add('on');
+    const yes=document.getElementById('cq-modal-yes'), no=document.getElementById('cq-modal-no');
+    function done(v){ ov.classList.remove('on'); yes.onclick=null; no.onclick=null; ov.onclick=null; res(v); }
+    yes.onclick=()=>done(true); no.onclick=()=>done(false);
+    ov.onclick=(e)=>{ if(e.target===ov) done(false); };
+  });
+}
+async function aprobarTalla(of_id, sku_id, btn){
+  if(!(await confirmar('Se aprobarán todos los bultos por validar de esta talla, sin registrar rechazos. ¿Continuar?','Aprobar toda la talla'))) return;
+  if(btn){ btn.disabled=true; btn.textContent='Aprobando…'; }
+  try{ const r=await api(`/paquetes/api/${of_id}/talla/${sku_id}/aprobar-calidad`,{method:'POST',body:'{}'});
+       toast(`Aprobados ${r.aprobados}`,'success'); load(); }
+  catch(e){ toast(e.message,'error'); if(btn){ btn.disabled=false; btn.textContent='Aprobar toda la talla'; } }
+}
+
+function togglePanel(id){ if(BORRADOR[id]===undefined) BORRADOR[id]=[]; else delete BORRADOR[id]; render(); }
+function _leerCampos(id){
+  const motivo_id=parseInt(document.getElementById('mot-'+id).value);
+  const cantidad=parseInt(document.getElementById('cant-'+id).value);
+  if(!motivo_id||!cantidad||cantidad<=0) return null;
+  const destEl=document.getElementById('dest-'+id), rehEl=document.getElementById('reh-'+id);
+  return {motivo_id, cantidad,
+          destino: destEl?destEl.value:null,
+          rehacer: rehEl?rehEl.checked:false};
+}
+function addRechazo(id){
+  const r=_leerCampos(id);
+  if(!r){ toast('Elige defecto y cantidad','error'); return; }
+  BORRADOR[id].push(r); document.getElementById('cant-'+id).value=''; render();
+}
+function delRechazo(id,i){ BORRADOR[id].splice(i,1); render(); }
+async function aprobar(id){
+  try{ await api(`/paquetes/api/paquete/${id}/validar`,{method:'POST',body:JSON.stringify({rechazos:[]})}); toast('Aprobado','success'); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+async function rechazarYConfirmar(id){
+  const rechazos=(BORRADOR[id]||[]).slice();
+  const pend=_leerCampos(id);        // toma lo que esté en los campos aunque no se agregó
+  if(pend) rechazos.push(pend);
+  if(!rechazos.length){ toast('Ingresa el defecto y la cantidad a rechazar','error'); return; }
+  try{ await api(`/paquetes/api/paquete/${id}/validar`,{method:'POST',body:JSON.stringify({rechazos})}); delete BORRADOR[id]; toast('Validado','success'); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+async function reingresar(rid){
+  try{ await api(`/paquetes/api/rechazo/${rid}/reingresar`,{method:'POST',body:'{}'}); toast('Reingresada','success'); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+
+load();
+</script>
+{% endblock %}

@@ -187,10 +187,16 @@
     <h1>Todas las Órdenes de Fabricación</h1>
     <div class="sub">Listado general de OFs y requerimientos de muestra</div>
   </div>
-  <a href="/of/crear" class="btn-of-new">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    Nueva OF
-  </a>
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="/of/import-sap" class="btn-of-new" style="background:#1f2a44;border-color:#2b3a5c">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Importar de SAP
+    </a>
+    <a href="/of/crear" class="btn-of-new">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nueva OF
+    </a>
+  </div>
 </div>
 
 <!-- Filtros -->
@@ -249,7 +255,7 @@
           <th>N° OF</th>
           <th>Cliente</th>
           <th class="col-prenda">Prenda</th>
-          <th class="col-juegos">Juegos</th>
+          <th class="col-juegos">Prendas</th>
           <th>Estado</th>
           <th class="col-fecha">Creación</th>
           <th class="right">Acciones</th>
@@ -269,11 +275,13 @@
           {% set st_c = 'var(--st-borrador)' %}{% set st_b = 'rgba(136,136,136,0.12)' %}{% set st_bd = 'rgba(136,136,136,0.3)' %}
         {% endif %}
 
+        {# ── tipo_prenda puede ser enum (.value) o texto libre (import SAP) ── #}
+        {% set tp = of.tipo_prenda.value if of.tipo_prenda.value is defined else of.tipo_prenda %}
         {# ── Color por tipo prenda ── #}
-        {% if of.tipo_prenda.value == 'CAMISA' %}{% set pr_c = 'var(--pr-camisa)' %}
-        {% elif of.tipo_prenda.value == 'PANTALON' %}{% set pr_c = 'var(--pr-pantalon)' %}
-        {% elif of.tipo_prenda.value == 'SACO' %}{% set pr_c = 'var(--pr-saco)' %}
-        {% elif of.tipo_prenda.value == 'PULLOVER' %}{% set pr_c = 'var(--pr-pullover)' %}
+        {% if tp == 'CAMISA' %}{% set pr_c = 'var(--pr-camisa)' %}
+        {% elif tp == 'PANTALON' %}{% set pr_c = 'var(--pr-pantalon)' %}
+        {% elif tp == 'SACO' %}{% set pr_c = 'var(--pr-saco)' %}
+        {% elif tp == 'PULLOVER' %}{% set pr_c = 'var(--pr-pullover)' %}
         {% else %}{% set pr_c = '138,152,190' %}{% endif %}
 
         <tr style="--st: {{ st_c }};" {% if of.es_muestra %}class="es-muestra"{% endif %}>
@@ -287,7 +295,7 @@
           </td>
           <td class="of-client">{{ of.cliente }}</td>
           <td class="col-prenda">
-            <span class="of-pren" style="--pc: {{ pr_c }};">{{ of.tipo_prenda.value }}</span>
+            <span class="of-pren" style="--pc: {{ pr_c }};">{{ tp }}</span>
           </td>
           <td class="col-juegos of-juegos">{{ of.total_juegos }}</td>
           <td>

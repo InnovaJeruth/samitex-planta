@@ -75,7 +75,7 @@ def formatear_estado_of(numero_of: str, data: dict) -> str:
 
     piezas = estado.get("piezas", [])
     if not piezas:
-        return f"📋 *OF {numero_of}* — {cliente} | {prenda} | {juegos} juegos\nEstado: {est}\n_(Sin piezas registradas)_"
+        return f"📋 *OF {numero_of}* — {cliente} | {prenda} | {juegos} prendas\nEstado: {est}\n_(Sin piezas registradas)_"
 
     # Calcular avance por fase
     fases_avance = {}
@@ -89,7 +89,7 @@ def formatear_estado_of(numero_of: str, data: dict) -> str:
             elif fase_data.get("cantidad_actual", 0) > 0:
                 fases_avance[fase_id]["en_proceso"] += 1
 
-    lines = [f"📋 *OF {numero_of}* — {cliente} | {prenda} | {juegos} juegos"]
+    lines = [f"📋 *OF {numero_of}* — {cliente} | {prenda} | {juegos} prendas"]
     lines.append(f"Estado: *{est}*\n")
     lines.append("*Avance por fase:*")
 
@@ -213,7 +213,7 @@ def bot_of_detalle(numero_of: str, x_bot_key: str = Header(None)):
             "orden_compra": of.orden_compra,
             "solped_mp": of.solped_mp,
             "tercerizado": of.tercerizado,
-            "planta_externa": of.planta_externa,
+            "planta_externa": (of.planta.nombre if of.planta else None),
             "fecha_envio_planta": _of_to_str(of.fecha_envio),
             "fecha_recepcion_est": _of_to_str(of.fecha_recepcion_est),
             "fecha_recepcion_real": _of_to_str(of.fecha_recepcion_real),

@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% block title %}Numeración {{ of.numero_of }} — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .pq-wrap { max-width:1100px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .pq-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .pq-head h1 { font-size:20px; font-weight:700; color:#fff; margin:0; }
+  .pq-card { background:#141414; border:1px solid #262626; border-radius:10px; padding:14px 16px; margin-bottom:16px; }
+  .pq-card h2 { font-size:14px; font-weight:600; color:#fff; margin:0 0 12px; }
+  .metric { background:#151515; border-radius:8px; padding:10px 14px; flex:1; min-width:120px; }
+  .metric .l { font-size:12px; color:#888; } .metric .v { font-size:22px; font-weight:600; }
+  table.pq { width:100%; border-collapse:collapse; font-size:13px; }
+  table.pq th { text-align:left; padding:7px 8px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #262626; }
+  table.pq td { padding:7px 8px; border-bottom:1px solid #1c1c1c; vertical-align:top; }
+  .in { background:#161616; border:1px solid #3a3a3a; color:#eee; border-radius:6px; padding:5px 8px; width:80px; }
+  select.in { width:auto; min-width:120px; }
+  .chip { display:inline-block; font-size:11px; background:#12233a; color:#7cc4ff; border:1px solid #24425f; border-radius:5px; padding:1px 7px; margin:2px 3px 0 0; font-variant-numeric:tabular-nums; }
+  .btn { font-size:12px; border:1px solid #444; background:#222; color:#ddd; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .btn:hover { background:#2c2c2c; } .btn.primary { background:#164; border-color:#164; color:#fff; } .btn.danger { color:#f88; border-color:#622; }
+  .st { font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px; }
+  .st-hab { background:#1a3a5a; color:#7cc4ff; } .st-val { background:#2d2400; color:#e6c14a; }
+  .st-fus { background:#2a1a3a; color:#c79cff; }
+  .st-sby { background:#3a1500; color:#f0a060; } .st-ent { background:#0f2a17; color:#6fdf9a; }
+  .dot { width:11px; height:11px; border-radius:3px; border:1px solid #2a2a2a; display:inline-block; vertical-align:-1px; }
+  .rej { font-size:11px; color:#bbb; background:#181818; border:1px solid #242424; border-radius:6px; padding:4px 8px; margin-top:4px; }
+  .rej b { color:#f0a060; }
+  .panel { background:#101820; border:1px solid #223; border-radius:8px; padding:10px; margin-top:6px; }
+  .acc { border:1px solid #262626; border-radius:10px; overflow:hidden; }
+  .acc-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:#161616; cursor:pointer; border-top:1px solid #1c1c1c; }
+  .acc-row:first-child { border-top:none; } .acc-row:hover { background:#1b1b1b; }
+  .chev { color:#888; width:14px; display:inline-block; }
+  .acc-body { padding:8px 12px 12px 34px; background:#101010; }
+  .grp-h { display:flex; align-items:center; justify-content:space-between; margin:10px 0 6px; font-size:12px; color:#aaa; }
+  .pz-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+  .pz-row { display:flex; align-items:center; gap:8px; justify-content:space-between; border:1px solid #242424; border-radius:8px; padding:5px 9px; font-size:13px; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:20px; }
+  .b-num { background:#12233a; color:#7cc4ff; } .b-fus { background:#2a1a3a; color:#c79cff; } .b-ok { background:#0f2a17; color:#6fdf9a; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pq-wrap">
+  <div class="pq-head">
+    <h1>Paquetes · hoja de numeración</h1>
+    <span style="color:#999;font-size:13px" id="pq-sub">OF {{ of.numero_of }}</span>
+    <a href="/corte/{{ of.id }}" class="btn" style="margin-left:auto">← Seguimiento</a>
+  </div>
+
+  <div class="pq-card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <label style="font-size:12px;color:#999">Unidades por paquete</label>
+    <input id="tope" type="number" min="1" max="49" class="in" style="width:70px" oninput="preview()">
+    <button class="btn" id="btn-tope" onclick="guardarTope()">Guardar tope</button>
+    <span style="font-size:11px;color:#777;margin-left:6px">máx 49 · 1 paquete = 1 talla + 1 color</span>
+    <span id="tope-msg" style="font-size:11px;color:#777"></span>
+    <span id="ro-badge" style="display:none;font-size:11px;color:#e6a817;margin-left:auto">Solo lectura — editar requiere autorización</span>
+  </div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+    <div class="metric"><div class="l">Proyectado</div><div class="v" id="m-proy">—</div></div>
+    <div class="metric"><div class="l">Corte real</div><div class="v" id="m-real">—</div></div>
+    <div class="metric"><div class="l">Merma</div><div class="v" id="m-merma" style="color:#f0a060">—</div></div>
+    <div class="metric" id="m-desvio-card"><div class="l" id="m-desvio-l">Desvío</div><div class="v" id="m-desvio">—</div><div style="font-size:11px" id="m-desvio-n"></div></div>
+  </div>
+
+  <div id="rehacer-banner" style="display:none;background:#2d1800;border:1px solid #5a3a00;color:#e6a817;border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:13px"></div>
+
+  <div class="pq-card">
+    <h2>Captura por talla</h2>
+
+    <div id="num-tiempos" style="font-size:11px;color:#777;margin:-6px 0 10px"></div>
+
+    <div id="num-abierto">
+      <div style="margin-bottom:10px"><button class="btn" id="btn-iniciar-num" onclick="iniciarNumeracion()">Iniciar numeración</button></div>
+      <table class="pq"><thead><tr><th>Talla</th><th>Color</th><th>Proy.</th><th>Real (u)</th><th>Paquetes (rango · cant)</th></tr></thead>
+        <tbody id="captura"></tbody></table>
+      <div style="margin-top:12px"><button class="btn primary" id="btn-generar" onclick="generar()">Generar / confirmar hoja</button>
+        <span id="gen-msg" style="font-size:12px;color:#777;margin-left:10px"></span></div>
+    </div>
+
+    <div id="num-cerrado" style="display:none;background:#101820;border:1px solid #223;border-radius:8px;padding:10px 12px">
+      <div id="num-cerrado-msg" style="font-size:13px;color:#ddd"></div>
+      {% if puede_reabrir_numeracion %}
+      <div style="margin-top:8px"><button class="btn" onclick="reabrirNumeracion()">Reabrir hoja (requiere motivo)</button></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="pq-card">
+    <h2>Paquetes</h2>
+    <div id="lista"><span style="color:#777">Cargando…</span></div>
+  </div>
+
+  <div class="pq-card" id="rep-card" style="display:none">
+    <h2>Reprocesos abiertos de esta OF</h2>
+    <p style="font-size:11px;color:#777;margin:-6px 0 10px">Solo lectura · la acción se hace en la Bandeja de reprocesos / módulo de Fusionado</p>
+    <div id="rep-lista"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const OF_ID = {{ of.id }};
+const PUEDE_NUM = {{ 'true' if puede_numerar else 'false' }};
+const PUEDE_CAL = {{ 'true' if puede_calidad else 'false' }};
+const PUEDE_REP = {{ 'true' if puede_reproceso else 'false' }};
+const PUEDE_REABRIR_NUM = {{ 'true' if puede_reabrir_numeracion else 'false' }};
+let TALLAS = [], PAQ = [], MOTIVOS = [], TOPE = 30, REQUIERE_FUSIONADO = false, HOJA_CERRADA = false;
+// Editar la HOJA (tope/captura/generar) requiere permiso Y hoja abierta; cerrada = solo con reapertura.
+function canEditHoja(){ return PUEDE_NUM && !HOJA_CERRADA; }
+const BORRADOR = {};   // rechazos en edición por paquete: {paqId: [{motivo_id,cantidad,tipo,fase_destino}]}
+
+function csrf(){ try { return getCsrfToken(); } catch(e){ return ''; } }
+async function api(url, opts={}){
+  opts.headers = Object.assign({'Content-Type':'application/json','x-csrf-token':csrf()}, opts.headers||{});
+  const r = await fetch(url, opts);
+  if(!r.ok){ const d = await r.json().catch(()=>({})); throw new Error(d.detail||'Error'); }
+  return r.json();
+}
+function stClass(e){ return {HABILITADO:'st-hab',FUSIONADO:'st-fus',POR_VALIDAR:'st-val',STAND_BY:'st-sby',ENTREGADO:'st-ent'}[e]||'st-hab'; }
+function stLabel(e){ return {HABILITADO:'Habilitado',FUSIONADO:'En fusionado',POR_VALIDAR:'Por validar',STAND_BY:'Stand-by',ENTREGADO:'Entregado'}[e]||e; }
+function colorDot(c){ const bg = (c==='BLANCO')?'#e8e8e8':(c==='AMARILLO'?'#e0a93b':'#556'); return `<span class="dot" style="background:${bg}"></span> ${c||'—'}`; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+async function load(){
+  const d = await api(`/paquetes/api/${OF_ID}/data`);
+  TALLAS = d.tallas; PAQ = d.paquetes; TOPE = d.tope; MOTIVOS = d.motivos||[]; REQUIERE_FUSIONADO = d.requiere_fusionado;
+  HOJA_CERRADA = !!d.hoja_cerrada;
+  document.getElementById('pq-sub').textContent = `OF ${d.of.numero_of} · ${d.of.prenda}`;
+  const t = document.getElementById('tope'); if(t && !t.value) t.value = TOPE;
+  renderCaptura(); renderLista(); pintarMetricas(d.desvio); renderReprocesos(d.reprocesos);
+  renderCandadoNumeracion(d);
+  aplicarPermisos(d);
+  const rb=document.getElementById('rehacer-banner');
+  if(d.desvio && d.desvio.rehacer>0){ rb.style.display='block';
+    rb.textContent=`⚠ ${d.desvio.rehacer} piezas en rehacer — requiere tela adicional. Avisar a Planeamiento para actualizar el consumo.`; }
+  else { rb.style.display='none'; }
+}
+
+function renderCandadoNumeracion(d){
+  const tiempos = document.getElementById('num-tiempos');
+  const abierto = document.getElementById('num-abierto');
+  const cerrado = document.getElementById('num-cerrado');
+  if(!tiempos || !abierto || !cerrado) return;   // sin permiso de numerar
+
+  let tx = [];
+  if(d.numeracion_inicio) tx.push(`Iniciada: ${d.numeracion_inicio}`);
+  if(d.numeracion_fin) tx.push(`Terminada: ${d.numeracion_fin}`);
+  tiempos.textContent = tx.join(' · ');
+
+  const btnIniciar = document.getElementById('btn-iniciar-num');
+  if(btnIniciar) btnIniciar.style.display = d.numeracion_inicio ? 'none' : 'inline-block';
+
+  // La tabla de captura (agrupamiento por talla) se muestra SIEMPRE, en lectura.
+  // Cuando la hoja está cerrada, además se muestra el aviso de cierre.
+  abierto.style.display='block';
+  if(d.hoja_cerrada){
+    cerrado.style.display='block';
+    document.getElementById('num-cerrado-msg').textContent =
+      `Hoja cerrada${d.hoja_cerrada_at?(' el '+d.hoja_cerrada_at):''}${d.hoja_cerrada_por?(' por '+d.hoja_cerrada_por):''}.`;
+  } else {
+    cerrado.style.display='none';
+  }
+}
+
+async function iniciarNumeracion(){
+  try{ await api(`/paquetes/api/${OF_ID}/numeracion/iniciar`,{method:'POST',body:'{}'}); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+
+async function reabrirNumeracion(){
+  const motivo = prompt('Motivo de la reapertura (obligatorio):');
+  if(motivo===null) return;
+  if(!motivo.trim()){ toast('El motivo es obligatorio','error'); return; }
+  try{ await api(`/paquetes/api/${OF_ID}/numeracion/reabrir`,{method:'POST',body:JSON.stringify({motivo})});
+    toast('Hoja reabierta','success'); load();
+  }catch(e){ toast(e.message,'error'); }
+}
+
+function preview(){
+  const size = Math.max(1, parseInt((document.getElementById('tope')||{}).value)||TOPE);
+  let start=1, np=1, real=0;
+  const tb = document.getElementById('captura'); if(!tb) return;
+  TALLAS.forEach((r,i)=>{
+    const inp = document.getElementById('real-'+i);
+    let v = inp ? parseInt(inp.value) : r.real; if(isNaN(v)) v=0;
+    real += v;
+    let chips='', rest=v;
+    while(rest>0){ const c=Math.min(size,rest); chips+=`<span class="chip">P${np}: ${start}–${start+c-1} · ${c}u</span>`; start+=c; rest-=c; np++; }
+    const cell = document.getElementById('paq-'+i); if(cell) cell.innerHTML = chips || '<span style="color:#777">—</span>';
+  });
+  const proy = TALLAS.reduce((a,b)=>a+(b.proyectado||0),0);
+  pintarMetricas({proyectado:proy, real:real, merma:0, desvio:real-proy, estado:(real===proy?'ok':(real>proy?'sobrante':'faltante'))});
+}
+
+function renderCaptura(){
+  const tb = document.getElementById('captura'); if(!tb) return;
+  const ro = canEditHoja() ? '' : 'disabled';
+  tb.innerHTML = TALLAS.map((r,i)=>`<tr>
+    <td><b>${r.talla}</b></td><td>${colorDot(r.color)}</td>
+    <td style="color:#888">${r.proyectado}</td>
+    <td><input id="real-${i}" class="in" type="number" min="0" value="${r.real}" oninput="preview()" ${ro}></td>
+    <td id="paq-${i}"></td></tr>`).join('');
+  preview();
+}
+
+// Muestra la hoja/agrupamiento a todos; los controles de edición solo si hay permiso
+// (y la hoja abierta). Cerrada o sin rol → solo lectura (editar exige reapertura autorizada).
+function aplicarPermisos(d){
+  const edit = canEditHoja();
+  const topeInp = document.getElementById('tope'); if(topeInp) topeInp.disabled = !edit;
+  const show = (id, on) => { const el=document.getElementById(id); if(el) el.style.display = on ? 'inline-block' : 'none'; };
+  show('btn-tope', edit);
+  show('btn-generar', edit);
+  const bi = document.getElementById('btn-iniciar-num');
+  if(bi) bi.style.display = (edit && !d.numeracion_inicio) ? 'inline-block' : 'none';
+  const ro = document.getElementById('ro-badge');
+  if(ro) ro.style.display = PUEDE_NUM ? 'none' : 'inline-block';
+}
+
+function pintarMetricas(dv){
+  document.getElementById('m-proy').textContent = dv.proyectado;
+  document.getElementById('m-real').textContent = dv.real;
+  document.getElementById('m-merma').textContent = dv.merma||0;
+  const card=document.getElementById('m-desvio-card'), val=document.getElementById('m-desvio'), n=document.getElementById('m-desvio-n'), l=document.getElementById('m-desvio-l');
+  val.textContent = (dv.desvio>0?'+':'')+dv.desvio;
+  if(dv.desvio===0){ card.style.background='#151515'; val.style.color='#ddd'; l.style.color='#888'; n.textContent=''; }
+  else if(dv.desvio>0){ card.style.background='#2d1800'; val.style.color='#e6a817'; l.style.color='#e6a817'; n.style.color='#e6a817'; n.textContent='⚠ sobró tela · avisar a PCP'; }
+  else { card.style.background='#2e0a0a'; val.style.color='#f88'; l.style.color='#f88'; n.style.color='#f88'; n.textContent='⚠ faltó/falló tela · avisar'; }
+}
+
+const EXPAND = {};   // sku_id expandidos
+
+function pieceRow(p){
+  let btn='';
+  if(PUEDE_NUM && p.estado==='HABILITADO'){
+    btn = p.fusiona
+      ? `<button class="btn" onclick="estado(${p.id},'FUSIONADO')">A Fusionado</button>`
+      : `<button class="btn" onclick="estado(${p.id},'POR_VALIDAR')">A Calidad</button>`;
+  }
+  return `<div class="pz-row"><span>${esc(p.pieza||'')}${p.fusiona?' <span style="color:#c79cff;font-size:10px">(fus)</span>':''}</span>
+    <span style="display:flex;gap:6px;align-items:center"><span class="st ${stClass(p.estado)}">${stLabel(p.estado)}</span>${btn}</span></div>`;
+}
+
+function tallaResumen(bultos){
+  const tot=bultos.length;
+  const fus=bultos.filter(p=>p.fusiona);
+  const fusOk=fus.filter(p=>p.estado!=='HABILITADO' && p.estado!=='FUSIONADO').length;
+  const ent=bultos.filter(p=>p.estado==='ENTREGADO').length;
+  let s=`<span class="badge b-num">Num 100%</span>`;
+  if(fus.length) s+=` <span class="badge ${fusOk===fus.length?'b-ok':'b-fus'}">Fusión ${fusOk}/${fus.length}</span>`;
+  s+= (ent===tot) ? ` <span class="badge b-ok">Liberado 100%</span>`
+                  : ` <span style="color:#888;font-size:12px">Calidad ${Math.round(ent/tot*100)}%</span>`;
+  return s;
+}
+
+function renderLista(){
+  const box = document.getElementById('lista');
+  if(!PAQ.length){ box.innerHTML = '<span style="color:#777">Sin bultos. Genera la hoja de numeración arriba.</span>'; return; }
+  const bySku={}; for(const p of PAQ){ (bySku[p.sku_id]=bySku[p.sku_id]||[]).push(p); }
+  const prendasBy={}; TALLAS.forEach(t=>prendasBy[t.sku_id]=t.real);
+  let h='<div class="acc">';
+  for(const sku of Object.keys(bySku)){
+    const bultos=bySku[sku], t0=bultos[0], abierto=!!EXPAND[sku];
+    const puedeEnviar=PUEDE_NUM && bultos.some(p=>p.estado==='HABILITADO');
+    h+=`<div class="acc-row" onclick="toggleTalla(${sku})">
+      <i class="chev">${abierto?'▾':'▸'}</i>
+      <span style="min-width:52px"><b>${t0.talla}</b></span>
+      <span>${colorDot(t0.color)}</span>
+      <span style="color:#888;font-size:12px;min-width:82px">${prendasBy[sku]||''} prendas</span>
+      <span style="flex:1">${tallaResumen(bultos)}</span>
+      ${puedeEnviar?`<button class="btn" onclick="event.stopPropagation();avanzar(${sku},'todo')">Enviar todo</button>`:''}
+    </div>`;
+    if(abierto){
+      const fus=bultos.filter(p=>p.fusiona), nofus=bultos.filter(p=>!p.fusiona);
+      h+='<div class="acc-body">';
+      if(fus.length){
+        const hayHab=PUEDE_NUM && fus.some(p=>p.estado==='HABILITADO');
+        h+=`<div class="grp-h"><span>Piezas que fusionan (${fus.length})</span><span>
+          ${hayHab?`<button class="btn" onclick="avanzar(${sku},'fusion')">Enviar a Fusionado</button>`:''}</span></div>`;
+        h+='<div class="pz-grid">'+fus.map(pieceRow).join('')+'</div>';
+      }
+      const hayHabN=PUEDE_NUM && nofus.some(p=>p.estado==='HABILITADO');
+      h+=`<div class="grp-h"><span>Directo a Calidad (${nofus.length})</span>
+        <span>${hayHabN?`<button class="btn" onclick="avanzar(${sku},'calidad')">Enviar a Calidad</button>`:''}</span></div>`;
+      h+='<div class="pz-grid">'+nofus.map(pieceRow).join('')+'</div>';
+      h+='</div>';
+    }
+  }
+  box.innerHTML = h+'</div>';
+}
+function toggleTalla(sku){ EXPAND[sku]=!EXPAND[sku]; renderLista(); }
+async function avanzar(sku, grupo){
+  try{ const r=await api(`/paquetes/api/${OF_ID}/talla/${sku}/enviar`,{method:'POST',body:JSON.stringify({grupo})});
+    toast(`${r.movidos} bultos movidos`,'success'); EXPAND[sku]=true; load();
+  }catch(e){ toast(e.message,'error'); }
+}
+
+async function guardarTope(){
+  const v = parseInt(document.getElementById('tope').value)||null;
+  try{ const r=await api(`/paquetes/api/${OF_ID}/tope`,{method:'POST',body:JSON.stringify({unidades_por_paquete:v})}); TOPE=r.tope; document.getElementById('tope-msg').textContent='Guardado ✓'; preview(); }
+  catch(e){ document.getElementById('tope-msg').textContent=e.message; }
+}
+async function generar(){
+  const reales = TALLAS.map((r,i)=>({ sku_id:r.sku_id, cantidad: parseInt((document.getElementById('real-'+i)||{}).value)||0 }));
+  const size = parseInt(document.getElementById('tope').value)||null;
+  showConfirm('¿Generar la hoja de numeración? Reemplaza los paquetes actuales de la OF.', async ()=>{
+    try{ const r=await api(`/paquetes/api/${OF_ID}/generar`,{method:'POST',body:JSON.stringify({size, reales})});
+      toast(`${r.generados} paquetes generados`, 'success'); load();
+    }catch(e){ document.getElementById('gen-msg').textContent=e.message; }
+  }, 'Generar');
+}
+async function estado(id, nuevo){
+  try{ await api(`/paquetes/api/paquete/${id}/estado`,{method:'POST',body:JSON.stringify({estado:nuevo})}); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+
+function cap(s){ return (s||'').charAt(0)+(s||'').slice(1).toLowerCase(); }
+function estLabel(e){ return {CORTE:'Corte',FUSIONADO:'Fusionado',DESMANCHADO:'Desmanchado',HABILITADO:'Habilitado'}[e]||cap(e); }
+function repEstado(e){ return {PENDIENTE:'Pendiente',EN_REPROCESO:'En proceso',ESPERA_TELA:'Esperando tela'}[e]||e; }
+function renderReprocesos(reps){
+  const card=document.getElementById('rep-card'), box=document.getElementById('rep-lista');
+  if(!reps || !reps.length){ card.style.display='none'; return; }
+  card.style.display='block';
+  let h='<table class="pq"><thead><tr><th>Pieza</th><th>Talla</th><th>Numeración</th><th>Defecto</th><th>Cant</th><th>Estación</th><th>Reinicio</th><th>Estado</th><th>Desde</th></tr></thead><tbody>';
+  for(const r of reps){
+    h+=`<tr><td>${esc(r.pieza||'')}</td><td>${esc(r.talla||'')}</td>
+      <td style="font-variant-numeric:tabular-nums">${esc(r.numeracion||'')}</td>
+      <td><b style="color:#f0a060">${esc(r.codigo||'')}</b> ${esc(r.descripcion||'')}</td>
+      <td>${r.cantidad}u</td>
+      <td>${esc(estLabel(r.estacion))}</td>
+      <td>${r.reinicio?('desde '+esc(cap(r.reinicio))):'—'}${r.rehacer?' · rehacer':''}</td>
+      <td>${esc(repEstado(r.estado))}</td>
+      <td style="color:#888">${esc(r.desde||'—')}</td></tr>`;
+  }
+  box.innerHTML=h+'</tbody></table>';
+}
+
+load();
+</script>
+{% endblock %}

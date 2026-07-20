@@ -131,13 +131,26 @@
     </div>
     <div class="of-meta">
         <div class="meta-item"><strong>{{ of.cliente }}</strong>Cliente</div>
-        <div class="meta-item"><strong>{{ of.tipo_prenda.value }}</strong>Tipo prenda</div>
+        {% if of.prenda_catalogo %}
+        <div class="meta-item">
+            <strong>{{ of.prenda_catalogo.nombre }}</strong>
+            Prenda
+            <span style="display:block;font-size:11px;color:#9aa;margin-top:2px">
+                {{ of.prenda_catalogo.codigo }}
+                {% if of.prenda_catalogo.fit %} · {{ of.prenda_catalogo.fit }}{% endif %}
+                {% if of.prenda_catalogo.color %} · {{ of.prenda_catalogo.color }}{% endif %}
+                {% if of.material_sap %} · SAP {{ of.material_sap }}{% endif %}
+            </span>
+        </div>
+        {% else %}
+        <div class="meta-item"><strong>{{ of.tipo_prenda.value if of.tipo_prenda.value is defined else of.tipo_prenda }}</strong>Tipo prenda</div>
+        {% endif %}
         <div class="meta-item">
             <strong style="color:{% if tipo_cliente == 'MARCA' %}#e6a817{% else %}#4a9fff{% endif %}">
                 {{ tipo_cliente }}
             </strong>Tipo cliente
         </div>
-        <div class="meta-item"><strong>{{ of.total_juegos }}</strong>Juegos</div>
+        <div class="meta-item"><strong>{{ of.total_juegos }}</strong>Prendas</div>
         <div class="meta-item"><strong>{{ of.fecha_apt or '—' }}</strong>Fecha APT</div>
         <div class="meta-item"><strong>{{ of.fecha_creacion }}</strong>Creación</div>
         <div class="meta-item">
@@ -169,6 +182,7 @@
             <button class="btn btn-sm" style="background:#1a1a2e;border:1px solid #4a3a7a;color:#a78bfa;font-size:11px" onclick="abrirModalFechaTerc()">📅 Actualizar fecha</button>
             {% endif %}
         {% endif %}
+        <a href="/of/{{ of.id }}/reporte-pdf" class="btn btn-secondary btn-sm" target="_blank">📄 Descargar PDF</a>
     </div>
 </div>
 
@@ -182,7 +196,7 @@
             </span>
         </h4>
         <div class="terc-meta">
-            <div class="terc-meta-item"><strong>{{ of.planta_externa }}</strong>Planta externa</div>
+            <div class="terc-meta-item"><strong>{{ of.planta.nombre if of.planta else '' }}</strong>Planta externa</div>
             {% if of.fecha_envio %}<div class="terc-meta-item"><strong>{{ of.fecha_envio }}</strong>Fecha envío</div>{% endif %}
             {% if of.fecha_recepcion_est %}<div class="terc-meta-item"><strong>{{ of.fecha_recepcion_est }}</strong>Recepción estimada</div>{% endif %}
             {% if of.fecha_recepcion_real %}<div class="terc-meta-item"><strong>{{ of.fecha_recepcion_real }}</strong>Recepción real</div>{% endif %}
@@ -223,6 +237,35 @@
         </div>
         {% endfor %}
     </div>
+    {% endif %}
+
+    {% if not of.es_muestra %}
+    <!-- HISTORIAL / AUDITORÍA DE DOCUMENTOS -->
+    <div class="card" style="margin-top:16px">
+        <div class="card-header"><span class="card-title">Historial de documentos (auditoría)</span></div>
+        <div id="audit-box" style="font-size:12px;color:#888">Cargando…</div>
+    </div>
+    <script>
+    (function(){
+        fetch('/of/api/{{ of.id }}/auditoria-docs').then(function(r){return r.json();}).then(function(rows){
+            var box=document.getElementById('audit-box'); if(!box) return;
+            if(!rows.length){ box.innerHTML='Sin registros de documentos aún.'; return; }
+            var col={SUBIDO:'#4caf7d',REGISTRADO:'#4caf7d',REEMPLAZADO:'#e6a817',MODIFICADO:'#e6a817',ELIMINADO:'#e06060'};
+            var th='style="text-align:left;padding:6px 8px;color:#888;font-weight:500"';
+            var h='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'+
+                '<th '+th+'>Fecha</th><th '+th+'>Gate / Documento</th><th '+th+'>Acción</th><th '+th+'>Archivo / código</th><th '+th+'>Usuario</th></tr></thead><tbody>';
+            rows.forEach(function(r){
+                h+='<tr style="border-top:1px solid #1e1e1e">'+
+                    '<td style="padding:6px 8px">'+(r.fecha||'—')+'</td>'+
+                    '<td style="padding:6px 8px">'+String(r.tipo||'').replace(/_/g,' ')+'</td>'+
+                    '<td style="padding:6px 8px;font-weight:600;color:'+(col[r.accion]||'#aaa')+'">'+r.accion+'</td>'+
+                    '<td style="padding:6px 8px;color:#999">'+(r.nombre_archivo||'—')+'</td>'+
+                    '<td style="padding:6px 8px">'+(r.usuario||'—')+'</td></tr>';
+            });
+            box.innerHTML=h+'</tbody></table>';
+        }).catch(function(){ var b=document.getElementById('audit-box'); if(b) b.innerHTML='No se pudo cargar el historial.'; });
+    })();
+    </script>
     {% endif %}
 
     <!-- DOCUMENTOS — vista por gate con permisos por rol -->
@@ -555,12 +598,12 @@
 <div class="card" style="margin-bottom:16px">
     <div class="card-header">
         <span class="card-title">Recepciones de tercerización</span>
-        <span style="font-size:12px;color:#a78bfa">{{ of.juegos_recibidos }}/{{ of.total_juegos }} juegos recibidos</span>
+        <span style="font-size:12px;color:#a78bfa">{{ of.juegos_recibidos }}/{{ of.total_juegos }} prendas recibidas</span>
     </div>
     {% if of.recepciones_terc %}
     <table>
         <thead>
-            <tr><th>Fecha</th><th>Juegos</th><th>Observación</th><th>Usuario</th></tr>
+            <tr><th>Fecha</th><th>Prendas</th><th>Observación</th><th>Usuario</th></tr>
         </thead>
         <tbody>
         {% for rec in of.recepciones_terc | sort(attribute='created_at', reverse=True) %}
@@ -696,13 +739,13 @@
     <div class="modal-box" style="width:400px">
         <div class="modal-title" style="color:#a78bfa">📦 Registrar recepción</div>
         <div style="font-size:12px;color:#888;margin-bottom:12px">
-            Recibidos hasta ahora: <strong style="color:#a78bfa" id="juegos-acumulado">{{ of.juegos_recibidos }}</strong> / {{ of.total_juegos }} juegos
+            Recibidos hasta ahora: <strong style="color:#a78bfa" id="juegos-acumulado">{{ of.juegos_recibidos }}</strong> / {{ of.total_juegos }} prendas
         </div>
         <div style="display:flex;flex-direction:column;gap:12px">
             <div>
-                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Juegos recibidos en esta entrega *</label>
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Prendas recibidas en esta entrega *</label>
                 <input type="number" id="inp-juegos-recibidos" min="1" max="{{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }}" placeholder="Máx: {{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }} restantes" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Juegos recibidos">
-                <div style="font-size:10px;color:#767676;margin-top:3px">Faltan {{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }} juegos por recibir</div>
+                <div style="font-size:10px;color:#767676;margin-top:3px">Faltan {{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }} prendas por recibir</div>
             </div>
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de recepción *</label>
@@ -1133,7 +1176,7 @@ async function registrarRecepcion() {
     const juegos = parseInt(document.getElementById('inp-juegos-recibidos').value);
     const fecha = document.getElementById('inp-fecha-recepcion').value;
     const obs = document.getElementById('inp-obs-recepcion').value || null;
-    if (!juegos || juegos < 1) return showToast('Ingresa la cantidad de juegos recibidos', 'warning');
+    if (!juegos || juegos < 1) return showToast('Ingresa la cantidad de prendas recibidas', 'warning');
     if (!fecha) return showToast('Ingresa la fecha de recepción', 'warning');
     const r = await fetch(`/of/api/${OF_ID}/tercerizar/recepcion`, {
         method:'POST',

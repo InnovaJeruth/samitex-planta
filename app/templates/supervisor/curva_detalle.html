@@ -74,7 +74,7 @@ label.upload-btn:hover{background:#252525;}
     </div>
     {% endfor %}
   </div>
-  <p id="tallas-hint" style="font-size:11px;color:#555;margin-top:8px;display:none;">Ajusta las cantidades para que sumen los juegos de la OF seleccionada.</p>
+  <p id="tallas-hint" style="font-size:11px;color:#555;margin-top:8px;display:none;">Ajusta las cantidades para que sumen las prendas de la OF seleccionada.</p>
 </div>
 
 <!-- Documento -->
@@ -120,7 +120,7 @@ label.upload-btn:hover{background:#252525;}
 
   {% if ofs_activas %}
   <p style="font-size:11px;color:#555;margin-bottom:8px;">
-    Selecciona una OF — el total de tallas de la curva debe cuadrar exactamente con los juegos de la OF.
+    Selecciona una OF — el total de tallas de la curva debe cuadrar exactamente con las prendas de la OF.
   </p>
   <div id="of-lista" style="background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;overflow:hidden;margin-bottom:10px;">
     {% for of in ofs_activas %}
@@ -130,7 +130,7 @@ label.upload-btn:hover{background:#252525;}
              onchange="seleccionarOf({{ of.id }}, {{ of.total_juegos or 0 }}, '{{ of.numero_of }}')">
       <label for="of-{{ of.id }}" style="flex:1;cursor:pointer;margin:0;">
         <div style="font-size:12px;font-weight:500;color:#e0e0e0;">OF {{ of.numero_of }}
-          <span style="font-size:10px;color:#555;font-weight:400;margin-left:6px;">{{ of.total_juegos }} juegos</span>
+          <span style="font-size:10px;color:#555;font-weight:400;margin-left:6px;">{{ of.total_juegos }} prendas</span>
         </div>
         <div style="font-size:10px;color:#555;">{{ of.cliente }} · {{ of.estado.value }}</div>
       </label>
@@ -194,17 +194,17 @@ function seleccionarOf(id, totalJuegos, numeroOf){
 
   if(CURVA_TOTAL === totalJuegos){
     bar.style.cssText = 'display:block;margin-bottom:10px;padding:10px 12px;border-radius:6px;font-size:12px;background:#0d2a1a;border:1px solid #1a4a2a;color:#4caf7d;';
-    bar.innerHTML = `✓ Total cuadra con OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} juegos`;
+    bar.innerHTML = `✓ Total cuadra con OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} prendas`;
     btn.disabled = false;
     btn.textContent = '{{ "Enviar documento y distribución a OF" if curva.nombre_archivo else "Enviar distribución a OF" }}';
   } else if(CURVA_TOTAL > totalJuegos){
     bar.style.cssText = 'display:block;margin-bottom:10px;padding:10px 12px;border-radius:6px;font-size:12px;background:#2a0d0d;border:1px solid #4a1a1a;color:#f06060;';
-    bar.innerHTML = `✗ Excede OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} juegos (exceso: ${CURVA_TOTAL - totalJuegos})`;
+    bar.innerHTML = `✗ Excede OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} prendas (exceso: ${CURVA_TOTAL - totalJuegos})`;
     btn.disabled = true;
     btn.textContent = 'Totales no cuadran';
   } else {
     bar.style.cssText = 'display:block;margin-bottom:10px;padding:10px 12px;border-radius:6px;font-size:12px;background:#1a1a0d;border:1px solid #3a3a1a;color:#e6a817;';
-    bar.innerHTML = `⚠ Faltan unidades para OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} juegos (faltan: ${totalJuegos - CURVA_TOTAL})`;
+    bar.innerHTML = `⚠ Faltan unidades para OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} prendas (faltan: ${totalJuegos - CURVA_TOTAL})`;
     btn.disabled = true;
     btn.textContent = 'Totales no cuadran';
   }
@@ -213,7 +213,7 @@ function seleccionarOf(id, totalJuegos, numeroOf){
 async function enviarAOfs(){
   if(!_ofSeleccionada){ toast('Selecciona una OF', 'error'); return; }
   if(CURVA_TOTAL !== _ofSeleccionada.total_juegos){
-    toast(`El total (${CURVA_TOTAL}) no cuadra con la OF: ${_ofSeleccionada.total_juegos} juegos`, 'error');
+    toast(`El total (${CURVA_TOTAL}) no cuadra con la OF: ${_ofSeleccionada.total_juegos} prendas`, 'error');
     return;
   }
   const cantidades = Array.from(document.querySelectorAll('.talla-input')).map(i => ({

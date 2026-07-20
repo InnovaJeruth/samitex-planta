@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Aprobación de gerencia — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .gz-wrap { max-width:1100px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .gz-wrap h1 { font-size:20px; font-weight:700; color:#fff; margin:0 0 4px; }
+  table.pq { width:100%; border-collapse:collapse; font-size:13px; background:#141414; border:1px solid #262626; border-radius:10px; overflow:hidden; margin-top:14px; }
+  table.pq th { text-align:left; padding:8px 10px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #262626; }
+  table.pq td { padding:8px 10px; border-bottom:1px solid #1c1c1c; }
+  .btn { font-size:12px; border:1px solid #444; background:#222; color:#ddd; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .btn:hover { background:#2c2c2c; } .btn.ok { background:#164; border-color:#164; color:#fff; } .btn.reh { color:#e6c14a; border-color:#5a4a12; }
+  .oflink { color:#7cc4ff; text-decoration:none; } .oflink:hover { text-decoration:underline; }
+  .dot { width:11px; height:11px; border-radius:3px; border:1px solid #2a2a2a; display:inline-block; vertical-align:-1px; }
+  .empty { color:#777; font-size:13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gz-wrap">
+  <h1>Aprobación de gerencia</h1>
+  <div style="color:#999;font-size:13px">Defectos escalados por Calidad · el gerente de planta decide aprobar o rehacer (nunca se entrega menos)</div>
+  <div id="cont"><span class="empty">Cargando…</span></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function csrf(){ try { return getCsrfToken(); } catch(e){ return ''; } }
+async function api(url, opts={}){
+  opts.headers = Object.assign({'Content-Type':'application/json','x-csrf-token':csrf()}, opts.headers||{});
+  const r = await fetch(url, opts);
+  if(!r.ok){ const d = await r.json().catch(()=>({})); throw new Error(d.detail||'Error'); }
+  return r.json();
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function colorDot(c){ const bg=(c==='BLANCO')?'#e8e8e8':(c==='AMARILLO'?'#e0a93b':'#556'); return `<span class="dot" style="background:${bg}"></span> ${c||'—'}`; }
+
+async function load(){
+  const d = await api('/paquetes/api/gerencia/data');
+  const box=document.getElementById('cont'); const rows=d.rechazos||[];
+  if(!rows.length){ box.innerHTML='<span class="empty">Sin defectos pendientes de aprobación. 🎉</span>'; return; }
+  let h='<table class="pq"><thead><tr><th>OF</th><th>Pieza</th><th>Bulto</th><th>Talla</th><th>Color</th><th>Numeración</th><th>Defecto</th><th>Cant</th><th></th></tr></thead><tbody>';
+  for(const r of rows){
+    h+=`<tr>
+      <td><a class="oflink" href="/paquetes/${r.of_id}">${esc(r.numero_of)}</a></td>
+      <td>${esc(r.pieza||'')}</td><td><b>${r.paquete_numero}</b></td><td>${esc(r.talla||'')}</td><td>${colorDot(r.color)}</td>
+      <td style="font-variant-numeric:tabular-nums">${esc(r.numeracion||'')}</td>
+      <td><b style="color:#f0a060">${esc(r.codigo||'')}</b> ${esc(r.descripcion||'')}</td>
+      <td>${r.cantidad} u</td>
+      <td style="white-space:nowrap">
+        <button class="btn ok" onclick="decidir(${r.id},'aprobar')">Aprobar</button>
+        <button class="btn reh" onclick="decidir(${r.id},'rehacer')">Rehacer</button>
+      </td></tr>`;
+  }
+  box.innerHTML=h+'</tbody></table>';
+}
+async function decidir(id, accion){
+  const msg = accion==='aprobar'
+    ? '¿Aprobar la pieza tal cual? Vuelve a Calidad para cierre.'
+    : '¿Mandar a rehacer? Pasa a Corte por la ruta de rehacer.';
+  showConfirm(msg, async ()=>{
+    try{ await api(`/paquetes/api/rechazo/${id}/gerencia/${accion}`,{method:'POST',body:'{}'});
+      toast(accion==='aprobar'?'Aprobado':'Enviado a rehacer','success'); load();
+    }catch(e){ toast(e.message,'error'); }
+  }, accion==='aprobar'?'Aprobar':'Rehacer');
+}
+load();
+</script>
+{% endblock %}

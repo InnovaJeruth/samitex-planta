@@ -109,7 +109,7 @@ input[type=text]:focus,select:focus,textarea:focus{outline:none;border-color:#4a
   <div class="step-label">Paso 4 — opcional</div>
   <div class="section-title">Vincular a una OF</div>
   <p class="note" style="margin-bottom:10px;">
-    Selecciona una OF para vincular la curva. Las cantidades de tallas deben cuadrar exactamente con el total de juegos de la OF.
+    Selecciona una OF para vincular la curva. Las cantidades de tallas deben cuadrar exactamente con el total de prendas de la OF.
     Si no hay OF disponible, guarda la curva y vincúlala después desde el detalle.
   </p>
   <div id="of-lista" style="background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;overflow:hidden;margin-bottom:8px;"></div>
@@ -249,21 +249,21 @@ function validarCuadre(total){
     bar.style.background = '#0d2a1a';
     bar.style.border = '1px solid #1a4a2a';
     bar.style.color = '#4caf7d';
-    bar.innerHTML = `✓ Total cuadra con OF ${_ofSeleccionada.numero_of}: <strong>${total}</strong> / ${juegos} juegos`;
+    bar.innerHTML = `✓ Total cuadra con OF ${_ofSeleccionada.numero_of}: <strong>${total}</strong> / ${juegos} prendas`;
     btn.disabled = false;
     btn.textContent = 'Guardar y vincular OF';
   } else if(total > juegos){
     bar.style.background = '#2a0d0d';
     bar.style.border = '1px solid #4a1a1a';
     bar.style.color = '#f06060';
-    bar.innerHTML = `✗ Excede la OF ${_ofSeleccionada.numero_of}: <strong>${total}</strong> / ${juegos} juegos (exceso: ${total - juegos})`;
+    bar.innerHTML = `✗ Excede la OF ${_ofSeleccionada.numero_of}: <strong>${total}</strong> / ${juegos} prendas (exceso: ${total - juegos})`;
     btn.disabled = true;
     btn.textContent = 'Guardar y vincular OF';
   } else {
     bar.style.background = '#1a1a0d';
     bar.style.border = '1px solid #3a3a1a';
     bar.style.color = '#e6a817';
-    bar.innerHTML = `⚠ Faltan unidades para OF ${_ofSeleccionada.numero_of}: <strong>${total}</strong> / ${juegos} juegos (faltan: ${juegos - total})`;
+    bar.innerHTML = `⚠ Faltan unidades para OF ${_ofSeleccionada.numero_of}: <strong>${total}</strong> / ${juegos} prendas (faltan: ${juegos - total})`;
     btn.disabled = true;
     btn.textContent = 'Guardar y vincular OF';
   }
@@ -287,7 +287,7 @@ async function cargarOfs(prendaId){
                onchange="seleccionarOf(${of.id}, ${of.total_juegos}, '${of.numero_of}', '${of.cliente}')">
         <label for="of-${of.id}" style="flex:1;cursor:pointer;margin:0;">
           <div style="font-size:12px;font-weight:500;color:#e0e0e0;">OF ${of.numero_of}
-            <span style="font-size:10px;color:#555;font-weight:400;margin-left:6px;">${of.total_juegos} juegos</span>
+            <span style="font-size:10px;color:#555;font-weight:400;margin-left:6px;">${of.total_juegos} prendas</span>
           </div>
           <div style="font-size:10px;color:#555;">${of.cliente} · ${of.estado.replace('_',' ')}</div>
         </label>
@@ -326,7 +326,7 @@ async function guardarCurva(){
   if(_ofSeleccionada){
     const total = getTotalTallas();
     if(total !== _ofSeleccionada.total_juegos){
-      toast(`El total (${total}) no cuadra con la OF: ${_ofSeleccionada.total_juegos} juegos`, 'error');
+      toast(`El total (${total}) no cuadra con la OF: ${_ofSeleccionada.total_juegos} prendas`, 'error');
       return;
     }
   }

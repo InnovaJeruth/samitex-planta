@@ -179,10 +179,28 @@
         <button class="tab-btn" id="tab-mp-btn" onclick="switchTab('mp')">🧶 Mat. Prima <span style="font-size:11px;color:#555">({{ materiales|length + materiales_propios|length }})</span></button>
         <button class="tab-btn" id="tab-avios-btn" onclick="switchTab('avios')">🧵 Avíos <span style="font-size:11px;color:#555">({{ avios|length + avios_propios|length }})</span></button>
         <button class="tab-btn" id="tab-skus-btn" onclick="switchTab('skus')">📐 SKUs / Tallas <span style="font-size:11px;color:#555">({{ tallas|length }})</span></button>
+        <button class="tab-btn" id="tab-servicios-btn" onclick="switchTab('servicios')">🧺 Servicios <span style="font-size:11px;color:#555">({{ servicios|length }})</span></button>
+        <button class="tab-btn" id="tab-mod-btn" onclick="switchTab('mod')">👷 MOD <span style="font-size:11px;color:#555">({{ mod_ops|length }})</span></button>
       </div>
 
       <!-- Tab Piezas -->
       <div class="tab-panel active" id="tab-piezas" style="padding:16px">
+        {% if prenda.tipo_cliente != 'BASE' and prenda.base %}
+        <div style="background:#0d1b2a;border:1px solid #1e3a52;border-radius:8px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="font-size:13px;color:#cfe">
+            {% if prenda.hereda_ficha %}
+              🧩 Piezas <strong>heredadas</strong> de la base <strong style="color:#4a9fff">{{ prenda.base.nombre }}</strong>
+            {% else %}
+              🧩 Ficha <strong>propia</strong> (no hereda de la base {{ prenda.base.nombre }})
+            {% endif %}
+          </div>
+          {% if puede_editar %}
+          <button class="btn btn-secondary btn-sm" onclick="toggleHereda({{ 'false' if prenda.hereda_ficha else 'true' }})">
+            {% if prenda.hereda_ficha %}Usar ficha propia{% else %}Heredar de la base{% endif %}
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
         {% if piezas %}
         <div class="piezas-grid" id="piezas-grid">
           {% for pieza in piezas %}
@@ -215,15 +233,15 @@
         {% else %}
         <div id="empty-piezas" style="text-align:center;padding:40px;color:#555">
           <div style="font-size:36px;margin-bottom:8px">🧩</div>
-          <p>No hay piezas definidas aún.</p>
-          {% if puede_editar %}
-            {% if prenda.tipo_cliente != 'BASE' %}
-            <div style="display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap">
-              <button class="btn btn-secondary" onclick="heredarBase()">📋 Heredar de BASE</button>
-              <button class="btn btn-primary" onclick="abrirModalPieza()">➕ Empezar desde cero</button>
-            </div>
-            {% else %}
-            <button class="btn btn-primary" style="margin-top:10px" onclick="abrirModalPieza()">+ Agregar primera pieza</button>
+          {% if prenda.tipo_cliente != 'BASE' and prenda.hereda_ficha and prenda.base %}
+            {# Variante que hereda: su base aún no tiene piezas #}
+            <p>La base <strong style="color:#4a9fff">{{ prenda.base.nombre }}</strong> aún no tiene piezas.</p>
+            <p style="font-size:12px;color:#666">Cárgalas en la base y esta variante las heredará.</p>
+            {% if puede_editar %}<a href="/catalogo/{{ prenda.base_id }}" class="btn btn-secondary" style="margin-top:10px">Ir a la base</a>{% endif %}
+          {% else %}
+            <p>No hay piezas definidas aún.</p>
+            {% if puede_editar %}
+            <button class="btn btn-primary" style="margin-top:10px" onclick="abrirModalPieza()">+ Agregar pieza{% if prenda.tipo_cliente != 'BASE' %} propia{% endif %}</button>
             {% endif %}
           {% endif %}
         </div>
@@ -523,6 +541,70 @@
         </div>
         {% endif %}
       </div>
+
+      <!-- ═══ Tab Servicios (terceros) ═══ -->
+      <div class="tab-panel" id="tab-servicios" style="padding:16px">
+        {% if prenda.tipo_cliente != 'BASE' and prenda_base_nombre %}
+        <div style="font-size:11px;color:#555;margin-bottom:12px">🧺 Servicios heredados de <strong style="color:#4a9fff">{{ prenda_base_nombre }}</strong></div>
+        {% endif %}
+        {% if servicios %}
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <thead><tr style="color:#666;font-size:11px;border-bottom:1px solid #222">
+            <th style="padding:8px 6px;text-align:left">Servicio</th>
+            <th style="padding:8px 6px;text-align:right">Costo / prenda</th></tr></thead>
+          <tbody>
+          {% for s in servicios %}
+          <tr style="border-bottom:1px solid #1a1a1a">
+            <td style="padding:8px 6px">{{ s.nombre }}</td>
+            <td style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums">{{ "%.4f"|format(s.costo or 0) }} {{ s.moneda or '' }}</td>
+          </tr>
+          {% endfor %}
+          <tr style="border-top:1px solid #333;font-weight:600">
+            <td style="padding:8px 6px">Total servicios</td>
+            <td style="padding:8px 6px;text-align:right;color:#6fdf9a">{{ "%.4f"|format(servicios_total) }}</td>
+          </tr>
+          </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;padding:30px;color:#555"><div style="font-size:32px;margin-bottom:8px">🧺</div><p>Sin servicios de terceros.</p></div>
+        {% endif %}
+      </div>
+
+      <!-- ═══ Tab MOD (mano de obra directa) ═══ -->
+      <div class="tab-panel" id="tab-mod" style="padding:16px">
+        {% if prenda.tipo_cliente != 'BASE' and prenda_base_nombre %}
+        <div style="font-size:11px;color:#555;margin-bottom:12px">👷 MOD heredada de <strong style="color:#4a9fff">{{ prenda_base_nombre }}</strong></div>
+        {% endif %}
+        {% if mod_ops %}
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <thead><tr style="color:#666;font-size:11px;border-bottom:1px solid #222">
+            <th style="padding:8px 6px;text-align:left">Operación</th>
+            <th style="padding:8px 6px;text-align:right">Min STD</th>
+            <th style="padding:8px 6px;text-align:right">% Efic.</th>
+            <th style="padding:8px 6px;text-align:right">Min Req.</th>
+            <th style="padding:8px 6px;text-align:right">Costo/min</th>
+            <th style="padding:8px 6px;text-align:right">Subtotal</th></tr></thead>
+          <tbody>
+          {% for m in mod_ops %}
+          <tr style="border-bottom:1px solid #1a1a1a">
+            <td style="padding:8px 6px">{{ m.operacion }}</td>
+            <td style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums">{{ "%.2f"|format(m.min_std) }}</td>
+            <td style="padding:8px 6px;text-align:right">{{ "%.0f"|format(m.pct_eficiencia * 100) }}%</td>
+            <td style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums">{{ "%.2f"|format(m.min_requerido) }}</td>
+            <td style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums">{{ "%.3f"|format(m.costo_minuto) }}</td>
+            <td style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums">{{ "%.4f"|format(m.subtotal) }}</td>
+          </tr>
+          {% endfor %}
+          <tr style="border-top:1px solid #333;font-weight:600">
+            <td style="padding:8px 6px" colspan="5">Total MOD</td>
+            <td style="padding:8px 6px;text-align:right;color:#6fdf9a">{{ "%.4f"|format(mod_total) }}</td>
+          </tr>
+          </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;padding:30px;color:#555"><div style="font-size:32px;margin-bottom:8px">👷</div><p>Sin mano de obra definida.</p></div>
+        {% endif %}
+      </div>
     </div>
 
     <!-- Documentos -->
@@ -561,8 +643,8 @@
       {% endif %}
     </div>
 
-    <!-- Hoja de Costos -->
-    {% if prenda.tipo_cliente != 'BASE' %}
+    <!-- Hoja de Costos (estándar en la BASE; las variantes la heredan) -->
+    {% if True %}
     <script>const HC_PUEDE_EDITAR = {% if puede_editar %}true{% else %}false{% endif %};</script>
     <div class="card" id="card-hoja-costos" style="margin-top:16px">
       <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -623,9 +705,16 @@
             <td></td>
           </tr></tfoot>
         </table>
+        <!-- Desglose de costo (servicios + MOD + GIF) -->
+        <div style="padding:8px 16px;border-top:1px solid #2a2a2a;font-size:12px;color:#aaa">
+          <div style="display:flex;justify-content:space-between;padding:2px 0"><span>🧺 Servicios de terceros</span><span id="tot-serv-cell">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:2px 0"><span>👷 Mano de obra directa (MOD)</span><span id="tot-mod-cell">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:2px 0;color:#ccc"><span>Costo primo</span><span id="tot-primo-cell">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:2px 0"><span id="tot-gif-lbl">Gastos indirectos</span><span id="tot-gif-cell">—</span></div>
+        </div>
         <!-- Total general -->
         <div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:12px 16px;border-top:2px solid #2a2a2a;font-weight:700">
-          <span style="color:#888;font-size:12px">TOTAL GENERAL</span>
+          <span style="color:#888;font-size:12px">COSTO TOTAL ESTIMADO</span>
           <span style="font-size:18px;color:#4caf7d" id="total-general-cell">—</span>
         </div>
         <!-- Notas -->
@@ -926,6 +1015,15 @@ function toast(msg, tipo='success'){
   setTimeout(()=>t.classList.remove('show'),3000);
 }
 function getCsrf(){ const m=document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/); return m?m[1].split('.')[0]:''; }
+async function toggleHereda(hereda){
+  const fd=new FormData(); fd.append('hereda', hereda);
+  try{
+    const r=await fetch(`/catalogo/api/${PRENDA_ID}/hereda-ficha`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});
+    if(!r.ok) throw new Error();
+    toast(hereda?'Ahora hereda la ficha de la base':'Ahora usa ficha propia');
+    setTimeout(()=>location.reload(),900);
+  }catch(e){ toast('Error al cambiar','error'); }
+}
 async function apiFetch(url,opts={}){
   const h={'x-csrf-token':getCsrf(),...(opts.headers||{})};
   const res=await fetch(url,{...opts,headers:h});
@@ -934,7 +1032,7 @@ async function apiFetch(url,opts={}){
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-const TABS=['piezas','mp','avios','skus'];
+const TABS=['piezas','mp','avios','skus','servicios','mod'];
 function switchTab(tab){
   TABS.forEach(t=>{
     document.getElementById(`tab-${t}`).classList.toggle('active',t===tab);
@@ -1139,7 +1237,7 @@ async function agregarSku(){
     ti.value='';if(ci)ci.value='';toast(`SKU "${talla}" agregado`);setTimeout(()=>location.reload(),800);}
   catch(e){toast(e.message,'error');}
 }
-async function eliminarSku(id){if(!confirm('¿Eliminar este SKU?'))return;try{await apiFetch(`/catalogo/api/skus/${id}/eliminar`,{method:'POST'});document.getElementById(`sku-tr-${id}`)?.remove();document.getElementById(`sku-detail-${id}`)?.remove();toast('SKU eliminado');}catch(e){toast(e.message,'error');}}
+async function eliminarSku(id){showConfirm('¿Eliminar este SKU?', async () => {try{await apiFetch(`/catalogo/api/skus/${id}/eliminar`,{method:'POST'});document.getElementById(`sku-tr-${id}`)?.remove();document.getElementById(`sku-detail-${id}`)?.remove();toast('SKU eliminado');}catch(e){toast(e.message,'error');}}, 'Eliminar', 'danger');}
 
 // ── Fotos ─────────────────────────────────────────────────────────────────────
 async function subirFotoPrenda(input){if(!input.files[0])return;const fd=new FormData();fd.append('imagen',input.files[0]);try{const r=await fetch(`/catalogo/api/${PRENDA_ID}/imagen`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});if(!r.ok)throw new Error();toast('Foto actualizada');setTimeout(()=>location.reload(),1200);}catch(e){toast('Error al subir foto','error');}}
@@ -1196,7 +1294,7 @@ async function _seleccionarBase(baseId){
 function _renderPendientes(nb,piezas){const empty=document.getElementById('empty-piezas');if(empty)empty.style.display='none';let grid=document.getElementById('piezas-grid');if(!grid){grid=document.createElement('div');grid.className='piezas-grid';grid.id='piezas-grid';empty.parentNode.insertBefore(grid,empty);}grid.innerHTML=piezas.map((p,i)=>`<div class="pieza-card" id="pending-${i}" style="border-color:#2a3a4a"><div class="pieza-img">🧩</div><div class="pieza-body"><div style="margin-bottom:4px"><span style="font-size:10px;background:#0d2233;color:#4a9fff;border-radius:10px;padding:1px 8px;font-weight:600">De BASE</span></div><div class="pieza-nombre">${p.nombre}</div><div class="pieza-meta">Material: ${p.material_default}<br>Cantidad: ${p.cantidad_x_prenda} x prenda</div><div style="margin-top:8px"><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">Código único *</label><div style="display:flex;gap:4px;align-items:center"><input id="pcod-${i}" style="font-size:11px;font-family:monospace;background:#0f0f0f;border:1px solid #444;color:#e0e0e0;padding:4px 6px;border-radius:4px;flex:1;min-width:0" placeholder="Ej: CAM-ELEC-DEL" onkeydown="if(event.key==='Enter')guardarPendiente(${i})"><button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:11px" onclick="guardarPendiente(${i})">Guardar</button></div></div></div></div>`).join('');}
 async function guardarPendiente(i){const p=_pendingPiezas[i];const codigo=(document.getElementById(`pcod-${i}`)?.value||'').trim().toUpperCase();if(!codigo){toast('El código es obligatorio','error');return;}const fd=new FormData();fd.append('nombre',p.nombre);fd.append('codigo',codigo);fd.append('material_default',p.material_default);fd.append('cantidad_x_prenda',p.cantidad_x_prenda);fd.append('fusionado_default',p.fusionado_default);fd.append('orden',p.orden);try{const res=await fetch(`/catalogo/api/${PRENDA_ID}/piezas/agregar`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||'Error');}const data=await res.json();const card=document.getElementById(`pending-${i}`);card.id=`pieza-card-${data.id}`;card.style.borderColor='';card.innerHTML=`<div class="pieza-img">🧩</div><div class="pieza-body"><div style="font-size:10px;color:#555;font-family:monospace;margin-bottom:2px">${codigo}</div><div class="pieza-nombre">${p.nombre}</div><div class="pieza-meta">Material: ${p.material_default}<br>Cantidad: ${p.cantidad_x_prenda} x prenda</div></div>`;toast(`"${p.nombre}" guardada`);}catch(e){toast(e.message,'error');}}
 async function guardarCodigo(piezaId,nombre){const input=document.getElementById(`cod-${piezaId}`);const codigo=(input?.value||'').trim();if(!codigo){toast('Ingresa un código','error');return;}const fd=new FormData();fd.append('nombre',nombre);fd.append('codigo',codigo);try{const res=await fetch(`/catalogo/api/piezas/${piezaId}/editar`,{method:'POST',body:fd,headers:{'x-csrf-token':getCsrf()}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||'Error');}toast('Código guardado');setTimeout(()=>location.reload(),1000);}catch(e){toast(e.message,'error');}}
-async function eliminarPieza(id){if(!confirm('¿Eliminar esta pieza?'))return;try{await apiFetch(`/catalogo/api/piezas/${id}/eliminar`,{method:'POST'});document.getElementById(`pieza-card-${id}`)?.remove();toast('Pieza eliminada');}catch(e){toast(e.message,'error');}}
+async function eliminarPieza(id){showConfirm('¿Eliminar esta pieza?', async () => {try{await apiFetch(`/catalogo/api/piezas/${id}/eliminar`,{method:'POST'});document.getElementById(`pieza-card-${id}`)?.remove();toast('Pieza eliminada');}catch(e){toast(e.message,'error');}}, 'Eliminar', 'danger');}
 function _confirmar(mensaje){
   return new Promise(resolve=>{
     const m=document.getElementById('modal-confirm');
@@ -1313,8 +1411,8 @@ async function guardarMp(){
     toast(mpId?'Material actualizado':'Material agregado');setTimeout(()=>location.reload(),1000);
   }catch(e){toast(e.message,'error');}
 }
-async function eliminarMp(id){if(!confirm('¿Eliminar?'))return;try{await apiFetch(`/catalogo/api/mp/${id}/eliminar`,{method:'POST'});document.getElementById(`mp-row-${id}`)?.remove();toast('Eliminado');}catch(e){toast(e.message,'error');}}
-async function eliminarMpVariante(id){if(!confirm('¿Eliminar este material específico?'))return;try{await apiFetch(`/catalogo/api/${PRENDA_ID}/mp/${id}/eliminar-variante`,{method:'POST'});document.getElementById(`mp-propio-row-${id}`)?.remove();toast('Eliminado');}catch(e){toast(e.message,'error');}}
+async function eliminarMp(id){showConfirm('¿Eliminar este material?', async () => {try{await apiFetch(`/catalogo/api/mp/${id}/eliminar`,{method:'POST'});document.getElementById(`mp-row-${id}`)?.remove();toast('Eliminado');}catch(e){toast(e.message,'error');}}, 'Eliminar', 'danger');}
+async function eliminarMpVariante(id){showConfirm('¿Eliminar este material específico?', async () => {try{await apiFetch(`/catalogo/api/${PRENDA_ID}/mp/${id}/eliminar-variante`,{method:'POST'});document.getElementById(`mp-propio-row-${id}`)?.remove();toast('Eliminado');}catch(e){toast(e.message,'error');}}, 'Eliminar', 'danger');}
 
 // ── Modal Avío ────────────────────────────────────────────────────────────────
 function _resetModalAvio(){
@@ -1376,14 +1474,15 @@ async function guardarAvio(){
   }catch(e){toast(e.message,'error');}
 }
 async function eliminarAvio(id){
-  if(!confirm('¿Eliminar este avío?'))return;
-  try{
-    await apiFetch(`/catalogo/api/avios/${id}/eliminar`,{method:'POST'});
-    const row=document.getElementById(`avio-row-${id}`);
-    if(row) row.remove();
-    toast('Avío eliminado');
-    setTimeout(()=>location.reload(),800);
-  }catch(e){toast(e.message,'error');}
+  showConfirm('¿Eliminar este avío?', async () => {
+    try{
+      await apiFetch(`/catalogo/api/avios/${id}/eliminar`,{method:'POST'});
+      const row=document.getElementById(`avio-row-${id}`);
+      if(row) row.remove();
+      toast('Avío eliminado');
+      setTimeout(()=>location.reload(),800);
+    }catch(e){toast(e.message,'error');}
+  }, 'Eliminar', 'danger');
 }
 
 // ── Documentos ────────────────────────────────────────────────────────────────
@@ -1452,12 +1551,13 @@ async function copiarAOfs(){
 
 // ── Eliminar documento ────────────────────────────────────────────────────────
 async function eliminarDoc(id, btn){
-  if(!confirm('¿Eliminar este documento?')) return;
-  try {
-    await apiFetch(`/catalogo/api/documentos/${id}/eliminar`, { method: 'POST' });
-    btn.closest('tr')?.remove();
-    toast('Documento eliminado');
-  } catch(e){ toast(e.message,'error'); }
+  showConfirm('¿Eliminar este documento?', async () => {
+    try {
+      await apiFetch(`/catalogo/api/documentos/${id}/eliminar`, { method: 'POST' });
+      btn.closest('tr')?.remove();
+      toast('Documento eliminado');
+    } catch(e){ toast(e.message,'error'); }
+  }, 'Eliminar', 'danger');
 }
 
 // ── Vincular documento a OFs ──────────────────────────────────────────────────
@@ -1536,6 +1636,7 @@ async function cargarHistorialCurvas(){
 // ── Hoja de Costos ────────────────────────────────────────────────────────────
 ;(function(){
   let _lineas = [];
+  let _extra = { servicios: 0, mod: 0, gif_pct: 0.124, margen: 0.90 };  // costos no editables (servicios+MOD+GIF+margen)
 
   function _fmt(v){ return v != null ? parseFloat(v).toFixed(2) : '—'; }
 
@@ -1596,7 +1697,7 @@ async function cargarHistorialCurvas(){
     _recalc();
   }
 
-  function _hcTc(){ return parseFloat(document.getElementById('hoja-tc')?.value || 3.70) || 3.70; }
+  function _hcTc(){ return parseFloat(document.getElementById('hoja-tc')?.value || 3.45) || 3.45; }
 
   function _recalc(){
     const tc = _hcTc();
@@ -1611,13 +1712,24 @@ async function cargarHistorialCurvas(){
       if(cell) cell.textContent = s != null ? s.toFixed(2) : '—';
       if(s != null){ if(l.tipo === 'MP') tMP += s; else tAV += s; }
     });
-    const tG = tMP + tAV;
+    // Costo total = insumos + servicios + MOD → + GIF → / margen
+    const costoPrimo = tMP + tAV + (_extra.servicios || 0) + (_extra.mod || 0);
+    const gif = costoPrimo * (_extra.gif_pct || 0);
+    const costoProd = costoPrimo + gif;
+    const tG = (_extra.margen ? costoProd / _extra.margen : costoProd);
     const cMP = document.getElementById('total-mp-cell');
     const cAV = document.getElementById('total-avios-cell');
     const cG  = document.getElementById('total-general-cell');
     if(cMP) cMP.textContent = `S/. ${tMP.toFixed(2)}`;
     if(cAV) cAV.textContent = `S/. ${tAV.toFixed(2)}`;
     if(cG)  cG.textContent  = `S/. ${tG.toFixed(2)}`;
+    const set=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=`S/. ${v.toFixed(2)}`;};
+    set('tot-serv-cell', _extra.servicios || 0);
+    set('tot-mod-cell',  _extra.mod || 0);
+    set('tot-primo-cell', costoPrimo);
+    set('tot-gif-cell',  gif);
+    const gl=document.getElementById('tot-gif-lbl');
+    if(gl) gl.textContent = `Gastos indirectos (${((_extra.gif_pct||0)*100).toFixed(1)}%)`;
   }
 
   window._hcPrecio = function(idx, val){
@@ -1709,6 +1821,10 @@ async function cargarHistorialCurvas(){
       loading.style.display = 'none';
       content.style.display = 'block';
       if(data.aviso) toast(data.aviso, 'error');
+      _extra = { servicios: data.total_servicios || 0, mod: data.total_mod || 0,
+                 gif_pct: data.gif_pct != null ? data.gif_pct : 0.124,
+                 margen: data.margen_cv != null ? data.margen_cv : 0.90 };
+      const tcInput = document.getElementById('hoja-tc'); if(tcInput && data.tipo_cambio) tcInput.value = data.tipo_cambio;
       _badge('BORRADOR');
       _renderLineas(data.lineas);
       if(btnGuardar) btnGuardar.style.display = 'inline-block';
@@ -1920,8 +2036,15 @@ async function cargarHistorialCurvas(){
             <td colspan="6" style="padding:6px 4px;text-align:right;font-size:10px;color:#777">Total Avíos</td>
             <td style="padding:6px 4px;text-align:right;font-weight:700;color:#e0e0e0">${fmtSO(d.total_avios)}</td>
           </tr></tfoot></table>` : ''}
-        <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;padding-top:8px;border-top:2px solid #2a2a2a">
-          <span style="font-size:11px;color:#888">TOTAL GENERAL</span>
+        <div style="border-top:2px solid #2a2a2a;padding-top:8px;font-size:12px;color:#aaa">
+          ${d.total_insumos != null ? `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Insumos (MP + avíos)</span><span>${fmtSO(d.total_insumos)}</span></div>` : ''}
+          ${d.total_servicios ? `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Servicios de terceros</span><span>${fmtSO(d.total_servicios)}</span></div>` : ''}
+          ${d.total_mod ? `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Mano de obra directa</span><span>${fmtSO(d.total_mod)}</span></div>` : ''}
+          ${d.costo_primo != null ? `<div style="display:flex;justify-content:space-between;padding:2px 0;color:#ccc"><span>Costo primo</span><span>${fmtSO(d.costo_primo)}</span></div>` : ''}
+          ${d.gif != null ? `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Gastos indirectos (${d.gif_pct != null ? (d.gif_pct*100).toFixed(1) : ''}%)</span><span>${fmtSO(d.gif)}</span></div>` : ''}
+        </div>
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;padding-top:8px;border-top:1px solid #2a2a2a;margin-top:4px">
+          <span style="font-size:11px;color:#888">COSTO TOTAL ESTIMADO</span>
           <span style="font-size:18px;font-weight:700;color:#4caf7d">${fmtSO(d.total_general)}</span>
         </div>`;
     } catch(e) {

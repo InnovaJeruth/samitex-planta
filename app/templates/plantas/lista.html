@@ -49,7 +49,13 @@
             <div class="plant-meta">
                 <span>RUC: <strong>{{ p.planta.ruc }}</strong></span>
                 <span>Encargado: <strong>{{ p.planta.encargado }}</strong></span>
-                <span>{{ p.planta.direccion }}</span>
+                <span>{{ p.planta.direccion }}
+                    {% if p.planta.direccion %}
+                    <a href="https://www.google.com/maps/search/?api=1&query={{ p.planta.direccion|urlencode }}"
+                       target="_blank" rel="noopener" onclick="event.stopPropagation()"
+                       style="margin-left:6px;font-size:11px;color:#4a9fff;text-decoration:none;white-space:nowrap">📍 Cómo llegar</a>
+                    {% endif %}
+                </span>
             </div>
         </div>
         <div style="text-align:right;font-size:11px;color:#767676">
@@ -183,14 +189,15 @@ async function editarPlanta() {
 }
 
 async function desactivarPlanta(id) {
-    if (!confirm('¿Desactivar esta planta? No podrá asignarse a nuevas OFs.')) return;
-    const r = await fetch(`/plantas/api/${id}`, {
-        method: 'PATCH',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({activo: false}),
-    });
-    if (r.ok) location.reload();
-    else { const d = await r.json(); showToast(d.detail || 'Error'); }
+    showConfirm('¿Desactivar esta planta? No podrá asignarse a nuevas OFs.', async () => {
+        const r = await fetch(`/plantas/api/${id}`, {
+            method: 'PATCH',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({activo: false}),
+        });
+        if (r.ok) location.reload();
+        else { const d = await r.json(); showToast(d.detail || 'Error'); }
+    }, 'Desactivar', 'danger');
 }
 
 async function activarPlanta(id) {

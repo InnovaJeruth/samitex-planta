@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Planeamiento — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  #main-content { max-width:none; margin:0; padding:0; }
+  .pl-wrap { width:100%; margin:0; padding:20px 28px; color:#ddd; box-sizing:border-box; }
+  .pl-wrap h1 { font-size:20px; font-weight:700; color:#fff; margin:0 0 4px; }
+  .pl-tabs { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 18px; }
+  .pl-tab { font-size:13px; padding:6px 14px; border-radius:6px; border:1px solid #333; background:#181818; color:#aaa; cursor:pointer; }
+  .pl-tab:hover { background:#222; } .pl-tab.active { background:#eee; color:#111; border-color:#eee; font-weight:600; }
+  .pl-card { background:#141414; border:1px solid #262626; border-radius:10px; padding:14px 16px; margin-bottom:18px; }
+  .pl-card h2 { font-size:14px; font-weight:600; color:#fff; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+  .kpi { background:#161616; border-radius:8px; padding:12px 14px; }
+  .kpi .l { font-size:12px; color:#888; } .kpi .v { font-size:24px; font-weight:600; }
+  table.pq { width:100%; border-collapse:collapse; font-size:13px; }
+  table.pq th { text-align:left; padding:7px 8px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #262626; }
+  table.pq td { padding:7px 8px; border-bottom:1px solid #1c1c1c; }
+  .btn { font-size:12px; border:1px solid #444; background:#222; color:#ddd; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .btn:hover { background:#2c2c2c; } .btn.primary { background:#164; border-color:#164; color:#fff; }
+  .oflink { color:#7cc4ff; text-decoration:none; } .oflink:hover { text-decoration:underline; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:20px; }
+  .b-tela { background:#3a1500; color:#f0a060; } .b-reh { background:#2d2400; color:#e6c14a; } .b-ok { background:#0f2a17; color:#6fdf9a; }
+  .dot { width:11px; height:11px; border-radius:3px; border:1px solid #2a2a2a; display:inline-block; vertical-align:-1px; }
+  .empty { color:#777; font-size:13px; }
+  .pl-frame { width:100%; min-height:420px; border:1px solid #262626; border-radius:10px; background:#0d0d0d; display:block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pl-wrap">
+  <h1>Planeamiento</h1>
+  <div style="color:#999;font-size:13px">Órdenes, plantas, tela y estado — en un solo lugar</div>
+
+  <div id="p-tablero" style="margin-top:16px">
+    <div class="kpis" id="kpis"></div>
+    <div class="pl-card">
+      <h2>Órdenes activas</h2>
+      <div id="ofs"><span class="empty">Cargando…</span></div>
+    </div>
+  </div>
+
+  <div id="p-tela" style="display:none">
+    <div class="pl-card">
+      <h2><i class="ti ti-alert-triangle"></i> Requerimientos de tela <span id="tela-count" class="badge b-tela"></span></h2>
+      <div id="tela"><span class="empty">Cargando…</span></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PUEDE_PL = {{ 'true' if puede_planeamiento else 'false' }};
+
+function csrf(){ try { return getCsrfToken(); } catch(e){ return ''; } }
+async function api(url, opts={}){
+  opts.headers = Object.assign({'Content-Type':'application/json','x-csrf-token':csrf()}, opts.headers||{});
+  const r = await fetch(url, opts);
+  if(!r.ok){ const d = await r.json().catch(()=>({})); throw new Error(d.detail||'Error'); }
+  return r.json();
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function colorDot(c){ const bg=(c==='BLANCO')?'#e8e8e8':(c==='AMARILLO'?'#e0a93b':'#556'); return `<span class="dot" style="background:${bg}"></span> ${c||'—'}`; }
+
+function tab(name){
+  ['tablero','tela'].forEach(n=>{
+    document.getElementById('p-'+n).style.display = (n===name)?'block':'none';
+  });
+  document.querySelectorAll('.pl-tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+}
+
+async function load(){
+  const d = await api('/paquetes/api/planeamiento/data');
+  renderKpis(d.kpis||{}); renderOfs(d.ofs||[]); renderTela(d.tela||[]);
+}
+function renderKpis(k){
+  const box=document.getElementById('kpis');
+  const cards=[
+    ['Órdenes activas', k.ordenes_activas||0, ''],
+    ['Plantas', k.plantas||0, ''],
+    ['Piezas esperando tela', k.espera_tela||0, (k.espera_tela>0?'#f0a060':'')],
+    ['SOLPED pendientes', k.solped_pendientes||0, (k.solped_pendientes>0?'#e6a817':'')],
+  ];
+  box.innerHTML = cards.map(([l,v,c])=>`<div class="kpi"><div class="l">${l}</div><div class="v"${c?` style="color:${c}"`:''}>${v}</div></div>`).join('');
+}
+function renderOfs(rows){
+  const box=document.getElementById('ofs');
+  if(!rows.length){ box.innerHTML='<span class="empty">Sin órdenes activas.</span>'; return; }
+  let h='<table class="pq"><thead><tr><th>OF</th><th>Prenda</th><th>Proy.</th><th>Corte real</th><th>Desvío</th><th>Alertas</th></tr></thead><tbody>';
+  for(const o of rows){
+    let al='';
+    if(o.espera_tela>0) al+=`<span class="badge b-tela">${o.espera_tela} espera tela</span> `;
+    if(o.rehacer>0) al+=`<span class="badge b-reh">${o.rehacer} rehacer</span> `;
+    if(!al) al='<span class="badge b-ok">ok</span>';
+    const dv = (o.desvio>0?'+':'')+o.desvio;
+    h+=`<tr><td><a class="oflink" href="/paquetes/${o.id}">${esc(o.numero_of)}</a></td>
+      <td>${esc(o.prenda||'')}</td><td style="color:#888">${o.proyectado}</td><td>${o.real}</td>
+      <td style="color:${o.desvio<0?'#f88':(o.desvio>0?'#e6a817':'#888')}">${dv}</td><td>${al}</td></tr>`;
+  }
+  box.innerHTML=h+'</tbody></table>';
+}
+function renderTela(rows){
+  const box=document.getElementById('tela'), cnt=document.getElementById('tela-count');
+  const tot=rows.reduce((a,b)=>a+b.cantidad,0);
+  cnt.textContent = rows.length ? `${rows.length} ítems · ${tot} u` : '';
+  if(!rows.length){ box.innerHTML='<span class="empty">Sin piezas esperando tela. 🎉</span>'; return; }
+  let h='';
+  if(PUEDE_PL){
+    h+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <input class="in" id="solped-in" placeholder="N° SOLPED (SAP)" style="background:#161616;border:1px solid #3a3a3a;color:#eee;border-radius:6px;padding:5px 8px;width:180px">
+      <button class="btn" onclick="guardarSolped()">Guardar SOLPED en seleccionadas</button>
+      <span style="font-size:11px;color:#777">marca las filas y pon el N° de SOLPED</span></div>`;
+  }
+  h+='<table class="pq"><thead><tr><th></th><th>OF</th><th>Pieza</th><th>Talla</th><th>Color</th><th>Defecto</th><th>Cant</th><th>SOLPED</th><th>Desde</th><th></th></tr></thead><tbody>';
+  for(const r of rows){
+    const recibir = r.solped
+      ? `<button class="btn primary" onclick="telaRecibida(${r.rechazo_id})">Tela recibida</button>`
+      : `<button class="btn" disabled title="Registra la SOLPED primero" style="opacity:.5;cursor:not-allowed">Falta SOLPED</button>`;
+    h+=`<tr>
+      <td><input type="checkbox" class="rsel" value="${r.rechazo_id}"></td>
+      <td><a class="oflink" href="/paquetes/${r.of_id}">${esc(r.numero_of)}</a></td>
+      <td>${esc(r.pieza||'')}</td><td>${esc(r.talla||'')}</td><td>${colorDot(r.color)}</td>
+      <td><b style="color:#f0a060">${esc(r.codigo||'')}</b> ${esc(r.descripcion||'')}</td>
+      <td>${r.cantidad} u</td>
+      <td>${r.solped?('<b>'+esc(r.solped)+'</b>'):'<span style="color:#777">—</span>'}</td>
+      <td style="color:#888">${esc(r.desde||'')}</td>
+      <td>${PUEDE_PL?recibir:''}</td></tr>`;
+  }
+  box.innerHTML=h+'</tbody></table>';
+}
+async function guardarSolped(){
+  const solped=(document.getElementById('solped-in').value||'').trim();
+  const ids=[...document.querySelectorAll('.rsel:checked')].map(c=>parseInt(c.value));
+  if(!solped){ toast('Ingresa el N° de SOLPED','error'); return; }
+  if(!ids.length){ toast('Selecciona al menos una fila','error'); return; }
+  try{ const r=await api('/paquetes/api/planeamiento/solped',{method:'POST',body:JSON.stringify({rechazo_ids:ids,solped})});
+    toast(`${r.actualizados} actualizadas`,'success'); load();
+  }catch(e){ toast(e.message,'error'); }
+}
+async function telaRecibida(rid){
+  showConfirm('¿Confirmar que Almacén entregó la tela? Vuelve a Corte para rehacer.', async ()=>{
+    try{ await api(`/paquetes/api/rechazo/${rid}/tela-recibida`,{method:'POST',body:'{}'}); toast('Tela recibida','success'); load(); }
+    catch(e){ toast(e.message,'error'); }
+  }, 'Confirmar');
+}
+load();
+if(new URLSearchParams(location.search).get('tab')==='tela') tab('tela');
+</script>
+{% endblock %}

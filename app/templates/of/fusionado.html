@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Fusionado — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .fu-wrap { max-width:1100px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .fu-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .fu-head h1 { font-size:20px; font-weight:700; color:#fff; margin:0; }
+  .in { background:#161616; border:1px solid #3a3a3a; color:#eee; border-radius:6px; padding:5px 8px; }
+  .grp { border:1px solid #262626; border-radius:10px; margin-bottom:14px; overflow:hidden; }
+  .grp-top { display:flex; align-items:center; gap:10px; padding:10px 12px; background:#161616; }
+  .grp-top b { color:#fff; } .oflink { color:#7cc4ff; text-decoration:none; } .oflink:hover { text-decoration:underline; }
+  .pz-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:10px 12px; }
+  .pz-row { display:flex; align-items:center; gap:8px; justify-content:space-between; border:1px solid #242424; border-radius:8px; padding:6px 10px; font-size:13px; }
+  .btn { font-size:12px; border:1px solid #444; background:#222; color:#ddd; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .btn:hover { background:#2c2c2c; } .btn.primary { background:#164; border-color:#164; color:#fff; }
+  .st { font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px; }
+  .st-env { background:#2a1a3a; color:#c79cff; } .st-pro { background:#12233a; color:#7cc4ff; }
+  .dot { width:11px; height:11px; border-radius:3px; border:1px solid #2a2a2a; display:inline-block; vertical-align:-1px; }
+  .muted { color:#888; font-size:11px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fu-wrap">
+  <div class="fu-head">
+    <h1>Fusionado</h1>
+    <span style="color:#999;font-size:13px">Bultos enviados a fusionar · registra inicio y fin</span>
+    <span style="margin-left:auto"></span>
+    <label style="font-size:12px;color:#999">OF</label>
+    <select class="in" id="of-filtro" onchange="load()"><option value="">Todas</option></select>
+  </div>
+  <div id="cont"><span style="color:#777">Cargando…</span></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PUEDE_FUS = {{ 'true' if puede_fusionado else 'false' }};
+let BULTOS = [], REFUS = [], OFS = [];
+
+function csrf(){ try { return getCsrfToken(); } catch(e){ return ''; } }
+async function api(url, opts={}){
+  opts.headers = Object.assign({'Content-Type':'application/json','x-csrf-token':csrf()}, opts.headers||{});
+  const r = await fetch(url, opts);
+  if(!r.ok){ const d = await r.json().catch(()=>({})); throw new Error(d.detail||'Error'); }
+  return r.json();
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function colorDot(c){ const bg=(c==='BLANCO')?'#e8e8e8':(c==='AMARILLO'?'#e0a93b':'#556'); return `<span class="dot" style="background:${bg}"></span> ${c||'—'}`; }
+
+async function load(){
+  const sel = document.getElementById('of-filtro');
+  const urlOf = new URLSearchParams(location.search).get('of');
+  const of = sel.value || (sel.dataset.done ? '' : (urlOf || ''));
+  const d = await api(`/paquetes/api/fusionado/data${of?`?of_id=${of}`:''}`);
+  BULTOS = d.bultos; REFUS = d.refusionado||[]; OFS = d.ofs||[];
+  syncFiltro(of); render();
+}
+function syncFiltro(preset){
+  const sel=document.getElementById('of-filtro'); if(sel.dataset.done) return;
+  sel.innerHTML='<option value="">Todas</option>'+OFS.map(o=>`<option value="${o.id}">${esc(o.numero_of)}</option>`).join('');
+  if(preset) sel.value = preset;
+  sel.dataset.done='1';
+}
+function pzRow(p){
+  const est = p.fus_en_proceso ? '<span class="st st-pro">En proceso</span>' : '<span class="st st-env">Enviado</span>';
+  const tiempo = p.fus_inicio ? `<span class="muted">inicio ${esc(p.fus_inicio)}</span>` : '';
+  let btn='';
+  if(PUEDE_FUS){
+    if(!p.fus_en_proceso) btn=`<button class="btn" onclick="iniciar(${p.id})">Iniciar</button>`;
+    btn+=` <button class="btn primary" onclick="terminar(${p.id})">Terminar</button>`;
+  }
+  return `<div class="pz-row"><span>${esc(p.pieza||'')} <span class="muted">${p.numero_desde}–${p.numero_hasta}</span></span>
+    <span style="display:flex;gap:8px;align-items:center">${tiempo}${est}${btn}</span></div>`;
+}
+function refusRow(r){
+  const est = r.en_proceso ? '<span class="st st-pro">Re-fusionando</span>' : '<span class="st st-env">Por re-fusionar</span>';
+  const tiempo = r.desde ? `<span class="muted">inicio ${esc(r.desde)}</span>` : '';
+  let btn='';
+  if(PUEDE_FUS){
+    if(!r.en_proceso) btn=`<button class="btn" onclick="refusIniciar(${r.id})">Iniciar</button>`;
+    else btn=`<button class="btn primary" onclick="refusTerminar(${r.id})">Terminar → a Calidad</button>`;
+  }
+  return `<div class="pz-row"><span>${esc(r.pieza||'')} <span class="muted">${esc(r.numeracion||'')}</span>
+     · <b style="color:#f0a060">${esc(r.codigo||'')}</b> ${r.cantidad}u</span>
+    <span style="display:flex;gap:8px;align-items:center">${tiempo}${est}${btn}</span></div>`;
+}
+function render(){
+  const box=document.getElementById('cont');
+  if(!BULTOS.length && !REFUS.length){ box.innerHTML='<span style="color:#777">No hay bultos en fusionado. 🎉</span>'; return; }
+  let h='';
+  // 1) Fusionado inicial (bultos habilitados enviados a fusionar)
+  const g={};
+  for(const p of BULTOS){ const k=p.of_id+'|'+p.sku_id; (g[k]=g[k]||[]).push(p); }
+  for(const k of Object.keys(g)){
+    const rows=g[k], t0=rows[0];
+    h+=`<div class="grp"><div class="grp-top">
+      <a class="oflink" href="/paquetes/${t0.of_id}">${esc(t0.numero_of)}</a>
+      <b>${esc(t0.talla)}</b> ${colorDot(t0.color)}
+      <span class="muted">${rows.length} piezas</span>
+      <span style="margin-left:auto"></span>
+      ${PUEDE_FUS?`<button class="btn" onclick="lote(${t0.of_id},${t0.sku_id},'iniciar')">Iniciar todo</button>
+      <button class="btn primary" onclick="lote(${t0.of_id},${t0.sku_id},'terminar')">Terminar todo</button>`:''}
+    </div><div class="pz-grid">${rows.map(pzRow).join('')}</div></div>`;
+  }
+  // 2) Re-fusionado (reproceso de Calidad)
+  if(REFUS.length){
+    const gr={};
+    for(const r of REFUS){ const k=r.of_id+'|'+r.talla; (gr[k]=gr[k]||[]).push(r); }
+    let rh='';
+    for(const k of Object.keys(gr)){
+      const rows=gr[k], t0=rows[0];
+      rh+=`<div class="grp" style="border-color:#3a2a12"><div class="grp-top" style="background:#211a10">
+        <a class="oflink" href="/paquetes/${t0.of_id}">${esc(t0.numero_of)}</a>
+        <b>${esc(t0.talla)}</b> ${colorDot(t0.color)}
+        <span class="muted">${rows.length} piezas por re-fusionar</span>
+      </div><div class="pz-grid">${rows.map(refusRow).join('')}</div></div>`;
+    }
+    h+=`<h2 style="font-size:14px;color:#f0a060;margin:18px 0 8px">Re-fusionado (reprocesos de Calidad)</h2>${rh}`;
+  }
+  box.innerHTML=h;
+}
+async function iniciar(id){
+  try{ await api(`/paquetes/api/paquete/${id}/fusionado/iniciar`,{method:'POST',body:'{}'}); toast('Iniciado','success'); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+async function terminar(id){
+  try{ await api(`/paquetes/api/paquete/${id}/fusionado/terminar`,{method:'POST',body:'{}'}); toast('Terminado → a Calidad','success'); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+async function lote(of, sku, accion){
+  try{ const r=await api(`/paquetes/api/${of}/talla/${sku}/fusionado`,{method:'POST',body:JSON.stringify({accion})});
+    toast(`${r.movidos} bultos`,'success'); load();
+  }catch(e){ toast(e.message,'error'); }
+}
+async function refusIniciar(id){
+  try{ await api(`/paquetes/api/rechazo/${id}/refusionado/iniciar`,{method:'POST',body:'{}'}); toast('Re-fusionado iniciado','success'); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+async function refusTerminar(id){
+  try{ await api(`/paquetes/api/rechazo/${id}/refusionado/terminar`,{method:'POST',body:'{}'}); toast('Terminado → a Calidad','success'); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+load();
+</script>
+{% endblock %}

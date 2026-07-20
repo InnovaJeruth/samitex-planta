@@ -14,7 +14,7 @@ from app.core.templates import templates
 
 router = APIRouter()
 
-ROLES_PLANTAS = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "GERENCIA"}
+ROLES_PLANTAS = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "JEFE_PLANTA", "GERENCIA"}
 
 
 def _check_rol(user: Usuario):

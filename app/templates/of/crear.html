@@ -270,7 +270,7 @@
     <div class="of-step" id="step-1"><span class="node">1</span><span class="lbl">N° OF</span></div>
     <div class="of-step" id="step-2"><span class="node">2</span><span class="lbl">Cliente</span></div>
     <div class="of-step" id="step-3"><span class="node">3</span><span class="lbl">Prenda</span></div>
-    <div class="of-step" id="step-4"><span class="node">4</span><span class="lbl">Juegos</span></div>
+    <div class="of-step" id="step-4"><span class="node">4</span><span class="lbl">Prendas</span></div>
   </div>
   <!-- Elementos ocultos para compat JS -->
   <div id="req-dots" style="display:none"></div>
@@ -337,13 +337,13 @@
       <span class="fld-hint">Filtrado según el tipo de cliente seleccionado</span>
     </div>
 
-    <!-- 5 · Total Juegos -->
+    <!-- 5 · Total Prendas -->
     <div class="of-fld">
-      <label>Total Juegos <span class="req">*</span></label>
+      <label>Total Prendas <span class="req">*</span></label>
       <div class="of-ctrl has-lead">
         <span class="lead"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
         <input id="total_juegos" type="number" min="1" placeholder="170"
-               oninput="actualizarProgreso()" aria-label="Total de juegos">
+               oninput="actualizarProgreso()" aria-label="Total de prendas">
       </div>
     </div>
 
@@ -591,7 +591,7 @@ async function crearOF(){
   const prenda_catalogo_id = document.getElementById('prenda_catalogo_id').value;
   const total_juegos       = parseInt(document.getElementById('total_juegos').value);
   if(!numero_of || !cliente || !prenda_catalogo_id || !total_juegos){
-    mostrarToast('Completa los campos obligatorios (N° OF, Cliente, Prenda, Juegos)', 'error');
+    mostrarToast('Completa los campos obligatorios (N° OF, Cliente, Prenda, Total Prendas)', 'error');
     return;
   }
   const btn = document.getElementById('btn-guardar');
