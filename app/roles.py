@@ -55,6 +55,7 @@ ROLES_ACCESO_CURVAS = ROLES_EDITOR_CURVAS | ROLES_LECTURA_CURVAS
 # ── Hoja de costos ──────────────────────────────────────────────────────────
 ROLES_EDITOR_HDC = {"ADMIN", "UDP", "INGENIERIA"}
 ROLES_APROBAR_HDC = {"ADMIN", "INGENIERIA"}
+ROLES_TC = {"ADMIN", "LOGISTICA"}   # quién fija el tipo de cambio del día
 
 # ── Plantas ─────────────────────────────────────────────────────────────────
 ROLES_PLANTAS = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "JEFE_PLANTA", "GERENCIA"}
