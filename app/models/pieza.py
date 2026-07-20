@@ -31,7 +31,7 @@ class OFPieza(Base):
     __tablename__ = "of_piezas"
 
     id               = Column(Integer, primary_key=True, index=True)
-    of_id            = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=False)
+    of_id            = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=False, index=True)
     codigo_pieza     = Column(String(50),  nullable=True)    # código del catálogo, para trazabilidad
     nombre           = Column(String(100), nullable=False)
     codigo_sap       = Column(String(50),  nullable=True)    # obligatorio antes de activar OF

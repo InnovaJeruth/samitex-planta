@@ -21,7 +21,7 @@ class OFFaseEstado(Base):
     __tablename__ = "of_fases_estado"
     id               = Column(Integer, primary_key=True, index=True)
     of_id            = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=False)
-    pieza_id         = Column(Integer, ForeignKey("of_piezas.id"),           nullable=False)
+    pieza_id         = Column(Integer, ForeignKey("of_piezas.id"),           nullable=False, index=True)
     fase_id          = Column(String(5), ForeignKey("fases_catalogo.fase_id"), nullable=False)
     sku_id           = Column(Integer, ForeignKey("prenda_skus.id"), nullable=True)  # talla (F4–F7 si corte_por_talla); NULL = por pieza
     talla            = Column(String(20), nullable=True)   # desnormalizado para lectura
@@ -87,7 +87,7 @@ class AvanceRegistro(Base):
     __tablename__ = "avance_registros"
     id         = Column(Integer,   primary_key=True, index=True)
     of_id      = Column(Integer,   ForeignKey("ordenes_fabricacion.id"), nullable=False)
-    pieza_id   = Column(Integer,   ForeignKey("of_piezas.id"),           nullable=False)
+    pieza_id   = Column(Integer,   ForeignKey("of_piezas.id"),           nullable=False, index=True)
     fase_id    = Column(String(5), ForeignKey("fases_catalogo.fase_id"), nullable=False)
     sku_id     = Column(Integer,   ForeignKey("prenda_skus.id"), nullable=True)  # talla (por talla)
     talla      = Column(String(20), nullable=True)   # desnormalizado para el historial

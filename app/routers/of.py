@@ -108,6 +108,14 @@ def _rol_str(usuario) -> str:
     return usuario.rol.value if hasattr(usuario.rol, "value") else str(usuario.rol)
 
 
+def get_of_or_404(of_id: int, db: Session) -> OrdenFabricacion:
+    """Trae la OF por id o lanza 404. Centraliza el patrón repetido en el router."""
+    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
+    if not of:
+        raise HTTPException(404, "OF no encontrada")
+    return of
+
+
 @router.get("/plan-corte", response_class=HTMLResponse)
 def plan_corte(
     request: Request,
@@ -538,9 +546,7 @@ def get_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     return {
         "id": of.id,
         "numero_of": of.numero_of,
@@ -577,9 +583,7 @@ def agregar_pieza(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     pieza = OFPieza(
         of_id=of_id, nombre=nombre, codigo_sap=codigo_sap,
@@ -599,9 +603,7 @@ def cargar_plantilla(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.ACTIVA:
         raise HTTPException(400, "Solo se pueden generar piezas cuando la OF está ACTIVA")
     if of.piezas:
@@ -646,9 +648,7 @@ def diagnostico_piezas(
     current_user: Usuario = Depends(get_current_user),
 ):
     """Devuelve estado de piezas y catálogo sin tocar of_fases_estado."""
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     n_piezas_of = db.query(OFPieza).filter_by(of_id=of_id).count()
 
@@ -761,9 +761,7 @@ async def subir_documento(
         )
     await archivo.seek(0)   # rebobinar para que shutil pueda leerlo
 
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
     tipo_cliente = of.tipo_cliente.value if of.tipo_cliente else "INSTITUCION"
@@ -880,9 +878,7 @@ def ficha_disponible_catalogo(
 ):
     """Devuelve la ficha técnica del catálogo si la OF tiene prenda vinculada y está en BORRADOR."""
     from app.models.catalogo import PrendaDocumento
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.BORRADOR:
         return {"disponible": False, "motivo": "La OF no está en BORRADOR"}
     if not of.prenda_catalogo_id:
@@ -916,9 +912,7 @@ def usar_ficha_catalogo(
     import shutil as _shutil
     from app.models.catalogo import PrendaDocumento
 
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.BORRADOR:
         raise HTTPException(400, "Solo se puede usar esta opción en OFs en BORRADOR")
 
@@ -985,9 +979,7 @@ def actualizar_codigos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
     tipo_cliente = of.tipo_cliente.value if of.tipo_cliente else "INSTITUCION"
@@ -1042,9 +1034,7 @@ def get_gates(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     gates = calcular_gates(of, db)
     ok, faltantes = puede_activar(of, db)
     return {
@@ -1061,9 +1051,7 @@ def activar_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     if len(of.piezas) == 0:
         raise HTTPException(400, "La OF no tiene piezas definidas")
@@ -1095,9 +1083,7 @@ def planificar_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     # Guardrail fecha pasada
     if body.fecha_inicio_plan and body.fecha_inicio_plan != "":
@@ -1187,9 +1173,7 @@ def editar_piezas_page(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.BORRADOR:
         raise HTTPException(400, "Solo se pueden editar piezas de OFs en BORRADOR")
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
@@ -1221,9 +1205,7 @@ def guardar_edicion_piezas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.BORRADOR:
         raise HTTPException(400, "Solo se pueden editar piezas de OFs en BORRADOR")
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
@@ -1260,9 +1242,7 @@ def api_get_tallas_dist(
     current_user: Usuario = Depends(get_current_user),
 ):
     """Retorna distribucion actual de tallas para la OF y los SKUs disponibles."""
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     # SKUs disponibles de la variante vinculada
     skus_disponibles = []
@@ -1298,9 +1278,7 @@ def api_guardar_tallas_dist(
     current_user: Usuario = Depends(get_current_user),
 ):
     """Guarda la distribución de tallas para la OF (reemplaza la anterior)."""
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     # Validar SKUs si la OF tiene prenda asociada
     if of.prenda_catalogo_id:
@@ -1365,9 +1343,7 @@ def api_marcar_enviada(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     return of_service.marcar_enviada(of, current_user, db)
 
 
@@ -1453,9 +1429,7 @@ def api_actualizar_fecha(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     return of_service.actualizar_fecha_recepcion(
         of, body.fecha_recepcion_est, body.motivo, current_user, db
     )
@@ -1469,9 +1443,7 @@ def api_fases_pendientes(
 ):
     """Fases con al menos una pieza sin completar en esta OF."""
     from app.constants import ORDEN_FASES, NOMBRES_FASE
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     estados = db.query(OFFaseEstado).filter_by(of_id=of_id).all()
 

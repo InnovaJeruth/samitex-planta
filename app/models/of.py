@@ -116,7 +116,7 @@ class DocumentoOF(Base):
     __tablename__ = "documentos_of"
 
     id             = Column(Integer, primary_key=True, index=True)
-    of_id          = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=False)
+    of_id          = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=False, index=True)
     tipo           = Column(String(50), nullable=False)
     nombre_archivo = Column(String(255), nullable=False)
     ruta_archivo   = Column(String(500), nullable=False)
