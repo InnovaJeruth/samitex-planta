@@ -447,7 +447,10 @@
             <a href="/paquetes/gerencia" {% if request.url.path.startswith('/paquetes/gerencia') %}class="active"{% endif %}>Aprobaciones</a>
             {% endif %}
             {% if rol in ['ADMIN','UDP','COMERCIAL_MARCA'] %}
-            <a href="/catalogo/" {% if request.url.path.startswith('/catalogo') %}class="active"{% endif %}>Catálogo</a>
+            <a href="/catalogo/" {% if request.url.path.startswith('/catalogo') and 'tipo-cambio' not in request.url.path %}class="active"{% endif %}>Catálogo</a>
+            {% endif %}
+            {% if rol in ['ADMIN','LOGISTICA'] %}
+            <a href="/catalogo/tipo-cambio" {% if 'tipo-cambio' in request.url.path %}class="active"{% endif %}>Tipo de cambio</a>
             {% endif %}
             {% if rol == 'ADMIN' %}
             <a href="/admin/" {% if request.url.path.startswith('/admin') %}class="active"{% endif %}>Admin</a>

@@ -171,6 +171,22 @@ def catalogo_nueva_page(
     })
 
 
+@router.get("/tipo-cambio", response_class=HTMLResponse)
+def catalogo_tipo_cambio_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Apartado de Logística: ver/editar el tipo de cambio USD→S/ del día.
+    Debe declararse ANTES de /{prenda_id} para no chocar con esa ruta."""
+    from app.roles import ROLES_TC
+    return templates.TemplateResponse("catalogo/tipo_cambio.html", {
+        "request":      request,
+        "current_user": current_user,
+        "puede_editar": _rol(current_user) in ROLES_TC,
+    })
+
+
 @router.get("/{prenda_id}", response_class=HTMLResponse)
 def catalogo_detalle(
     prenda_id: int,
