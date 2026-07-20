@@ -623,6 +623,9 @@ def listar_cola_calidad(db: Session, filtro: str = "pendientes",
     limita a esa OF; si no, cola transversal de todas las OFs activas."""
     estados = COLA_FILTROS.get(filtro, COLA_FILTROS["pendientes"])
     q = (db.query(OFPaquete)
+         .options(selectinload(OFPaquete.sku).selectinload(PrendaSku.prenda),
+                  selectinload(OFPaquete.pieza),
+                  selectinload(OFPaquete.rechazos).selectinload(OFPaqueteRechazo.motivo))
          .join(OrdenFabricacion, OrdenFabricacion.id == OFPaquete.of_id)
          .filter(OrdenFabricacion.estado == EstadoOF.ACTIVA, OFPaquete.estado.in_(estados)))
     if of_id:
@@ -876,10 +879,12 @@ def _merma_material_paquete(paquete_id: int, db: Session) -> int:
     return int(total or 0)
 
 
-def resumen_paquete(p: OFPaquete, db: Session) -> dict:
-    """Aprobadas / en reproceso / merma-material / entregable de un paquete."""
-    abiertos = _rechazos_abiertos(p.id, db)
-    merma = _merma_material_paquete(p.id, db)
+def resumen_paquete(p: OFPaquete, db: Session = None) -> dict:
+    """Aprobadas / en reproceso / merma-material / entregable de un paquete.
+    Calcula en memoria desde p.rechazos (sin consultas por bulto → evita N+1).
+    `db` se conserva por compatibilidad de firma; ya no se usa."""
+    abiertos = sum(r.cantidad for r in p.rechazos if r.estado in RECHAZOS_ABIERTOS)
+    merma = sum(r.cantidad for r in p.rechazos if r.rehacer)
     return {
         "en_reproceso": abiertos,
         "merma": merma,                     # desperdicio de material (informativo)
