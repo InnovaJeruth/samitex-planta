@@ -20,7 +20,7 @@ from app.services import trazo_service
 
 router = APIRouter()
 
-ROLES_TRAZO = {"ADMIN", "PLANEADOR", "SUPERVISOR_CORTE"}
+from app.roles import ROLES_TRAZO
 
 
 def _check(user: Usuario):

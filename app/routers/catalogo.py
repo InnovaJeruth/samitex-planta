@@ -35,7 +35,7 @@ from app.models.pieza import PlantillaPieza
 
 router = APIRouter()
 
-ROLES_EDITOR = {"ADMIN", "UDP", "COMERCIAL_MARCA"}
+from app.roles import ROLES_EDITOR_CATALOGO as ROLES_EDITOR
 
 UPLOAD_PRENDA = "static/uploads/prendas"
 UPLOAD_PIEZA  = "static/uploads/piezas"

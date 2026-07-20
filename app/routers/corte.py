@@ -18,11 +18,7 @@ from app.core.websocket_manager import ws_manager
 
 router = APIRouter()
 
-ROLES_CORTE = {"ADMIN", "PLANEADOR", "SUPERVISOR_CORTE"}
-ROLES_DOCS = {
-    "UDP", "COMERCIAL", "COMERCIAL_MARCA", "PLANEAMIENTO_MARCA",
-    "INGENIERIA", "LOGISTICA", "CALIDAD",
-}
+from app.roles import ROLES_CORTE, ROLES_DOCS
 
 # Fases visibles por rol en la grilla de seguimiento.
 # Un rol AUSENTE de este mapa ve TODAS las fases (incl. SUPERVISOR_CORTE,

@@ -21,9 +21,9 @@ from app.config import settings
 
 router = APIRouter()
 
-ROLES_EDITOR    = {"ADMIN", "UDP", "GERENCIA", "GERENTE_PLANTA"}
-ROLES_LECTURA   = {"SUPERVISOR_CORTE", "PLANEADOR"}
-ROLES_ACCESO    = ROLES_EDITOR | ROLES_LECTURA
+from app.roles import (ROLES_EDITOR_CURVAS as ROLES_EDITOR,
+                       ROLES_LECTURA_CURVAS as ROLES_LECTURA,
+                       ROLES_ACCESO_CURVAS as ROLES_ACCESO)
 
 _EXTENSIONES_OK = {".pdf", ".xlsx", ".xls", ".docx", ".doc", ".png", ".jpg", ".jpeg"}
 

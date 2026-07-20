@@ -98,10 +98,7 @@ def lista_ofs(
 
 
 # ── Plan Corte (Gantt) ────────────────────────────────────────
-ROLES_PLAN_CORTE = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "JEFE_PLANTA", "GERENCIA"}
-
-# Roles que pueden crear OFs de prueba (activan sin gates documentales)
-ROLES_PRUEBA = {"ADMIN", "PLANEADOR"}
+from app.roles import ROLES_PLAN_CORTE, ROLES_PRUEBA, ROLES_IMPORT_OF
 
 
 def _rol_str(usuario) -> str:
@@ -485,7 +482,6 @@ def crear_of(
 
 
 # ── Importar OFs desde el Excel de SAP (COIS) ─────────────────
-ROLES_IMPORT_OF = {"ADMIN", "PLANEADOR"}
 
 
 @router.get("/import-sap", response_class=HTMLResponse)

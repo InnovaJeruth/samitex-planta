@@ -17,11 +17,7 @@ from app.services.of_service import auto_generar_piezas
 
 router = APIRouter()
 
-ROLES_COMERCIAL = {
-    "ADMIN", "PLANEADOR", "COMERCIAL", "COMERCIAL_MARCA",
-    "PLANEAMIENTO_MARCA", "GERENTE_PLANTA", "JEFE_PLANTA", "GERENCIA",
-}
-ROLES_CREAR = {"ADMIN", "PLANEADOR", "COMERCIAL", "COMERCIAL_MARCA"}
+from app.roles import ROLES_COMERCIAL, ROLES_CREAR
 
 
 def _rol(user: Usuario) -> str:

@@ -31,8 +31,7 @@ from app.models.catalogo import (
 
 router = APIRouter()
 
-ROLES_EDITOR   = {"ADMIN", "UDP", "INGENIERIA"}
-ROLES_APROBAR  = {"ADMIN", "INGENIERIA"}
+from app.roles import ROLES_EDITOR_HDC as ROLES_EDITOR, ROLES_APROBAR_HDC as ROLES_APROBAR
 
 
 def _rol(u: Usuario) -> str:

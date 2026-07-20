@@ -22,9 +22,8 @@ from app.constants import NOMBRES_FASE
 
 router = APIRouter()
 
-ROLES_SUPERVISOR = {"ADMIN", "SUPERVISOR_CORTE", "GERENTE_PLANTA", "JEFE_PLANTA", "PLANEADOR", "GERENCIA", "UDP"}
+from app.roles import ROLES_SUPERVISOR, ROLES_PROGRAMAR
 # Quién puede PROGRAMAR tiempos de máquina (UDP solo ve/edita Curvas de tallas)
-ROLES_PROGRAMAR = {"ADMIN", "SUPERVISOR_CORTE", "GERENTE_PLANTA", "JEFE_PLANTA", "PLANEADOR", "GERENCIA"}
 
 
 def _check_acceso(user: Usuario):
