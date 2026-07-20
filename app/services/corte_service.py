@@ -419,13 +419,17 @@ def registrar_avance_bulk(
     """
     from app.models.pieza import OFPieza
 
+    # Precarga en una sola consulta → evita el N+1 en los bucles por pieza.
+    # Seguro: este endpoint rechaza OFs por talla, así que hay exactamente
+    # 1 fila de OFFaseEstado por (pieza, fase) (sku_id NULL) → sin ambigüedad.
+    piezas_by = {p.id: p for p in of.piezas}
+    est_by = {(e.pieza_id, e.fase_id): e
+              for e in db.query(OFFaseEstado).filter_by(of_id=of.id).all()}
+
     # ── Gate Fusionado → Calidad (bulk) ──────────────────────────────────────
     if fase_id == "F6":
-        piezas_fus = db.query(OFPieza).filter_by(of_id=of.id, fusionado=True).all()
-        for pf in piezas_fus:
-            f5 = db.query(OFFaseEstado).filter_by(
-                of_id=of.id, pieza_id=pf.id, fase_id="F5"
-            ).first()
+        for pf in [p for p in of.piezas if p.fusionado]:
+            f5 = est_by.get((pf.id, "F5"))
             if not f5 or not f5.completada:
                 raise HTTPException(
                     400,
@@ -437,18 +441,14 @@ def registrar_avance_bulk(
     # Validar restricción cascada por pieza (respeta fusionado/no-fusionado)
     # En vez de comparar totales globales, cada pieza verifica contra su propia fase anterior.
     for pieza_id_check in pieza_ids:
-        pieza_check = db.query(OFPieza).filter_by(id=pieza_id_check, of_id=of.id).first()
+        pieza_check = piezas_by.get(pieza_id_check)
         if not pieza_check:
             continue
         fase_prev_pieza = _fase_anterior_pieza(fase_id, of, pieza_check, db)
         if fase_prev_pieza:
-            est_prev = db.query(OFFaseEstado).filter_by(
-                of_id=of.id, pieza_id=pieza_id_check, fase_id=fase_prev_pieza
-            ).first()
+            est_prev = est_by.get((pieza_id_check, fase_prev_pieza))
             disponible_pieza = (est_prev.cantidad_actual if est_prev else 0)
-            est_actual = db.query(OFFaseEstado).filter_by(
-                of_id=of.id, pieza_id=pieza_id_check, fase_id=fase_id
-            ).first()
+            est_actual = est_by.get((pieza_id_check, fase_id))
             ya_registrado = est_actual.cantidad_actual if est_actual else 0
             if ya_registrado + cantidad > disponible_pieza:
                 raise HTTPException(
@@ -462,12 +462,10 @@ def registrar_avance_bulk(
     estados = []
 
     for pieza_id in pieza_ids:
-        pieza = db.query(OFPieza).filter_by(id=pieza_id, of_id=of.id).first()
+        pieza = piezas_by.get(pieza_id)
         if not pieza:
             continue
-        estado = db.query(OFFaseEstado).filter_by(
-            of_id=of.id, pieza_id=pieza_id, fase_id=fase_id
-        ).first()
+        estado = est_by.get((pieza_id, fase_id))
         if not estado or estado.completada:
             continue
 
@@ -507,13 +505,15 @@ def completar_fase_bulk(
     """
     from app.models.pieza import OFPieza
 
+    # Precarga en una sola consulta → evita el N+1 (ver nota en registrar_avance_bulk).
+    piezas_by = {p.id: p for p in of.piezas}
+    est_by = {(e.pieza_id, e.fase_id): e
+              for e in db.query(OFFaseEstado).filter_by(of_id=of.id).all()}
+
     # ── Gate Fusionado → Calidad ──────────────────────────────────────────────
     if fase_id == "F6":
-        piezas_fus = db.query(OFPieza).filter_by(of_id=of.id, fusionado=True).all()
-        for pf in piezas_fus:
-            f5 = db.query(OFFaseEstado).filter_by(
-                of_id=of.id, pieza_id=pf.id, fase_id="F5"
-            ).first()
+        for pf in [p for p in of.piezas if p.fusionado]:
+            f5 = est_by.get((pf.id, "F5"))
             if not f5 or not f5.completada:
                 raise HTTPException(
                     400,
@@ -526,12 +526,10 @@ def completar_fase_bulk(
     estados = []
 
     for pieza_id in pieza_ids:
-        pieza = db.query(OFPieza).filter_by(id=pieza_id, of_id=of.id).first()
+        pieza = piezas_by.get(pieza_id)
         if not pieza:
             continue
-        estado = db.query(OFFaseEstado).filter_by(
-            of_id=of.id, pieza_id=pieza_id, fase_id=fase_id
-        ).first()
+        estado = est_by.get((pieza_id, fase_id))
         if not estado or estado.completada:
             continue
 
@@ -540,9 +538,7 @@ def completar_fase_bulk(
             # Cascada por pieza
             fase_prev = _fase_anterior_pieza(fase_id, of, pieza, db)
             if fase_prev:
-                est_prev = db.query(OFFaseEstado).filter_by(
-                    of_id=of.id, pieza_id=pieza_id, fase_id=fase_prev
-                ).first()
+                est_prev = est_by.get((pieza_id, fase_prev))
                 disponible_pieza = est_prev.cantidad_actual if est_prev else 0
                 if estado.cantidad_actual + restante > disponible_pieza:
                     restante = max(0, disponible_pieza - estado.cantidad_actual)
