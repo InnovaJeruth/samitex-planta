@@ -173,16 +173,18 @@ def planeamiento_data(db: Session = Depends(get_db), current_user: Usuario = Dep
             "desde": r.created_at.strftime("%d/%m %H:%M") if r.created_at else None,
             "solped": r.solped,
         })
-    # 2) OFs activas con su resumen de tela
+    # 2) OFs activas con su resumen de tela (resumen por lote → sin N+1)
+    of_list = (db.query(OrdenFabricacion).filter(OrdenFabricacion.estado == EstadoOF.ACTIVA)
+               .order_by(OrdenFabricacion.numero_of).all())
+    desv = paquete_service.resumen_desvio_lote(of_list, db)
     ofs = []
-    for of in (db.query(OrdenFabricacion).filter(OrdenFabricacion.estado == EstadoOF.ACTIVA)
-               .order_by(OrdenFabricacion.numero_of).all()):
-        d = paquete_service.resumen_desvio(of, db)
+    for of in of_list:
+        d = desv.get(of.id, {})
         ofs.append({
             "id": of.id, "numero_of": of.numero_of,
             "prenda": (of.prenda_catalogo.codigo if of.prenda_catalogo else of.tipo_prenda),
-            "proyectado": d["proyectado"], "real": d["real"], "desvio": d["desvio"],
-            "rehacer": d["rehacer"], "espera_tela": d["espera_tela"], "merma": d["merma"],
+            "proyectado": d.get("proyectado", 0), "real": d.get("real", 0), "desvio": d.get("desvio", 0),
+            "rehacer": d.get("rehacer", 0), "espera_tela": d.get("espera_tela", 0), "merma": d.get("merma", 0),
         })
     # 3) KPIs del tablero
     from app.models.planta import PlantaExterna

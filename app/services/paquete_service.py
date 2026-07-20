@@ -1054,3 +1054,58 @@ def resumen_desvio(of: OrdenFabricacion, db: Session) -> dict:
         "desvio_pct": round(desvio / proy * 100, 1) if proy else None,
         "estado": "ok" if desvio == 0 else ("sobrante" if desvio > 0 else "faltante"),
     }
+
+
+def resumen_desvio_lote(ofs, db: Session) -> dict:
+    """Igual que resumen_desvio pero para una lista de OFs, en pocas consultas
+    agrupadas (evita el N+1 de 5·N consultas en el panel de Planeamiento).
+    Devuelve {of_id: dict} con los mismos campos que resumen_desvio."""
+    of_ids = [o.id for o in ofs]
+    if not of_ids:
+        return {}
+
+    # Proyectado = suma de la curva (fallback total_juegos)
+    proy_map = dict(db.query(OFTallaDistribucion.of_id,
+                             func.coalesce(func.sum(OFTallaDistribucion.cantidad), 0))
+                    .filter(OFTallaDistribucion.of_id.in_(of_ids))
+                    .group_by(OFTallaDistribucion.of_id).all())
+
+    # Real = por (sku,pieza) sumar; por talla tomar el MAX entre piezas; sumar tallas
+    # (idéntico a corte_real: deduplica el bulto-por-pieza).
+    real_por_talla = {}
+    for of_id, sku_id, _pz, s in (db.query(
+            OFPaquete.of_id, OFPaquete.sku_id, OFPaquete.pieza_id,
+            func.coalesce(func.sum(OFPaquete.cantidad), 0))
+            .filter(OFPaquete.of_id.in_(of_ids))
+            .group_by(OFPaquete.of_id, OFPaquete.sku_id, OFPaquete.pieza_id).all()):
+        d = real_por_talla.setdefault(of_id, {})
+        d[sku_id] = max(d.get(sku_id, 0), int(s or 0))
+    real_map = {oid: sum(v.values()) for oid, v in real_por_talla.items()}
+
+    def _rechazo_group(*conds):
+        return dict(db.query(OFPaquete.of_id,
+                             func.coalesce(func.sum(OFPaqueteRechazo.cantidad), 0))
+                    .join(OFPaquete, OFPaquete.id == OFPaqueteRechazo.paquete_id)
+                    .filter(OFPaquete.of_id.in_(of_ids), *conds)
+                    .group_by(OFPaquete.of_id).all())
+
+    merma_map = _rechazo_group(OFPaqueteRechazo.rehacer == True)  # noqa: E712
+    rehacer_map = _rechazo_group(OFPaqueteRechazo.rehacer == True,  # noqa: E712
+                                 OFPaqueteRechazo.estado.in_(RECHAZOS_ABIERTOS))
+    espera_map = _rechazo_group(OFPaqueteRechazo.estado == RECHAZO_ESPERA_TELA)
+
+    out = {}
+    for o in ofs:
+        proy = int(proy_map.get(o.id, 0) or 0) or (o.total_juegos or 0)
+        real = int(real_map.get(o.id, 0))
+        merma = int(merma_map.get(o.id, 0) or 0)
+        rehacer = int(rehacer_map.get(o.id, 0) or 0)
+        espera = int(espera_map.get(o.id, 0) or 0)
+        desvio = real - proy
+        out[o.id] = {
+            "proyectado": proy, "real": real, "merma": merma, "rehacer": rehacer,
+            "espera_tela": espera, "entregable": real, "desvio": desvio,
+            "desvio_pct": round(desvio / proy * 100, 1) if proy else None,
+            "estado": "ok" if desvio == 0 else ("sobrante" if desvio > 0 else "faltante"),
+        }
+    return out

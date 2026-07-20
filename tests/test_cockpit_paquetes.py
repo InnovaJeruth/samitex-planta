@@ -91,6 +91,16 @@ def test_numeracion_avanza_por_bultos_enviados(db):
     assert f4["pct"] == 100 and f4["estado"] == "completada"
 
 
+def test_resumen_desvio_lote_igual_que_individual(db):
+    """El resumen por lote (panel Planeamiento) debe dar EXACTAMENTE lo mismo
+    que resumen_desvio individual — protege la optimización N+1."""
+    of, sku_id = _setup(db)
+    svc.generar_paquetes(of, [{"sku_id": sku_id, "cantidad": 100}], db)
+    lote = svc.resumen_desvio_lote([of], db)[of.id]
+    individual = svc.resumen_desvio(of, db)
+    assert lote == individual
+
+
 def test_of_se_cierra_cuando_todo_entregado(db):
     of, sku_id = _setup(db)
     paqs = svc.generar_paquetes(of, [{"sku_id": sku_id, "cantidad": 100}], db)  # 3 paquetes
