@@ -162,6 +162,71 @@ GROUP BY activity, next_act ORDER BY min_prom DESC;
 
 ---
 
-## 7. Siguiente paso
+## 7. Validación — Prueba de concepto EXITOSA (Fase 2)
 
-Con estas 5 decisiones cerradas → **Fase 2**: crear `vw_event_log` (solo la parte BULTO) y validarla con las consultas de la §5 sobre bultos ya terminados. Sin tocar el ERP ni su rendimiento.
+Se creó `vw_event_log` (parte BULTO: fuentes A+B+C) y se validó sobre datos reales de la OF #8.
+**El diseño funciona de punta a punta.** Decisiones §6 cerradas: Case ID = BULTO ✔ · VIEW en SQL Server ✔ · loops conservados ✔.
+
+**Traza del bulto 318 (con rework), leída cronológica y coherente:**
+
+```
+Numerado (08:37) → Enviado a fusionado (08:43) → Fusionado inicio (09:06)
+→ Fusionado fin (09:07) → Enviado a calidad (09:07)
+→ Rechazado stand-by (09:54) → Aprobado gerencia (09:55) → Reingreso a calidad
+→ Enviado a calidad → Liberado OK (09:55)
+```
+
+**Hallazgos de rendimiento (las 3 métricas del objetivo, con datos reales):**
+
+| Transición | Casos | Min. prom | Min. máx | Lectura |
+|---|---|---|---|---|
+| Enviado a calidad → **Liberado** | 225 | **51** | 76 | 🔴 Cuello #1: cola de Calidad |
+| Enviado a calidad → Rechazado | 2 | 59 | 72 | rework |
+| Enviado a fusionado → Fusionado | 55 | **17** | 23 | 🟠 Cuello #2: espera antes de fusionar |
+| Fusionado → Fusionado (inicio→fin) | 49 | **4** | 13 | duración real del fusionado |
+| Numerado → Enviado a calidad | 176 | 5 | 6 | sin cuello |
+
+> **Insight clave:** el fusionado *como operación* dura 4 min, pero se esperan 17 min en cola → **el tiempo se pierde esperando, no trabajando.** Y el mayor costo total está en la cola de Calidad (51 min × 225). Esto es exactamente el valor del process mining.
+
+**⚠ Caveat:** estos minutos salen de **1 OF, 1 día, 1 usuario, en pruebas**. El **método** está validado; los **números** serán reales solo con datos de producción (muchas OFs, varios operarios).
+
+---
+
+## 8. Fase 3 — Diseño del módulo (FastAPI)
+
+Módulo analítico **de solo lectura**, desacoplado del transaccional. Lee de `vw_event_log`.
+
+```
+app/
+├── services/process_mining/
+│   ├── event_log.py      # lee vw_event_log (filtros: case_type, of_id, rango fechas)
+│   ├── discovery.py      # DFG: nodos (actividad, frecuencia) + aristas (a→b, veces, min_prom)
+│   └── performance.py    # tiempos entre actividades y ranking de cuellos
+├── routers/process_mining.py   # prefijo /analitica (solo lectura)
+├── schemas/process_mining.py   # contratos de salida (nodo, arista, kpi)
+```
+
+**Endpoints (todos GET, async, acotados por rango):**
+
+| Endpoint | Devuelve |
+|---|---|
+| `GET /analitica/caso/{case_id}` | traza ordenada de un caso (para inspección) |
+| `GET /analitica/dfg?case_type=BULTO&desde=&hasta=` | grafo: nodos + aristas con `veces` y `min_prom` |
+| `GET /analitica/tiempos` | ranking de cuellos (la tabla de arriba) |
+| `GET /analitica/kpis` | resumen: nº casos, lead time medio, % rework, top cuello |
+
+**Frontend:** página `/analitica` con un **DFG visual** (grosor de arista = frecuencia, color = tiempo medio) usando vis-network / Mermaid / D3; tablas de cuellos y KPIs. Reutiliza `base.html` (apiFetch/toast) y `roles.py` (nuevo `ROLES_ANALITICA`).
+
+**Rendimiento:** leer de la VIEW con filtro por fecha/OF; endpoints async; **cachear** DFG/variantes. Si el volumen crece → materializar en `fact_event_log` (job en background) + índices `(case_id, ts)` + aislamiento de lectura. No antes.
+
+**Pulido pendiente en la VIEW (antes de la Fase 3, para DFG limpio):**
+- `APROBADO` → **"Aprobado (gerencia)"**.
+- Fusionado: nombrar `Fusionado (inicio)` / `Fusionado (fin)` (o manejar `lifecycle`) para evitar el auto-bucle `Fusionado→Fusionado` y los cruces por interleave de granularidades.
+
+---
+
+## 9. Siguiente paso
+
+1. Pulir taxonomía de la VIEW (§8, 10 min).
+2. Dejar acumular datos de producción.
+3. Implementar Fase 3 (módulo + endpoints + DFG visual) cuando haya volumen que haga significativo el análisis.
