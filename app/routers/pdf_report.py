@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.constants import ORDEN_FASES, NOMBRES_FASE
 from app.core.auth import get_current_user
+from app.core.concurrency import limite_pesado
 from app.core.templates import templates
 from app.database.connection import get_db
 from app.models.of import EstadoOF, OrdenFabricacion
@@ -213,12 +214,13 @@ def reporte_pdf(
         raise HTTPException(status_code=500, detail="xhtml2pdf no instalado. Ejecuta: pip install xhtml2pdf")
 
     try:
-        pdf_buffer = io.BytesIO()
-        result = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
-        if result.err:
-            logger.error("xhtml2pdf error code: %s", result.err)
-            raise HTTPException(status_code=500, detail="Error al generar el PDF")
-        pdf_buffer.seek(0)
+        with limite_pesado("Generando el reporte PDF"):
+            pdf_buffer = io.BytesIO()
+            result = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
+            if result.err:
+                logger.error("xhtml2pdf error code: %s", result.err)
+                raise HTTPException(status_code=500, detail="Error al generar el PDF")
+            pdf_buffer.seek(0)
     except HTTPException:
         raise
     except Exception as exc:
@@ -399,12 +401,13 @@ def reporte_of_pdf(
     except ImportError:
         raise HTTPException(500, "xhtml2pdf no instalado. Ejecuta: pip install xhtml2pdf")
 
-    pdf_buffer = io.BytesIO()
-    result = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
-    if result.err:
-        logger.error("xhtml2pdf error ficha OF: %s", result.err)
-        raise HTTPException(500, "Error al generar el PDF")
-    pdf_buffer.seek(0)
+    with limite_pesado("Generando la ficha PDF"):
+        pdf_buffer = io.BytesIO()
+        result = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
+        if result.err:
+            logger.error("xhtml2pdf error ficha OF: %s", result.err)
+            raise HTTPException(500, "Error al generar el PDF")
+        pdf_buffer.seek(0)
     filename = "OF_{}_avance.pdf".format(of.numero_of)
     return StreamingResponse(
         pdf_buffer,

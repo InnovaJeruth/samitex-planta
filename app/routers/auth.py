@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.usuario import Usuario, TokenRevocado
 from app.core.auth import (
-    verify_password, create_access_token, _decode_token,
+    verify_password, hash_password, create_access_token, _decode_token,
     get_current_user, get_current_user_optional, COOKIE_NAME,
 )
 from app.schemas.usuario import TokenResponse, UsuarioResponse
@@ -26,11 +26,18 @@ _LOGIN_VENTANA_SEG  = 300
 _login_lock = threading.Lock()
 _login_intentos: dict[str, list[float]] = defaultdict(list)
 
+# Hash "señuelo" para gastar el mismo tiempo cuando el usuario no existe
+# (evita enumeración de usuarios por diferencia de latencia).
+_DUMMY_HASH = hash_password("no-such-user")
+
 
 def _get_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    # Solo confiar en X-Forwarded-For si hay un proxy confiable delante (config).
+    # Si no, usar la IP real del socket → evita spoofing del header para saltar el rate limit.
+    if settings.TRUST_PROXY:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
 
@@ -76,7 +83,9 @@ def login(
         Usuario.username == form_data.username,
         Usuario.activo == True,
     ).first()
-    if not user or not verify_password(form_data.password, user.password_hash):
+    # Verificar siempre un hash (real o señuelo) → tiempo constante, sin enumeración
+    hash_a_verificar = user.password_hash if user else _DUMMY_HASH
+    if not verify_password(form_data.password, hash_a_verificar) or not user:
         _registrar_fallo(ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

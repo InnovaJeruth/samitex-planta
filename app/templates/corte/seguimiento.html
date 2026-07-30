@@ -12,37 +12,37 @@
 .fase-tab   { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid transparent; }
 .fase-tab.completa  { background:#0d3320; color:#4caf7d; border-color:#1d5f40; }
 .fase-tab.en_proceso{ background:#3a2a00; color:#e6a817; border-color:#6a4a00; }
-.fase-tab.pendiente { background:#1a1a1a; color:#767676;    border-color:#2a2a2a; }
-.fase-tab.bloqueada { background:#111; color:#767676; border-color:#1a1a1a; cursor:not-allowed !important; opacity:.5; }
+.fase-tab.pendiente { background:#131b2c; color:#767676;    border-color:#20304f; }
+.fase-tab.bloqueada { background:#0b101b; color:#767676; border-color:#131b2c; cursor:not-allowed !important; opacity:.5; }
 
 /* Tabla piezas */
 .pt { width:100%; border-collapse:separate; border-spacing:0; font-size:12px; }
-.pt th { background:#111; color:#888; font-size:10px; text-transform:uppercase; letter-spacing:.4px; padding:7px 8px; border-bottom:1px solid #222; white-space:nowrap; }
-.pt td { padding:7px 8px; border-bottom:1px solid #1a1a1a; vertical-align:middle; }
-.pt tr:hover td { background:#181818; }
+.pt th { background:#0b101b; color:#888; font-size:10px; text-transform:uppercase; letter-spacing:.4px; padding:7px 8px; border-bottom:1px solid #1a2338; white-space:nowrap; }
+.pt td { padding:7px 8px; border-bottom:1px solid #131b2c; vertical-align:middle; }
+.pt tr:hover td { background:#121a2c; }
 
 /* Sticky pieza column */
-.pt th, .pt td { border-bottom: 1px solid #1a1a1a; }
-.pt thead th { border-bottom: 1px solid #222; }
+.pt th, .pt td { border-bottom: 1px solid #131b2c; }
+.pt thead th { border-bottom: 1px solid #1a2338; }
 .pt-sticky {
     position: sticky;
     left: 0;
     z-index: 2;
-    background: #0f0f0f;
-    box-shadow: 2px 0 0 #2a2a2a;
+    background: #070910;
+    box-shadow: 2px 0 0 #20304f;
 }
-.pt thead .pt-sticky { background: #111; z-index: 3; }
-.pt tr:hover .pt-sticky { background: #181818; }
+.pt thead .pt-sticky { background: #0b101b; z-index: 3; }
+.pt tr:hover .pt-sticky { background: #121a2c; }
 
 /* Celdas de fase */
 .fc { text-align:center; width:52px; min-width:52px; }
 .fc-ok  { color:#4caf7d; font-size:15px; }
 .fc-num { color:#e6a817; font-size:11px; font-weight:600; }
-.fc-dot { color:#2a2a2a; font-size:18px; line-height:1; }
-.fc-na  { color:#1e1e1e; font-size:10px; }
+.fc-dot { color:#20304f; font-size:18px; line-height:1; }
+.fc-na  { color:#172136; font-size:10px; }
 
 /* Mini barra */
-.mini-bar { width:44px; height:3px; background:#111; border-radius:2px; margin:2px auto 0; }
+.mini-bar { width:44px; height:3px; background:#0b101b; border-radius:2px; margin:2px auto 0; }
 .mini-fill{ height:100%; border-radius:2px; background:#e6a817; }
 
 /* Acción inline */
@@ -59,11 +59,11 @@
 .done-label  { font-size:11px; color:#4caf7d; font-weight:600; }
 
 /* Bulk toolbar */
-.bulk-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#111;
-            border-bottom:1px solid #1a1a1a; flex-wrap:wrap; }
+.bulk-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#0b101b;
+            border-bottom:1px solid #131b2c; flex-wrap:wrap; }
 .bulk-bar label { font-size:12px; color:#888; display:flex; align-items:center; gap:6px; cursor:pointer; }
 .bulk-bar input[type=checkbox] { accent-color:#4a9fff; width:14px; height:14px; cursor:pointer; }
-.bulk-bar input[type=number]   { width:70px; background:#1a1a1a; border:1px solid #333; border-radius:4px;
+.bulk-bar input[type=number]   { width:70px; background:#131b2c; border:1px solid #2a3557; border-radius:4px;
                                   padding:3px 6px; color:#e0e0e0; font-size:12px; text-align:center; }
 .bulk-bar input[type=number]:focus { border-color:#1a6fbe; }
 .btn-bulk-reg  { padding:3px 10px; font-size:11px; background:#1a3a6f; color:#4a9fff; border:none; border-radius:4px; cursor:pointer; }
@@ -75,13 +75,13 @@
 /* Modal */
 .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:200; align-items:center; justify-content:center; }
 .modal-overlay.show { display:flex; }
-.modal-box { background:#1a1a1a; border:1px solid #333; border-radius:10px; padding:24px; width:400px; max-width:95vw; }
+.modal-box { background:#131b2c; border:1px solid #2a3557; border-radius:10px; padding:24px; width:400px; max-width:95vw; }
 .modal-titulo { font-size:15px; font-weight:700; margin-bottom:4px; }
 .modal-sub    { font-size:12px; color:#888; margin-bottom:16px; }
 .modal-field  { margin-bottom:12px; }
 .modal-field label { display:block; font-size:11px; color:#888; margin-bottom:4px; }
 .modal-field input, .modal-field textarea {
-    width:100%; background:#111; border:1px solid #333; border-radius:6px;
+    width:100%; background:#0b101b; border:1px solid #2a3557; border-radius:6px;
     padding:8px 10px; color:#e0e0e0; font-size:14px; }
 .modal-field input:focus, .modal-field textarea:focus { border-color:#1a6fbe; }
 .modal-field input.error { border-color:#8b1a1a; }
@@ -92,16 +92,16 @@
 
 /* Historial */
 .hist-table { width:100%; border-collapse:collapse; font-size:12px; }
-.hist-table th { background:#111; color:#888; font-size:10px; text-transform:uppercase; padding:6px 10px; border-bottom:1px solid #222; }
-.hist-table td { padding:7px 10px; border-bottom:1px solid #1a1a1a; color:#ccc; }
+.hist-table th { background:#0b101b; color:#888; font-size:10px; text-transform:uppercase; padding:6px 10px; border-bottom:1px solid #1a2338; }
+.hist-table td { padding:7px 10px; border-bottom:1px solid #131b2c; color:#ccc; }
 
 /* Fase strip ── tarjetas de fase sobre la grilla */
 .fase-strip { display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:4px; }
-.fsc { min-width:130px; background:#111; border:1px solid #222; border-radius:8px; padding:10px 12px; flex-shrink:0; }
+.fsc { min-width:130px; background:#0b101b; border:1px solid #1a2338; border-radius:8px; padding:10px 12px; flex-shrink:0; }
 .fsc.fsc-completada { border-color:#1d5f40; background:#0a1f12; }
 .fsc.fsc-en_proceso { border-color:#6a4a00; background:#1a1200; }
-.fsc.fsc-pendiente  { border-color:#222;    background:#0e0e0e; }
-.fsc.fsc-bloqueada  { border-color:#1a1a1a; background:#0a0a0a; opacity:.5; }
+.fsc.fsc-pendiente  { border-color:#1a2338;    background:#080b14; }
+.fsc.fsc-bloqueada  { border-color:#131b2c; background:#060811; opacity:.5; }
 .fsc-nombre { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
 .fsc-completada .fsc-nombre { color:#4caf7d; }
 .fsc-en_proceso .fsc-nombre { color:#e6a817; }
@@ -109,14 +109,14 @@
 .fsc-times { font-size:10px; color:#767676; line-height:1.6; margin-bottom:6px; min-height:28px; }
 .fsc-times .plan { color:#4a7faf; }
 .fsc-times .real { color:#4caf7d; }
-.fsc-pct  { height:2px; background:#1a1a1a; border-radius:1px; margin-bottom:8px; }
+.fsc-pct  { height:2px; background:#131b2c; border-radius:1px; margin-bottom:8px; }
 .fsc-pct-fill { height:100%; border-radius:1px; }
 .fsc-completada .fsc-pct-fill { background:#4caf7d; }
 .fsc-en_proceso .fsc-pct-fill { background:#e6a817; }
 .btn-iniciar { width:100%; padding:4px 0; font-size:10px; font-weight:700; background:#1a3a6f;
                color:#4a9fff; border:none; border-radius:4px; cursor:pointer; text-transform:uppercase; letter-spacing:.5px; }
 .btn-iniciar:hover { background:#1a4f9f; }
-.btn-iniciar:disabled { background:#111; color:#767676; cursor:not-allowed; }
+.btn-iniciar:disabled { background:#0b101b; color:#767676; cursor:not-allowed; }
 
 /* Mobile: hide material column */
 @media (max-width: 900px) {
@@ -178,15 +178,15 @@
 {% set av = metricas.avance_global %}
 {% set dv = metricas.consumo_desvio_pct %}
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px">
-    <div style="background:#151515;border:1px solid #222;border-radius:8px;padding:12px 14px">
+    <div style="background:#0f1626;border:1px solid #1a2338;border-radius:8px;padding:12px 14px">
         <div style="font-size:12px;color:#888">Total prendas</div>
         <div style="font-size:24px;font-weight:600">{{ metricas.total_prendas }}</div>
     </div>
-    <div style="background:#151515;border:1px solid #222;border-radius:8px;padding:12px 14px">
+    <div style="background:#0f1626;border:1px solid #1a2338;border-radius:8px;padding:12px 14px">
         <div style="font-size:12px;color:#888">Avance global</div>
         <div style="font-size:24px;font-weight:600;color:{% if av >= 100 %}#4caf7d{% elif av > 0 %}#e6a817{% else %}#888{% endif %}">{{ av }}%</div>
     </div>
-    <div style="background:#151515;border:1px solid #222;border-radius:8px;padding:12px 14px">
+    <div style="background:#0f1626;border:1px solid #1a2338;border-radius:8px;padding:12px 14px">
         <div style="font-size:12px;color:#888">Consumo tela</div>
         {% if dv is not none %}
         <div style="font-size:24px;font-weight:600;color:{% if dv > 0 %}#e06060{% else %}#4caf7d{% endif %}">{{ '+' if dv > 0 else '' }}{{ dv }}%</div>
@@ -196,7 +196,7 @@
         <div style="font-size:11px;color:#767676">sin consumo teórico</div>
         {% endif %}
     </div>
-    <div style="background:#151515;border:1px solid #222;border-radius:8px;padding:12px 14px">
+    <div style="background:#0f1626;border:1px solid #1a2338;border-radius:8px;padding:12px 14px">
         <div style="font-size:12px;color:#888">Tiempo de corte</div>
         {% if metricas.tiempo_corte_min is not none %}
         <div style="font-size:24px;font-weight:600">{{ metricas.tiempo_corte_min }} min</div>
@@ -251,7 +251,7 @@
 
 <!-- Modal piezas por talla (F4–F7) -->
 <div id="talla-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:flex-start;justify-content:center;overflow:auto;padding:40px 16px">
-    <div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:18px 20px;max-width:900px;width:100%" id="talla-modal-body"></div>
+    <div style="background:#131b2c;border:1px solid #2a3557;border-radius:12px;padding:18px 20px;max-width:900px;width:100%" id="talla-modal-body"></div>
 </div>
 
 <!-- Tabla avance por piezas -->
@@ -273,7 +273,7 @@
     <div id="tabla-container">
         <div style="text-align:center;padding:40px;color:#767676">Cargando...</div>
     </div>
-    <div style="padding:10px 4px;font-size:11px;color:#444">
+    <div style="padding:10px 4px;font-size:11px;color:#3a4a6f">
         Cada pieza avanza de forma independiente. La OF se completa cuando todas las piezas terminan F7 Habilitado.
     </div>
 </div>
@@ -282,7 +282,7 @@
 <div style="margin:14px 0">
     <button class="btn btn-secondary" onclick="abrirHistorial()">
         Ver historial de avance
-        <span id="hist-count" style="margin-left:6px;font-size:11px;background:#2a2a2a;color:#aaa;border-radius:20px;padding:1px 8px"></span>
+        <span id="hist-count" style="margin-left:6px;font-size:11px;background:#20304f;color:#aaa;border-radius:20px;padding:1px 8px"></span>
     </button>
 </div>
 
@@ -344,7 +344,7 @@
 
         <div class="modal-field">
             <label>Fase activa *</label>
-            <select id="pausar-fase" style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;">
+            <select id="pausar-fase" style="width:100%;background:#0b101b;border:1px solid #2a3557;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;">
                 <option value="">— Seleccionar fase —</option>
                 <option value="F1">F1 Tizado</option>
                 <option value="F2">F2 Tendido</option>
@@ -360,7 +360,7 @@
 
         <div class="modal-field">
             <label>Motivo *</label>
-            <select id="pausar-motivo" onchange="toggleCampoEmergencia()" style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;">
+            <select id="pausar-motivo" onchange="toggleCampoEmergencia()" style="width:100%;background:#0b101b;border:1px solid #2a3557;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:14px;">
                 <option value="">— Seleccionar motivo —</option>
                 <option value="EMERGENCIA_OF">🚨 OF de emergencia</option>
                 <option value="REQUERIMIENTO">📄 Requerimiento</option>
@@ -472,14 +472,14 @@ function renderTalla(d) {
     let bulkBar = '';
     if (d.puede_registrar && faseActual) {
         const fnm = FASES_NOMBRES[faseActual] || faseActual;
-        bulkBar = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#151515;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;margin-bottom:12px">
+        bulkBar = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#0f1626;border:1px solid #20304f;border-radius:8px;padding:10px 12px;margin-bottom:12px">
             <b style="font-size:12px;color:#ccc">Fase actual: <span style="color:#e6a817">${fnm}</span> · todas las tallas</b>
             <button class="btn btn-sm" style="background:#1a3a5a;color:#7cc4ff" onclick="faseBulk('${faseActual}',false)">+ Registrar cantidad…</button>
             <button class="btn btn-sm" style="background:#0d3320;color:#4caf7d" onclick="faseBulk('${faseActual}',true)">✓ Completar ${fnm} (todas)</button>
         </div>`;
     }
     // Color por avance de una fase
-    const segColor = p => p >= 100 ? '#4caf7d' : (p > 0 ? '#e6a817' : '#3a3a3a');
+    const segColor = p => p >= 100 ? '#4caf7d' : (p > 0 ? '#e6a817' : '#313f63');
     let h = '';
     d.tallas.forEach(t => {
         const pcts = fases.map(f => { const r = t.fases[f] || {pct:0, done:false}; return r.done ? 100 : (r.pct || 0); });
@@ -487,11 +487,11 @@ function renderTalla(d) {
         const segs = fases.map((f,i) => {
             const p = pcts[i];
             return `<div style="flex:1;min-width:38px">
-                <div style="height:8px;border-radius:3px;background:#111;overflow:hidden"><div style="height:100%;width:${p}%;background:${segColor(p)}"></div></div>
+                <div style="height:8px;border-radius:3px;background:#0b101b;overflow:hidden"><div style="height:100%;width:${p}%;background:${segColor(p)}"></div></div>
                 <div style="font-size:10px;color:#767676;text-align:center;margin-top:2px">${(FASES_NOMBRES[f]||f).substring(0,3).toUpperCase()}</div>
             </div>`;
         }).join('');
-        h += `<div style="display:flex;align-items:center;gap:12px;padding:9px 4px;border-top:1px solid #1e1e1e">
+        h += `<div style="display:flex;align-items:center;gap:12px;padding:9px 4px;border-top:1px solid #172136">
             <div style="width:56px;flex-shrink:0"><b style="font-size:14px">${t.talla}</b><div style="font-size:11px;color:#767676">${t.meta} prd</div></div>
             <div style="flex:1;display:flex;gap:8px">${segs}</div>
             <div style="width:40px;text-align:right;font-size:13px;font-weight:600;color:${segColor(glob)}">${glob}%</div>
@@ -542,12 +542,12 @@ function abrirTallaModal(sku) {
     const pendientes = fases.filter(f => t.piezas.some(p => p.fases[f] && !p.fases[f].completada));
     let bulk = '';
     if (puede && pendientes.length) {
-        bulk = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#151515;border:1px solid #2a2a2a;border-radius:8px;padding:10px;margin-bottom:12px">
+        bulk = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#0f1626;border:1px solid #20304f;border-radius:8px;padding:10px;margin-bottom:12px">
             <b style="font-size:12px;color:#ccc">Todas las piezas:</b>
-            <select id="bulk-fase" style="background:#111;border:1px solid #333;color:#eee;border-radius:6px;padding:5px 8px;font-size:12px">
+            <select id="bulk-fase" style="background:#0b101b;border:1px solid #2a3557;color:#eee;border-radius:6px;padding:5px 8px;font-size:12px">
               ${pendientes.map(f => `<option value="${f}">${FASES_NOMBRES[f]||f}</option>`).join('')}
             </select>
-            <input id="bulk-cant" type="number" min="1" placeholder="prendas" style="width:90px;background:#111;border:1px solid #333;color:#eee;border-radius:6px;padding:5px 8px;font-size:12px">
+            <input id="bulk-cant" type="number" min="1" placeholder="prendas" style="width:90px;background:#0b101b;border:1px solid #2a3557;color:#eee;border-radius:6px;padding:5px 8px;font-size:12px">
             <button class="btn btn-sm" style="background:#1a3a5a;color:#7cc4ff" onclick="bulkTalla(${sku}, false)">Registrar en todas</button>
             <button class="btn btn-sm" style="background:#0d3320;color:#4caf7d" onclick="bulkTalla(${sku}, true)">Completar todas</button>
         </div>`;
@@ -1285,7 +1285,7 @@ function refrescarTodo() { cargarEstado(); cargarStrip(); cargarParadas(); }
 function initLive() {
     var badge = document.createElement('div');
     badge.id = 'live-badge';
-    badge.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9998;font-size:11px;padding:5px 10px;border-radius:16px;border:1px solid #333;background:#141414;color:#9a9a9a;display:flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(0,0,0,.4);';
+    badge.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9998;font-size:11px;padding:5px 10px;border-radius:16px;border:1px solid #2a3557;background:#0f1524;color:#9a9a9a;display:flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(0,0,0,.4);';
     badge.innerHTML = '<span id="live-dot" style="width:8px;height:8px;border-radius:50%;background:#666;display:inline-block"></span><span id="live-text">Conectando…</span>';
     document.body.appendChild(badge);
     var reconnectMs = 2000, ws = null;

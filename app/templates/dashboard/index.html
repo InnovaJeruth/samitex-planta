@@ -5,7 +5,7 @@
 <style>
 /* ── Banner narrativo ──────────────────────────────────────── */
 .narrative-bar { display:flex; align-items:flex-start; gap:8px; flex-wrap:wrap;
-  background:#0d0d0d; border:1px solid #1a1a1a; border-radius:8px;
+  background:#070a12; border:1px solid #131b2c; border-radius:8px;
   padding:10px 16px; margin-bottom:14px; }
 .nar-item { display:flex; align-items:center; gap:6px; font-size:12px; padding:3px 10px;
   border-radius:4px; font-weight:500; }
@@ -19,10 +19,10 @@
 
 /* ── Filtros globales ──────────────────────────────────────── */
 .filter-row { display:flex; align-items:center; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
-.filter-label { font-size:10px; color:#444; text-transform:uppercase; letter-spacing:.5px; margin-right:4px; }
-.fchip-btn { font-size:11px; padding:4px 12px; border-radius:20px; border:1px solid #222;
-  background:#111; color:#767676; cursor:pointer; transition:all .15s; font-weight:500; }
-.fchip-btn:hover { border-color:#333; color:#888; }
+.filter-label { font-size:10px; color:#3a4a6f; text-transform:uppercase; letter-spacing:.5px; margin-right:4px; }
+.fchip-btn { font-size:11px; padding:4px 12px; border-radius:20px; border:1px solid #1a2338;
+  background:#0b101b; color:#767676; cursor:pointer; transition:background-color .15s var(--ease-out), border-color .15s var(--ease-out), color .15s var(--ease-out); font-weight:500; }
+.fchip-btn:hover { border-color:#2a3557; color:#888; }
 .fchip-btn.active { background:#1a2a3a; border-color:#1a5ba3; color:#4a9fff; }
 .fchip-btn.active.riesgo  { background:#2a0a0a; border-color:#c0392b; color:#f06060; }
 .fchip-btn.active.proceso { background:#1a1500; border-color:#c87f0a; color:#e6a817; }
@@ -30,9 +30,9 @@
 
 /* ── Hero KPIs ─────────────────────────────────────────────── */
 .hero-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:18px; }
-.hero-card { background:#111; border:1px solid #1e1e1e; border-radius:8px; padding:16px 18px; }
+.hero-card { background:#0b101b; border:1px solid #172136; border-radius:8px; padding:16px 18px; }
 .hero-card.clickable { cursor:pointer; transition:border-color .15s, background .15s; }
-.hero-card.clickable:hover { border-color:#2a2a2a; background:#141414; }
+.hero-card.clickable:hover { border-color:#20304f; background:#0f1524; }
 .hero-card.clickable.active-filter { box-shadow:0 0 0 1px currentColor; }
 .hero-label { font-size:10px; color:#767676; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
 .hero-val { font-size:30px; font-weight:700; line-height:1; }
@@ -47,7 +47,7 @@
 
 /* ── Viz row ───────────────────────────────────────────────── */
 .viz-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:18px; }
-.viz-card { background:#111; border:1px solid #1e1e1e; border-radius:8px; padding:14px 16px; }
+.viz-card { background:#0b101b; border:1px solid #172136; border-radius:8px; padding:14px 16px; }
 .viz-title { font-size:10px; color:#767676; text-transform:uppercase; letter-spacing:.4px; margin-bottom:12px; }
 
 /* ── Heatmap ───────────────────────────────────────────────── */
@@ -61,7 +61,7 @@
 /* ── Timeline ──────────────────────────────────────────────── */
 .tl-item { display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer; }
 .tl-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-.tl-bar-wrap { flex:1; height:5px; background:#1a1a1a; border-radius:3px; position:relative; }
+.tl-bar-wrap { flex:1; height:5px; background:#131b2c; border-radius:3px; position:relative; }
 .tl-bar-fill { height:100%; border-radius:3px; }
 .tl-info { font-size:10px; color:#767676; flex-shrink:0; text-align:right; width:46px; }
 .tl-name { font-size:10px; color:#888; width:72px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -69,15 +69,16 @@
 /* ── Cascade header ────────────────────────────────────────── */
 .cascade-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .cascade-count { font-size:11px; color:#767676; }
-.search-input { background:#111; border:1px solid #222; border-radius:4px; padding:5px 10px;
+.search-input { background:#0b101b; border:1px solid #1a2338; border-radius:4px; padding:5px 10px;
                 color:#ccc; font-size:12px; }
-.search-input:focus { border-color:#333; }
+.search-input:focus { border-color:#2a3557; }
 
 /* ── Client cards ──────────────────────────────────────────── */
 .cli-cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; margin-bottom:4px; }
-.cli-card { background:#111; border:1px solid #1e1e1e; border-radius:8px; padding:14px 16px;
-            cursor:pointer; transition:all .15s; display:flex; gap:12px; align-items:center; }
-.cli-card:hover { border-color:#2a2a2a; background:#141414; }
+.cli-card { background:#0b101b; border:1px solid #172136; border-radius:8px; padding:14px 16px;
+            cursor:pointer; transition:background-color .15s var(--ease-out), border-color .15s var(--ease-out), transform var(--dur-fast) var(--ease-out); display:flex; gap:12px; align-items:center; }
+.cli-card:active { transform:scale(0.99); }
+.cli-card:hover { border-color:#20304f; background:#0f1524; }
 .cli-card.active { border-color:#1a5ba3 !important; background:#0a1520 !important; }
 .cli-ring-wrap { flex-shrink:0; }
 .cli-info { flex:1; min-width:0; }
@@ -90,33 +91,33 @@
 .cli-sem.g { background:#082a10; color:#4caf7d; }
 
 /* ── OF Panel ──────────────────────────────────────────────── */
-.of-panel { background:#0d0d0d; border:1px solid #1c1c1c; border-radius:8px; margin-top:8px;
+.of-panel { background:#070a12; border:1px solid #151f33; border-radius:8px; margin-top:8px;
             overflow:hidden; animation:slideDown .15s ease; }
 @keyframes slideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
 .of-panel-hdr { display:flex; align-items:center; justify-content:space-between;
-                padding:10px 16px; border-bottom:1px solid #1c1c1c; background:#111; }
+                padding:10px 16px; border-bottom:1px solid #151f33; background:#0b101b; }
 .of-panel-title { font-size:12px; font-weight:600; color:#ccc; }
 .of-panel-close { background:none; border:none; color:#767676; cursor:pointer; font-size:16px; line-height:1; }
 .of-panel-close:hover { color:#ccc; }
 .of-row { display:flex; align-items:center; gap:8px; padding:10px 16px;
-          border-bottom:1px solid #141414; cursor:pointer; transition:background .1s; }
+          border-bottom:1px solid #0f1524; cursor:pointer; transition:background .1s; }
 .of-row:last-child { border-bottom:none; }
-.of-row:hover { background:#111; }
+.of-row:hover { background:#0b101b; }
 .of-row.active { background:#0a1520; }
 .of-num { font-size:12px; font-weight:600; color:#4a9fff; width:72px; flex-shrink:0; }
 .of-estado-badge { font-size:10px; padding:2px 7px; border-radius:3px; flex-shrink:0; font-weight:500; }
 .of-apt-txt { font-size:10px; color:#666; width:88px; flex-shrink:0; }
-.of-bar-wrap { flex:1; height:5px; background:#1a1a1a; border-radius:3px; }
+.of-bar-wrap { flex:1; height:5px; background:#131b2c; border-radius:3px; }
 .of-bar-fill { height:100%; border-radius:3px; transition:width .3s; }
 .of-pct-txt { font-size:11px; font-weight:600; width:34px; text-align:right; flex-shrink:0; }
 .of-juegos-txt { font-size:10px; color:#767676; width:auto; white-space:nowrap; text-align:right; flex-shrink:0; }
-.fase-detail { padding:12px 16px 14px; background:#090909; border-top:1px solid #141414; }
+.fase-detail { padding:12px 16px 14px; background:#090909; border-top:1px solid #0f1524; }
 .fchip-row { display:flex; gap:5px; flex-wrap:wrap; }
 .fchip { font-size:10px; padding:3px 8px; border-radius:4px; font-weight:500; }
 .fchip.ok   { background:#0a2812; color:#4caf7d; border:1px solid #1a4028; }
 .fchip.par  { background:#2a1f00; color:#e6a817; border:1px solid #4a3000; }
-.fchip.pend { background:#1a1a1a; color:#767676;    border:1px solid #2a2a2a; }
-.fchip.na   { background:#111;    color:#767676;    border:1px solid #1e1e1e; opacity:.5; }
+.fchip.pend { background:#131b2c; color:#767676;    border:1px solid #20304f; }
+.fchip.na   { background:#0b101b;    color:#767676;    border:1px solid #172136; opacity:.5; }
 
 @media(max-width:860px){
   .viz-row { grid-template-columns:1fr; }
@@ -352,7 +353,7 @@ function renderBottleneck() {
   }
   wrap.innerHTML = '<canvas id="chartBottleneck" height="170" role="img" aria-label="Gráfico de cuellos de botella por fase"></canvas>';
   Chart.defaults.color = '#767676';
-  Chart.defaults.borderColor = '#1e1e1e';
+  Chart.defaults.borderColor = '#172136';
   const totalActivas = getAllFilteredOfs().filter(o => o.estado==='EN_PROCESO'||o.estado==='ACTIVA').length;
   chartBN = new Chart(document.getElementById('chartBottleneck'), {
     type: 'bar',
@@ -374,7 +375,7 @@ function renderBottleneck() {
         }}}
       },
       scales: {
-        x: { grid: { color:'#1a1a1a' }, ticks: { font:{size:10} } },
+        x: { grid: { color:'#131b2c' }, ticks: { font:{size:10} } },
         y: { ticks: { font:{size:10} } }
       }
     }
@@ -454,8 +455,8 @@ function renderTimeline() {
     if (x > W) break;
     const d = new Date(hoy.getTime() + w * 7 * 86400000);
     const lbl = w === 0 ? 'Hoy' : `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-    weekLbls  += `<text x="${x.toFixed(1)}" y="11" font-size="7.5" fill="#2a2a2a" text-anchor="middle">${lbl}</text>`;
-    gridLines += `<line x1="${x.toFixed(1)}" y1="${HDR_H}" x2="${x.toFixed(1)}" y2="${H}" stroke="#161616" stroke-width="1"/>`;
+    weekLbls  += `<text x="${x.toFixed(1)}" y="11" font-size="7.5" fill="#20304f" text-anchor="middle">${lbl}</text>`;
+    gridLines += `<line x1="${x.toFixed(1)}" y1="${HDR_H}" x2="${x.toFixed(1)}" y2="${H}" stroke="#101728" stroke-width="1"/>`;
   }
 
   // OF rows
@@ -470,7 +471,7 @@ function renderTimeline() {
 
     // Row bg alternating
     if (i % 2 === 0) {
-      rows += `<rect x="0" y="${y0}" width="${W}" height="${ROW_H}" fill="#0d0d0d"/>`;
+      rows += `<rect x="0" y="${y0}" width="${W}" height="${ROW_H}" fill="#070a12"/>`;
     }
     // Connecting line from left edge to dot
     rows += `<line x1="${LEFT}" y1="${yc}" x2="${x.toFixed(1)}" y2="${yc}" stroke="${clr}22" stroke-width="1.5"/>`;
@@ -483,7 +484,7 @@ function renderTimeline() {
       <title>${o.numero_of} · APT ${o.apt_fmt} · ${diaTxt}</title></circle>`;
     // Days label next to dot
     const lblX = Math.min(x + 8, W - 16);
-    rows += `<text x="${lblX.toFixed(1)}" y="${(yc+3.5).toFixed(1)}" font-size="7.5" fill="${dias<=7?clr:'#333'}">${diaTxt}</text>`;
+    rows += `<text x="${lblX.toFixed(1)}" y="${(yc+3.5).toFixed(1)}" font-size="7.5" fill="${dias<=7?clr:'#2a3557'}">${diaTxt}</text>`;
   });
 
   // Today line (at LEFT = day 0)
@@ -504,7 +505,7 @@ function ring(pct, color, r) {
   const dash  = pct / 100 * circ;
   return `<svg width="${r*2+8}" height="${r*2+8}" viewBox="0 0 ${r*2+8} ${r*2+8}" role="img" aria-label="Progreso ${pct}%">
     <title>Progreso ${pct}%</title>
-    <circle cx="${r+4}" cy="${r+4}" r="${r}" fill="none" stroke="#1e1e1e" stroke-width="4"/>
+    <circle cx="${r+4}" cy="${r+4}" r="${r}" fill="none" stroke="#172136" stroke-width="4"/>
     <circle cx="${r+4}" cy="${r+4}" r="${r}" fill="none" stroke="${color}" stroke-width="4"
       stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"
       stroke-linecap="round" transform="rotate(-90 ${r+4} ${r+4})"/>
@@ -651,8 +652,8 @@ function renderFaseDetail(o) {
       const clr = TYPE_CLR[f.tipo] || '#767676';
       const op  = TYPE_OP[f.tipo]  || '0.5';
       const dash = f.tipo.startsWith('prog') ? 'stroke-dasharray="3,2"' : '';
-      if (i % 2 === 0) rows += `<rect x="0" y="${y0}" width="${W}" height="${ROW_H}" fill="#0a0a0a"/>`;
-      rows += `<text x="${LEFT-3}" y="${yc+3.5}" font-size="7.5" fill="#444" text-anchor="end">${f.nombre}</text>`;
+      if (i % 2 === 0) rows += `<rect x="0" y="${y0}" width="${W}" height="${ROW_H}" fill="#060811"/>`;
+      rows += `<text x="${LEFT-3}" y="${yc+3.5}" font-size="7.5" fill="#3a4a6f" text-anchor="end">${f.nombre}</text>`;
       rows += `<rect x="${x1.toFixed(1)}" y="${(y0+3)}" width="${(x2-x1).toFixed(1)}" height="${ROW_H-6}"
         rx="2" fill="${clr}" opacity="${op}" ${dash}/>`;
     });

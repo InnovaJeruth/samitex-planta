@@ -189,7 +189,7 @@ def api_crear_curva(
 
 
 @router.post("/api/curvas/{curva_id}/adjuntar")
-async def api_adjuntar_doc(
+def api_adjuntar_doc(   # sync → threadpool, no bloquea el loop
     curva_id: int,
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -206,7 +206,7 @@ async def api_adjuntar_doc(
     if ext not in _EXTENSIONES_OK:
         raise HTTPException(400, f"Extensión no permitida ({ext})")
 
-    contenido = await archivo.read()
+    contenido = archivo.file.read()
     if len(contenido) > 10 * 1024 * 1024:
         raise HTTPException(400, "Archivo supera 10 MB")
 

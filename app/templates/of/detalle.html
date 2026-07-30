@@ -7,7 +7,7 @@
 .detalle-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
 
 /* ── Header OF ── */
-.of-header { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:20px; margin-bottom:16px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.of-header { background:#131b2c; border:1px solid #20304f; border-radius:8px; padding:20px; margin-bottom:16px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
 .of-numero { font-size:22px; font-weight:700; color:#fff; }
 .of-meta   { flex:1; display:flex; flex-wrap:wrap; gap:16px; }
 .meta-item { font-size:12px; color:#888; }
@@ -18,10 +18,10 @@
 .sem-A_TIEMPO  { background:#0d3320; color:#4caf7d; }
 .sem-OK_FECHA  { background:#0d3320; color:#4caf7d; }
 .sem-OK_TARDE  { background:#1a1a2a; color:#4a9fff; }
-.sem-SIN_FECHA { background:#2a2a2a; color:#888; }
+.sem-SIN_FECHA { background:#20304f; color:#888; }
 
 /* ── Gates ── */
-.gate-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #1e1e1e; }
+.gate-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #172136; }
 .gate-row:last-child { border-bottom:none; }
 .gate-icon { width:20px; text-align:center; font-size:14px; }
 .gate-info { flex:1; }
@@ -31,10 +31,10 @@
 .gate-estado { font-size:11px; font-weight:600; }
 .gate-estado.pass    { color:#4caf7d; }
 .gate-estado.fail    { color:#e6a817; }
-.gate-estado.blocked { color:#444; }
+.gate-estado.blocked { color:#3a4a6f; }
 
 /* ── Documentos ── */
-.doc-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #1e1e1e; }
+.doc-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #172136; }
 .doc-row:last-child { border-bottom:none; }
 .doc-tipo { font-size:11px; color:#888; font-weight:600; min-width:150px; }
 .doc-nombre { font-size:13px; color:#e0e0e0; flex:1; }
@@ -44,19 +44,19 @@
 .fase-mini { display:inline-block; width:22px; height:22px; border-radius:4px; text-align:center; line-height:22px; font-size:10px; font-weight:700; }
 .fase-ok     { background:#0d3320; color:#4caf7d; }
 .fase-parcial{ background:#3a2a00; color:#e6a817; }
-.fase-pend   { background:#1a1a1a; color:#444; border:1px solid #2a2a2a; }
-.fase-na     { background:#111; color:#767676; }
+.fase-pend   { background:#131b2c; color:#3a4a6f; border:1px solid #20304f; }
+.fase-na     { background:#0b101b; color:#767676; }
 
 /* ── Historial ── */
-.hist-row { display:grid; grid-template-columns:120px 100px 80px 60px 1fr 100px; gap:8px; align-items:center; padding:7px 12px; border-bottom:1px solid #1a1a1a; font-size:12px; }
-.hist-row:hover { background:#1e1e1e; }
+.hist-row { display:grid; grid-template-columns:120px 100px 80px 60px 1fr 100px; gap:8px; align-items:center; padding:7px 12px; border-bottom:1px solid #131b2c; font-size:12px; }
+.hist-row:hover { background:#172136; }
 .hist-head { color:#888; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
 
 /* ── Botones de estado ── */
 .estado-actions { display:flex; gap:8px; flex-wrap:wrap; }
 
 /* ── Toast ── */
-.toast { position:fixed; top:16px; right:16px; padding:12px 18px; border-radius:8px; font-size:13px; font-weight:500; z-index:999; opacity:0; transform:translateY(-8px); transition:all .2s; pointer-events:none; }
+.toast { position:fixed; top:16px; right:16px; padding:12px 18px; border-radius:8px; font-size:13px; font-weight:500; z-index:999; opacity:0; transform:translateY(-8px); transition:opacity .2s var(--ease-out), transform .2s var(--ease-out); pointer-events:none; }
 .toast.show { opacity:1; transform:translateY(0); }
 .toast-success { background:#0d3320; border:1px solid #1d5f40; color:#4caf7d; }
 .toast-error   { background:#3a0a0a; border:1px solid #6a1a1a; color:#f88; }
@@ -76,7 +76,7 @@
 .terc-RECIBIDA        { background:#0d3320; color:#4caf7d; border:1px solid #1d5f40; }
 /* Modal */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:200; display:flex; align-items:center; justify-content:center; }
-.modal-box { background:#1a1a1a; border:1px solid #3a3a3a; border-radius:10px; padding:24px; width:420px; max-width:95vw; }
+.modal-box { background:#131b2c; border:1px solid #313f63; border-radius:10px; padding:24px; width:420px; max-width:95vw; }
 .modal-title { font-size:16px; font-weight:700; color:#fff; margin-bottom:16px; }
 .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
 
@@ -86,15 +86,15 @@
 .pvr-row.pvr-open td { background:rgba(74,159,255,.04); }
 .pvr-chevron { display:inline-block; transition:transform .2s; color:#888; font-size:14px; margin-left:3px; }
 .pvr-expand-row td { padding:0 !important; background:#090909 !important; }
-.pvr-expand-body { border-top:1px solid #1a1a1a; padding:10px 12px 12px 36px; }
+.pvr-expand-body { border-top:1px solid #131b2c; padding:10px 12px 12px 36px; }
 .pvr-sub { width:100%; border-collapse:collapse; font-size:11px; }
-.pvr-sub th { padding:4px 10px; text-align:left; color:#444; font-size:9px; text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid #141414; background:#0d0d0d; }
-.pvr-sub td { padding:6px 10px; border-bottom:1px solid #111; color:#aaa; }
+.pvr-sub th { padding:4px 10px; text-align:left; color:#3a4a6f; font-size:9px; text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid #0f1524; background:#070a12; }
+.pvr-sub td { padding:6px 10px; border-bottom:1px solid #0b101b; color:#aaa; }
 .pvr-sub tr:last-child td { border-bottom:none; }
 .pvr-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:3px; font-size:10px; font-weight:700; white-space:nowrap; }
 .pvr-badge-activa { background:#4a2000; color:#f5c542; border:1px solid #e6a817; box-shadow:0 0 4px rgba(230,168,23,.3); }
 .pvr-badge-cerrada { background:#1e2a1e; color:#4caf7d; border:1px solid #2a4a2a; }
-.pvr-badge-none { color:#2a2a2a; font-size:11px; }
+.pvr-badge-none { color:#20304f; font-size:11px; }
 .pvr-estado-activa { background:#3a1800; color:#e6a817; border:1px solid #6a3000; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; }
 .pvr-estado-ok { background:#0a1a0a; color:#4caf7d; border:1px solid #1a3a1a; padding:1px 6px; border-radius:3px; font-size:9px; }
 .pvr-of-link { color:#c084fc; font-size:10px; text-decoration:none; }
@@ -255,7 +255,7 @@
             var h='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'+
                 '<th '+th+'>Fecha</th><th '+th+'>Gate / Documento</th><th '+th+'>Acción</th><th '+th+'>Archivo / código</th><th '+th+'>Usuario</th></tr></thead><tbody>';
             rows.forEach(function(r){
-                h+='<tr style="border-top:1px solid #1e1e1e">'+
+                h+='<tr style="border-top:1px solid #172136">'+
                     '<td style="padding:6px 8px">'+(r.fecha||'—')+'</td>'+
                     '<td style="padding:6px 8px">'+String(r.tipo||'').replace(/_/g,' ')+'</td>'+
                     '<td style="padding:6px 8px;font-weight:600;color:'+(col[r.accion]||'#aaa')+'">'+r.accion+'</td>'+
@@ -356,7 +356,7 @@
                     {% endif %}
                     <span style="font-size:11px;color:#767676" id="fn-{{ gate_id }}">Sin archivo</span>
                 {% elif not puede and not es_rol_doc %}
-                    <span style="font-size:11px;color:#444">Sin archivo</span>
+                    <span style="font-size:11px;color:#3a4a6f">Sin archivo</span>
                 {% endif %}
 
             {% else %}{# codigo #}
@@ -369,15 +369,15 @@
                     <div class="doc-nombre" style="color:#4caf7d">🔢 {{ valor_actual }}</div>
                     {% if puede and of.estado.value in ('BORRADOR', 'ACTIVA') %}
                     <input id="inp-{{ gate_id }}" value="{{ valor_actual }}"
-                           style="background:#0f0f0f;border:1px solid #2a2a2a;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px" aria-label="Inp">
+                           style="background:#070910;border:1px solid #20304f;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px" aria-label="Inp">
                     <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 7px" onclick="guardarCodigo('{{ key }}','{{ gate_id }}')">Guardar</button>
                     {% endif %}
                 {% elif puede and of.estado.value in ('BORRADOR', 'ACTIVA') %}
                     <input id="inp-{{ gate_id }}" placeholder="Ej: 4500001234"
-                           style="background:#0f0f0f;border:1px solid #2a2a2a;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px" aria-label="Inp">
+                           style="background:#070910;border:1px solid #20304f;border-radius:4px;padding:3px 7px;color:#e0e0e0;font-size:11px;width:130px" aria-label="Inp">
                     <button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 7px" onclick="guardarCodigo('{{ key }}','{{ gate_id }}')">Guardar</button>
                 {% elif not puede and not es_rol_doc %}
-                    <span style="font-size:11px;color:#444">Pendiente</span>
+                    <span style="font-size:11px;color:#3a4a6f">Pendiente</span>
                 {% endif %}
             {% endif %}
         </div>
@@ -387,7 +387,7 @@
         {% endif %}{# fin check mis_gates #}
 
         {% if of.estado.value not in ('BORRADOR', 'ACTIVA') and not es_rol_doc %}
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a1a1a;font-size:11px;color:#444">
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #131b2c;font-size:11px;color:#3a4a6f">
             🔒 Documentos bloqueados — OF en estado <strong style="color:#767676">{{ of.estado.value }}</strong>
         </div>
         {% endif %}
@@ -485,15 +485,15 @@
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
-            <tr style="background:#0e0e0e">
-                <th style="padding:8px 12px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fase</th>
-                <th style="padding:8px 12px;text-align:left;color:#4a7faf;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Inicio Plan</th>
-                <th style="padding:8px 12px;text-align:left;color:#4a7faf;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fin Plan</th>
-                <th style="padding:8px 12px;text-align:left;color:#4caf7d;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Inicio Real</th>
-                <th style="padding:8px 12px;text-align:left;color:#4caf7d;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a">Fin Real</th>
-                <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a;color:#888">Variación inicio</th>
-                <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a;color:#888">Variación fin</th>
-                <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #1a1a1a;color:#767676;width:110px">Paradas</th>
+            <tr style="background:#080b14">
+                <th style="padding:8px 12px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase;border-bottom:1px solid #131b2c">Fase</th>
+                <th style="padding:8px 12px;text-align:left;color:#4a7faf;font-size:10px;text-transform:uppercase;border-bottom:1px solid #131b2c">Inicio Plan</th>
+                <th style="padding:8px 12px;text-align:left;color:#4a7faf;font-size:10px;text-transform:uppercase;border-bottom:1px solid #131b2c">Fin Plan</th>
+                <th style="padding:8px 12px;text-align:left;color:#4caf7d;font-size:10px;text-transform:uppercase;border-bottom:1px solid #131b2c">Inicio Real</th>
+                <th style="padding:8px 12px;text-align:left;color:#4caf7d;font-size:10px;text-transform:uppercase;border-bottom:1px solid #131b2c">Fin Real</th>
+                <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #131b2c;color:#888">Variación inicio</th>
+                <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #131b2c;color:#888">Variación fin</th>
+                <th style="padding:8px 12px;text-align:center;font-size:10px;text-transform:uppercase;border-bottom:1px solid #131b2c;color:#767676;width:110px">Paradas</th>
             </tr>
         </thead>
         <tbody>
@@ -501,7 +501,7 @@
         {% for t in of.fase_tiempos | sort(attribute='fase_id') %}
         <tr class="pvr-row" data-fase-id="{{ t.fase_id }}"
             onclick="toggleParadasRow('{{ t.fase_id }}')"
-            style="border-bottom:1px solid #111">
+            style="border-bottom:1px solid #0b101b">
             <td style="padding:9px 12px">
                 <strong style="color:#e0e0e0">{{ t.fase_id }}</strong>
                 <span style="color:#888;margin-left:4px">{{ fases_nombres.get(t.fase_id, t.fase_id) }}</span>
@@ -556,7 +556,7 @@
         </tbody>
     </table>
     </div>
-    <div style="padding:8px 12px;font-size:11px;color:#444">
+    <div style="padding:8px 12px;font-size:11px;color:#3a4a6f">
         <span style="color:#4caf7d">Verde</span> = adelanto · 
         <span style="color:#e05030">Rojo</span> = retraso · 
         <span style="color:#4a7faf">Azul</span> = tiempos programados por el supervisor
@@ -621,14 +621,14 @@
     {% endif %}
 
     {% if of.historial_fechas_terc %}
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a1a1a">
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #131b2c">
         <div style="font-size:11px;color:#888;margin-bottom:8px;padding:0 12px">Historial cambios de fecha estimada:</div>
         {% for h in of.historial_fechas_terc | sort(attribute='created_at', reverse=True) %}
         <div style="font-size:11px;padding:4px 12px;display:flex;gap:12px;color:#888">
             <span style="color:#767676">{{ h.created_at.strftime('%d/%m/%Y') if h.created_at else '—' }}</span>
             <span><s>{{ h.fecha_anterior or '—' }}</s> → <strong style="color:#a78bfa">{{ h.fecha_nueva }}</strong></span>
             {% if h.motivo %}<span style="color:#666">{{ h.motivo }}</span>{% endif %}
-            <span style="color:#444">{{ h.usuario.nombre if h.usuario else '' }}</span>
+            <span style="color:#3a4a6f">{{ h.usuario.nombre if h.usuario else '' }}</span>
         </div>
         {% endfor %}
     </div>
@@ -646,20 +646,20 @@
         <div style="display:flex;flex-direction:column;gap:12px">
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Planta externa *</label>
-                <select id="terc-planta-id" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                <select id="terc-planta-id" style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
                     <option value="">Cargando plantas...</option>
                 </select>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div>
                     <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de envío</label>
-                    <input type="date" id="terc-fecha-envio" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Fecha de envío tercerizado">
+                    <input type="date" id="terc-fecha-envio" style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Fecha de envío tercerizado">
                 </div>
                 <div>
                     <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Recepción estimada</label>
                     <input type="date" id="terc-fecha-recep"
                            {% if of.fecha_apt %}max="{{ of.fecha_apt.isoformat() }}"{% endif %}
-                           style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Fecha de recepción tercerizado">
+                           style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Fecha de recepción tercerizado">
                     {% if of.fecha_apt %}<div style="font-size:10px;color:#767676;margin-top:3px">Máx: APT {{ of.fecha_apt }}</div>{% endif %}
                 </div>
             </div>
@@ -688,18 +688,18 @@
             </div>
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Planta externa *</label>
-                <select id="terc-fase-planta-id" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                <select id="terc-fase-planta-id" style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
                     <option value="">Cargando plantas...</option>
                 </select>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div>
                     <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de envío</label>
-                    <input type="date" id="terc-fase-fecha-envio" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                    <input type="date" id="terc-fase-fecha-envio" style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
                 </div>
                 <div>
                     <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Recepción estimada</label>
-                    <input type="date" id="terc-fase-fecha-recep" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
+                    <input type="date" id="terc-fase-fecha-recep" style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px">
                 </div>
             </div>
         </div>
@@ -719,12 +719,12 @@
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Nueva fecha de recepción *</label>
                 <input type="date" id="nueva-fecha-recep"
                        {% if of.fecha_apt %}max="{{ of.fecha_apt.isoformat() }}"{% endif %}
-                       style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Nueva fecha de recepción">
+                       style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Nueva fecha de recepción">
                 {% if of.fecha_apt %}<div style="font-size:10px;color:#767676;margin-top:3px">No puede superar APT: {{ of.fecha_apt }}</div>{% endif %}
             </div>
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Motivo del cambio</label>
-                <input type="text" id="motivo-fecha" placeholder="Ej: Planta solicitó más tiempo" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Motivo de cambio de fecha">
+                <input type="text" id="motivo-fecha" placeholder="Ej: Planta solicitó más tiempo" style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Motivo de cambio de fecha">
             </div>
         </div>
         <div class="modal-actions">
@@ -744,16 +744,16 @@
         <div style="display:flex;flex-direction:column;gap:12px">
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Prendas recibidas en esta entrega *</label>
-                <input type="number" id="inp-juegos-recibidos" min="1" max="{{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }}" placeholder="Máx: {{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }} restantes" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Juegos recibidos">
+                <input type="number" id="inp-juegos-recibidos" min="1" max="{{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }}" placeholder="Máx: {{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }} restantes" style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Juegos recibidos">
                 <div style="font-size:10px;color:#767676;margin-top:3px">Faltan {{ (of.total_juegos or 0) - (of.juegos_recibidos or 0) }} prendas por recibir</div>
             </div>
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Fecha de recepción *</label>
-                <input type="date" id="inp-fecha-recepcion" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Fecha de recepción">
+                <input type="date" id="inp-fecha-recepcion" style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Fecha de recepción">
             </div>
             <div>
                 <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Observación</label>
-                <input type="text" id="inp-obs-recepcion" placeholder="Opcional" style="width:100%;background:#0f0f0f;border:1px solid #3a3a3a;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Observación de recepción">
+                <input type="text" id="inp-obs-recepcion" placeholder="Opcional" style="width:100%;background:#070910;border:1px solid #313f63;border-radius:6px;padding:8px;color:#e0e0e0;font-size:13px" aria-label="Observación de recepción">
             </div>
         </div>
         <div class="modal-actions">
@@ -906,8 +906,8 @@ async function abrirModalSAP() {
     if (!r.ok) { location.reload(); return; }
     const piezas = await r.json();
     var html = '<table style="width:100%;border-collapse:collapse;">';
-    html += '<thead><tr><th style="text-align:left;padding:6px 8px;font-size:11px;color:#666;border-bottom:1px solid #2a2a2a;">Pieza</th>';
-    html += '<th style="text-align:left;padding:6px 8px;font-size:11px;color:#666;border-bottom:1px solid #2a2a2a;">Código SAP</th></tr></thead><tbody>';
+    html += '<thead><tr><th style="text-align:left;padding:6px 8px;font-size:11px;color:#666;border-bottom:1px solid #20304f;">Pieza</th>';
+    html += '<th style="text-align:left;padding:6px 8px;font-size:11px;color:#666;border-bottom:1px solid #20304f;">Código SAP</th></tr></thead><tbody>';
     piezas.forEach(function(p) {
         html += '<tr>';
         html += '<td style="padding:6px 8px;font-size:13px;color:#ccc;">' + p.nombre + '</td>';
@@ -915,9 +915,9 @@ async function abrirModalSAP() {
         html += '<input type="text" data-id="' + p.id + '"';
         html += ' value="' + (p.codigo_sap||'') + '"';
         html += ' placeholder="Ej: 1000123"';
-        html += ' style="background:#111;border:1px solid #333;border-radius:5px;padding:6px 10px;color:#e0e0e0;font-size:12px;width:100%;"';
+        html += ' style="background:#0b101b;border:1px solid #2a3557;border-radius:5px;padding:6px 10px;color:#e0e0e0;font-size:12px;width:100%;"';
         html += ' onfocus="this.style.borderColor=\'#1a6fbe\'"';
-        html += ' onblur="this.style.borderColor=\'#333\'" aria-label="Ej: 1000123">';
+        html += ' onblur="this.style.borderColor=\'#2a3557\'" aria-label="Ej: 1000123">';
         html += '</td></tr>';
     });;
     html += '</tbody></table>';
@@ -974,7 +974,7 @@ async function cargarCurva() {
         skus.forEach(s => { total += (dist[s.id] || 0); });
         document.getElementById('curva-total').textContent = total;
         body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead><tr style="color:#555;font-size:11px;border-bottom:1px solid #222">
+            <thead><tr style="color:#555;font-size:11px;border-bottom:1px solid #1a2338">
                 <th style="padding:6px 8px;text-align:left">Talla</th>
                 <th style="padding:6px 8px;text-align:left">Código SKU</th>
                 <th style="padding:6px 8px;text-align:right">Cantidad</th>
@@ -983,14 +983,14 @@ async function cargarCurva() {
             <tbody>${skus.filter(s => (dist[s.id] || 0) > 0).map(s => {
                 const qty = dist[s.id] || 0;
                 const pct = total > 0 ? Math.round(qty/total*100) : 0;
-                return `<tr style="border-bottom:1px solid #141414">
+                return `<tr style="border-bottom:1px solid #0f1524">
                     <td style="padding:7px 8px;font-weight:600;color:#e0e0e0">${s.talla}</td>
                     <td style="padding:7px 8px;font-family:monospace;font-size:12px;color:#4caf7d">${s.codigo_sku||'—'}</td>
                     <td style="padding:7px 8px;text-align:right;font-size:14px;font-weight:600;color:#e0e0e0">${qty}</td>
                     <td style="padding:7px 8px;text-align:right;font-size:11px;color:#555">${total>0?pct+'%':'—'}</td>
                 </tr>`;
             }).join('')}</tbody>
-            <tfoot><tr style="border-top:1px solid #2a2a2a">
+            <tfoot><tr style="border-top:1px solid #20304f">
                 <td colspan="2" style="padding:8px;font-size:12px;color:#888;text-align:right"><strong>Total</strong></td>
                 <td style="padding:8px;font-size:13px;font-weight:700;text-align:right">${total}</td>
                 <td></td>
@@ -1020,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => { cargarCurva(); });
 
 <!-- Modal SAP tras subir Ficha Técnica -->
 <div id="modal-sap" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:3000;align-items:center;justify-content:center;">
-    <div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:28px 32px;width:560px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);">
+    <div style="background:#131b2c;border:1px solid #2a3557;border-radius:10px;padding:28px 32px;width:560px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
             <div>
                 <div style="font-size:15px;font-weight:700;color:#fff;">Códigos SAP de Piezas</div>
@@ -1030,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', () => { cargarCurva(); });
         </div>
         <div id="sap-piezas-list"></div>
         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
-            <button onclick="cerrarModalSAP()" style="background:#2a2a2a;border:1px solid #444;color:#ccc;padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer;">Omitir</button>
+            <button onclick="cerrarModalSAP()" style="background:#20304f;border:1px solid #3a4a6f;color:#ccc;padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer;">Omitir</button>
             <button onclick="guardarSAP()" style="background:#1a6fbe;border:none;color:#fff;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Guardar códigos</button>
         </div>
     </div>

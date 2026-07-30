@@ -117,9 +117,11 @@ def _buscar_prenda(material_sap: str, db: Session) -> Optional[PrendaCatalogo]:
     return db.query(PrendaCatalogo).filter_by(material_sap=str(material_sap).strip()).first()
 
 
-def crear_of_desde_sap(reg: dict, db: Session, usuario_id: int = None, cliente: str = None) -> dict:
+def crear_of_desde_sap(reg: dict, db: Session, usuario_id: int = None, cliente: str = None,
+                       commit: bool = True) -> dict:
     """Crea UNA OF a partir de una fila del export SAP.
     `cliente` lo digita el planeador al importar (SAP no lo trae).
+    `commit=False` → solo hace flush (para importar un lote con un único commit al final).
     Devuelve {'ok': bool, 'numero_of': str, 'mensaje': str, 'of_id': int|None}."""
     numero_of = str(reg.get("numero_of") or "").strip()
     if not numero_of:
@@ -142,7 +144,7 @@ def crear_of_desde_sap(reg: dict, db: Session, usuario_id: int = None, cliente: 
             existente.tipo_prenda = tipo_prenda
             if cliente and cliente.strip():
                 existente.cliente = cliente.strip()
-            db.commit()
+            db.commit() if commit else db.flush()
             return {"ok": True, "numero_of": numero_of, "of_id": existente.id,
                     "mensaje": f"Re-vinculada a {prenda.nombre}"}
         return {"ok": False, "numero_of": numero_of,
@@ -183,8 +185,11 @@ def crear_of_desde_sap(reg: dict, db: Session, usuario_id: int = None, cliente: 
         responsable_id     = usuario_id,
     )
     db.add(of)
-    db.commit()
-    db.refresh(of)
+    if commit:
+        db.commit()
+        db.refresh(of)
+    else:
+        db.flush()   # asigna of.id sin cerrar la transacción (commit único al final del lote)
 
     notas = []
     if info["pendiente"]:
@@ -203,11 +208,18 @@ def importar_excel_sap(contenido: bytes, db: Session, usuario_id: int = None, cl
                 "mensaje": "El archivo no tiene filas válidas o no coincide el formato."}
     detalle, creadas, errores = [], 0, 0
     for reg in filas:
-        r = crear_of_desde_sap(reg, db, usuario_id=usuario_id, cliente=cliente)
+        # commit=False: cada fila hace flush (detección de duplicados sigue funcionando),
+        # y se persiste todo con UN solo commit al final → evita N transacciones/round-trips.
+        r = crear_of_desde_sap(reg, db, usuario_id=usuario_id, cliente=cliente, commit=False)
         detalle.append(r)
         if r["ok"]:
             creadas += 1
         else:
             errores += 1
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return {"total": len(filas), "creadas": creadas, "errores": errores, "detalle": detalle,
             "mensaje": f"{creadas} OF creadas, {errores} con error de {len(filas)} filas."}

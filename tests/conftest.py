@@ -33,6 +33,7 @@ import app.models.ingenieria
 import app.models.parametro
 import app.models.trazo
 import app.models.paquete
+import app.models.requerimiento
 
 # Pre-configure all mappers so tests that don't use 'db' fixture can
 # instantiate model objects without triggering mapper init errors

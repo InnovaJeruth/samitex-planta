@@ -1,3 +1,4 @@
+import hmac
 import logging
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -7,8 +8,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
 from app.database.connection import engine, Base
-from app.routers import auth, dashboard, of, corte, piezas, admin, ws, plantas, comercial, supervisor, telegram_bot, pdf_report
+from app.routers import auth, dashboard, of, corte, piezas, admin, ws, plantas, comercial, supervisor, pdf_report
 from app.routers import ingenieria, catalogo, curvas, hoja_costos, trazos, paquetes
+from app.routers import process_mining, requerimientos, rag_chat
 from app.core.csrf import (
     new_token, sign_token, verify_signed, is_exempt,
     CSRF_COOKIE, CSRF_HEADER,
@@ -22,16 +24,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)
-
-# Seed idempotente de datos de referencia (fases_catalogo). Sin esto, una BD
-# recién creada no tiene las 9 fases y falla al crear of_fases_estado (FK).
-try:
-    from app.database.seed import seed_fases_catalogo
-    _n_fases = seed_fases_catalogo()
-    if _n_fases:
-        logger.info("Seed: %d fases insertadas en fases_catalogo", _n_fases)
-except Exception as _e:
-    logger.warning("No se pudo sembrar fases_catalogo: %s", _e)
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
@@ -47,7 +39,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         if not is_exempt(path, method):
             submitted = request.headers.get(CSRF_HEADER, "")
-            if submitted != token:
+            if not hmac.compare_digest(submitted, token):
                 logger.warning("CSRF token invalido en %s %s", method, path)
                 return JSONResponse(
                     {"detail": "Token CSRF invalido o ausente. Recarga la pagina."},
@@ -75,9 +67,15 @@ app = FastAPI(
     version="1.0.0",
     docs_url=settings.DOCS_URL,
     redoc_url=settings.REDOC_URL,
+    openapi_url=settings.OPENAPI_URL,
 )
 
 app.add_middleware(CSRFMiddleware)
+
+# Valida la cabecera Host contra ALLOWED_HOSTS (anti Host header injection).
+# Default "*" no bloquea nada; en producción se listan los hosts reales.
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS_LIST)
 
 
 @app.on_event("startup")
@@ -87,6 +85,21 @@ async def _capturar_loop():
     import asyncio
     from app.core.websocket_manager import ws_manager
     ws_manager.set_loop(asyncio.get_running_loop())
+
+
+@app.on_event("startup")
+def _seed_referencia():
+    """Seed idempotente de datos de referencia (fases_catalogo). Corre en el
+    arranque (no en el import del módulo) para no acoplar la importación a que
+    la BD esté viva; si la BD no responde, se loguea sin tumbar el arranque.
+    Sin estas 9 fases, una BD recién creada falla al crear of_fases_estado (FK)."""
+    try:
+        from app.database.seed import seed_fases_catalogo
+        n = seed_fases_catalogo()
+        if n:
+            logger.info("Seed: %d fases insertadas en fases_catalogo", n)
+    except Exception as e:
+        logger.warning("No se pudo sembrar fases_catalogo: %s", e)
 
 
 @app.exception_handler(401)
@@ -111,6 +124,23 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+@app.get("/health", tags=["Infra"])
+def health():
+    """Healthcheck para balanceador/orquestador. Público, sin auth y exento de
+    CSRF (GET). Siempre responde 200 (liveness); informa el estado de la BD sin
+    fallar si está caída, para que un blip de BD no marque el proceso como muerto."""
+    from sqlalchemy import text
+    from app.database.connection import engine
+    db_ok = True
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as e:
+        db_ok = False
+        logger.warning("Healthcheck: BD no responde: %s", e)
+    return {"status": "ok", "db": "up" if db_ok else "down"}
+
+
 app.include_router(auth.router,         prefix="/auth",       tags=["Autenticacion"])
 app.include_router(dashboard.router,                          tags=["Dashboard"])
 app.include_router(of.router,           prefix="/of",         tags=["Ordenes de Fabricacion"])
@@ -121,7 +151,6 @@ app.include_router(ws.router,           prefix="/ws",         tags=["WebSocket"]
 app.include_router(plantas.router,      prefix="/plantas",    tags=["Plantas Externas"])
 app.include_router(comercial.router,    prefix="/comercial",  tags=["Comercial"])
 app.include_router(supervisor.router,   prefix="/supervisor", tags=["Supervisor"])
-app.include_router(telegram_bot.router,                       tags=["Telegram"])
 app.include_router(pdf_report.router,                         tags=["Reportes"])
 app.include_router(ingenieria.router,                         tags=["Ingenieria"])
 app.include_router(catalogo.router,    prefix="/catalogo",    tags=["Catalogo de Prendas"])
@@ -129,3 +158,6 @@ app.include_router(hoja_costos.router, prefix="/catalogo",    tags=["Hoja de Cos
 app.include_router(curvas.router,      prefix="/curvas",      tags=["Curvas de Tallas"])
 app.include_router(trazos.router,      prefix="/trazos",      tags=["Trazos de Corte"])
 app.include_router(paquetes.router,    prefix="/paquetes",    tags=["Paquetes / Numeración"])
+app.include_router(process_mining.router, prefix="/analitica", tags=["Analítica / Process Mining"])
+app.include_router(requerimientos.router, prefix="/requerimientos", tags=["Requerimientos comerciales"])
+app.include_router(rag_chat.router,       prefix="/api",           tags=["Chat analítico (RAG)"])

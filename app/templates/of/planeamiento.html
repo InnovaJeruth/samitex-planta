@@ -7,24 +7,24 @@
   .pl-wrap { width:100%; margin:0; padding:20px 28px; color:#ddd; box-sizing:border-box; }
   .pl-wrap h1 { font-size:20px; font-weight:700; color:#fff; margin:0 0 4px; }
   .pl-tabs { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 18px; }
-  .pl-tab { font-size:13px; padding:6px 14px; border-radius:6px; border:1px solid #333; background:#181818; color:#aaa; cursor:pointer; }
-  .pl-tab:hover { background:#222; } .pl-tab.active { background:#eee; color:#111; border-color:#eee; font-weight:600; }
-  .pl-card { background:#141414; border:1px solid #262626; border-radius:10px; padding:14px 16px; margin-bottom:18px; }
+  .pl-tab { font-size:13px; padding:6px 14px; border-radius:6px; border:1px solid #2a3557; background:#121a2c; color:#aaa; cursor:pointer; }
+  .pl-tab:hover { background:#1a2338; } .pl-tab.active { background:#eee; color:#0b101b; border-color:#eee; font-weight:600; }
+  .pl-card { background:#0f1524; border:1px solid #1e2c48; border-radius:10px; padding:14px 16px; margin-bottom:18px; }
   .pl-card h2 { font-size:14px; font-weight:600; color:#fff; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
   .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
-  .kpi { background:#161616; border-radius:8px; padding:12px 14px; }
+  .kpi { background:#101728; border-radius:8px; padding:12px 14px; }
   .kpi .l { font-size:12px; color:#888; } .kpi .v { font-size:24px; font-weight:600; }
   table.pq { width:100%; border-collapse:collapse; font-size:13px; }
-  table.pq th { text-align:left; padding:7px 8px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #262626; }
-  table.pq td { padding:7px 8px; border-bottom:1px solid #1c1c1c; }
-  .btn { font-size:12px; border:1px solid #444; background:#222; color:#ddd; border-radius:6px; padding:5px 10px; cursor:pointer; }
-  .btn:hover { background:#2c2c2c; } .btn.primary { background:#164; border-color:#164; color:#fff; }
+  table.pq th { text-align:left; padding:7px 8px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #1e2c48; }
+  table.pq td { padding:7px 8px; border-bottom:1px solid #151f33; }
+  .btn { font-size:12px; border:1px solid #3a4a6f; background:#1a2338; color:#ddd; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .btn:hover { background:#223255; } .btn.primary { background:#164; border-color:#164; color:#fff; }
   .oflink { color:#7cc4ff; text-decoration:none; } .oflink:hover { text-decoration:underline; }
   .badge { font-size:11px; padding:2px 8px; border-radius:20px; }
   .b-tela { background:#3a1500; color:#f0a060; } .b-reh { background:#2d2400; color:#e6c14a; } .b-ok { background:#0f2a17; color:#6fdf9a; }
-  .dot { width:11px; height:11px; border-radius:3px; border:1px solid #2a2a2a; display:inline-block; vertical-align:-1px; }
+  .dot { width:11px; height:11px; border-radius:3px; border:1px solid #20304f; display:inline-block; vertical-align:-1px; }
   .empty { color:#777; font-size:13px; }
-  .pl-frame { width:100%; min-height:420px; border:1px solid #262626; border-radius:10px; background:#0d0d0d; display:block; }
+  .pl-frame { width:100%; min-height:420px; border:1px solid #1e2c48; border-radius:10px; background:#070a12; display:block; }
 </style>
 {% endblock %}
 
@@ -109,7 +109,7 @@ function renderTela(rows){
   let h='';
   if(PUEDE_PL){
     h+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-      <input class="in" id="solped-in" placeholder="N° SOLPED (SAP)" style="background:#161616;border:1px solid #3a3a3a;color:#eee;border-radius:6px;padding:5px 8px;width:180px">
+      <input class="in" id="solped-in" placeholder="N° SOLPED (SAP)" style="background:#101728;border:1px solid #313f63;color:#eee;border-radius:6px;padding:5px 8px;width:180px">
       <button class="btn" onclick="guardarSolped()">Guardar SOLPED en seleccionadas</button>
       <span style="font-size:11px;color:#777">marca las filas y pon el N° de SOLPED</span></div>`;
   }

@@ -2,6 +2,9 @@ from fastapi import WebSocket
 from typing import Dict, List, Optional
 import asyncio
 import json
+import logging
+
+logger = logging.getLogger("ws_manager")
 
 
 class WebSocketManager:
@@ -39,7 +42,8 @@ class WebSocketManager:
         for ws in self._connections[canal]:
             try:
                 await ws.send_text(json.dumps(mensaje))
-            except Exception:
+            except Exception as e:
+                logger.debug("WS envío fallido en %s (se descarta conexión): %s", canal, e)
                 dead.append(ws)
         for ws in dead:
             self.disconnect(ws, canal)
@@ -58,13 +62,23 @@ class WebSocketManager:
         if canal not in self._connections or not self._connections[canal]:
             return
         try:
-            asyncio.run_coroutine_threadsafe(
+            fut = asyncio.run_coroutine_threadsafe(
                 self.broadcast_of(str(of_numero), tipo, data or {}),
                 self._loop,
             )
-        except Exception:
-            # Nunca romper la petición por un fallo de notificación
-            pass
+            # No descartar la excepción del broadcast: si la corrutina falla,
+            # su error queda en el Future; lo logueamos vía callback.
+            fut.add_done_callback(self._log_future_error)
+        except Exception as e:
+            # Nunca romper la petición por un fallo al AGENDAR la notificación
+            logger.warning("No se pudo agendar notificación WS (%s/%s): %s", of_numero, tipo, e)
+
+    @staticmethod
+    def _log_future_error(fut: "asyncio.Future"):
+        try:
+            fut.result()
+        except Exception as e:  # error ocurrido dentro del broadcast
+            logger.warning("Broadcast WS falló en segundo plano: %s", e)
 
 
 # Instancia global

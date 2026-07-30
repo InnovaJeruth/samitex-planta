@@ -13,16 +13,16 @@
 .leg-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 
 /* ── Tarjetas de OF ── */
-.of-card  { border:1px solid #222; border-radius:8px; margin-bottom:10px; overflow:hidden; }
+.of-card  { border:1px solid #1a2338; border-radius:8px; margin-bottom:10px; overflow:hidden; }
 .of-head  { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer;
             border-left:4px solid transparent; transition:background .15s; }
-.of-head:hover { background:#151515; }
-.of-head.expandida { background:#111; }
+.of-head:hover { background:#0f1626; }
+.of-head.expandida { background:#0b101b; }
 .of-strip { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 
 /* Color strips por estado */
-.of-sin_fecha       { border-left-color:#444; }
-.of-strip-sin_fecha { background:#444; }
+.of-sin_fecha       { border-left-color:#3a4a6f; }
+.of-strip-sin_fecha { background:#3a4a6f; }
 .of-proxima         { border-left-color:#1a4f9f; }
 .of-strip-proxima   { background:#1a4f9f; }
 .of-pasado_manana   { border-left-color:#e6c417; }
@@ -41,20 +41,20 @@
 .of-num  { font-size:14px; font-weight:700; }
 .of-meta { font-size:12px; color:#888; }
 .of-fecha-plan { font-size:11px; color:#767676; margin-left:auto; white-space:nowrap; }
-.of-chevron { font-size:14px; color:#444; transition:transform .2s; margin-left:8px; }
+.of-chevron { font-size:14px; color:#3a4a6f; transition:transform .2s; margin-left:8px; }
 .of-head.expandida .of-chevron { transform:rotate(180deg); }
 
 /* ── Tabla de fases ── */
-.fases-body { display:none; border-top:1px solid #1a1a1a; }
+.fases-body { display:none; border-top:1px solid #131b2c; }
 .fases-body.abierta { display:block; }
 .fases-table { width:100%; border-collapse:collapse; font-size:12px; }
-.fases-table th { background:#0e0e0e; color:#767676; font-size:10px; text-transform:uppercase;
-                  letter-spacing:.4px; padding:7px 12px; border-bottom:1px solid #1a1a1a; }
-.fases-table td { padding:8px 12px; border-bottom:1px solid #111; vertical-align:middle; }
+.fases-table th { background:#080b14; color:#767676; font-size:10px; text-transform:uppercase;
+                  letter-spacing:.4px; padding:7px 12px; border-bottom:1px solid #131b2c; }
+.fases-table td { padding:8px 12px; border-bottom:1px solid #0b101b; vertical-align:middle; }
 .fases-table tr:last-child td { border-bottom:none; }
-.fases-table tr:hover td { background:#0f0f0f; }
+.fases-table tr:hover td { background:#070910; }
 
-.dt-input { background:#111; border:1px solid #2a2a2a; border-radius:4px; padding:4px 8px;
+.dt-input { background:#0b101b; border:1px solid #20304f; border-radius:4px; padding:4px 8px;
             color:#e0e0e0; font-size:12px; width:150px; }
 .dt-input:focus { border-color:#1a6fbe; }
 .real-time { font-size:11px; color:#4caf7d; }
@@ -75,7 +75,7 @@
     <a href="/" class="btn btn-secondary btn-sm" style="margin-left:auto">← Dashboard</a>
 </div>
 
-<div style="display:flex;border-bottom:1px solid #222;margin-bottom:20px;">
+<div style="display:flex;border-bottom:1px solid #1a2338;margin-bottom:20px;">
   <a href="/supervisor/programacion" style="padding:10px 20px;font-size:13px;color:#e0e0e0;text-decoration:none;border-bottom:2px solid #4a9fff;">Máquinas</a>
   <a href="/curvas/" style="padding:10px 20px;font-size:13px;color:#555;text-decoration:none;border-bottom:2px solid transparent;">Curvas de tallas</a>
 </div>
@@ -83,7 +83,7 @@
 <!-- Leyenda -->
 <div class="leyenda">
     <span style="font-size:11px;color:#767676;font-weight:600">Colores:</span>
-    <div class="leg-item"><div class="leg-dot" style="background:#444"></div> Sin fecha</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#3a4a6f"></div> Sin fecha</div>
     <div class="leg-item"><div class="leg-dot" style="background:#1a4f9f"></div> Próxima (+2 días)</div>
     <div class="leg-item"><div class="leg-dot" style="background:#e6c417"></div> Pasado mañana</div>
     <div class="leg-item"><div class="leg-dot" style="background:#e6a817"></div> Mañana</div>

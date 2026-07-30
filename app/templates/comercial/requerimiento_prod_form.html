@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Requerimiento — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .rf-wrap { max-width:1150px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .rf-card { background:#0f1524; border:1px solid #1e2c48; border-radius:10px; padding:16px; margin-bottom:16px; }
+  .rf-card h2 { font-size:14px; color:#fff; margin:0 0 12px; }
+  .rf-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px 14px; }
+  .rf-field { display:flex; flex-direction:column; gap:4px; }
+  .rf-field label { font-size:11px; color:#888; text-transform:uppercase; }
+  .in { background:#101728; border:1px solid #313f63; color:#eee; border-radius:6px; padding:7px 10px; font-size:13px; width:100%; box-sizing:border-box; }
+  textarea.in { resize:vertical; min-height:44px; }
+  .btn { font-size:13px; border:1px solid #164; background:#164; color:#fff; border-radius:6px; padding:8px 16px; cursor:pointer; }
+  .btn.sec { background:#20304f; border-color:#313f63; } .btn.danger { background:#3a1414; border-color:#6b2525; color:#f0a0a0; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .linea { border:1px solid #20304f; border-radius:8px; padding:12px; margin-bottom:12px; background:#0c111d; }
+  .linea-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .tallas-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .talla-box { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .talla-box label { font-size:10px; color:#999; } .talla-box input { width:52px; text-align:center; }
+  .lt-total { font-size:12px; color:#7fe0a0; margin-top:6px; font-weight:600; }
+  .badge { font-size:11px; padding:2px 9px; border-radius:10px; border:1px solid #2a3557; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rf-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <h1 id="titulo" style="font-size:20px;color:#fff;margin:0">Nuevo requerimiento</h1>
+    <a href="/requerimientos/" style="color:#999;font-size:13px;text-decoration:none">← Volver a la lista</a>
+  </div>
+  <div id="estado-info" style="margin:6px 0 14px;font-size:13px;color:#999"></div>
+
+  <div class="rf-card">
+    <h2>Datos generales</h2>
+    <div class="rf-grid">
+      <div class="rf-field"><label>N° Requerimiento *</label><input id="numero_req" class="in" placeholder="014-2026"></div>
+      <div class="rf-field"><label>Tipo *</label>
+        <select id="tipo" class="in">{% for t in tipos %}<option value="{{t}}">{{t}}</option>{% endfor %}</select></div>
+      <div class="rf-field"><label>Cliente *</label><input id="cliente" class="in" placeholder="ELECTROCENTRO"></div>
+      <div class="rf-field"><label>Proceso</label><input id="proceso" class="in" placeholder="PÚBLICO"></div>
+      <div class="rf-field" style="grid-column:span 2"><label>Licitación</label><input id="licitacion" class="in"></div>
+      <div class="rf-field"><label>Fecha solicitud</label><input id="fecha_solicitud" type="date" class="in"></div>
+      <div class="rf-field"><label>Fecha entrega APT</label><input id="fecha_apt" type="date" class="in"></div>
+      <div class="rf-field"><label>Ejecutivo</label><input id="ejecutivo" class="in"></div>
+      <div class="rf-field"><label>Fecha absolución</label><input id="fecha_absolucion" type="date" class="in"></div>
+      <div class="rf-field" style="grid-column:span 3"><label>Nota</label><textarea id="nota" class="in"></textarea></div>
+    </div>
+  </div>
+
+  <div class="rf-card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h2 style="margin:0">Líneas del requerimiento</h2>
+      <button class="btn sec" id="btn-add" onclick="agregarLinea()">+ Agregar línea</button>
+    </div>
+    <div id="lineas" style="margin-top:12px"></div>
+    <div id="total-general" style="text-align:right;font-size:14px;color:#fff;margin-top:6px"></div>
+  </div>
+
+  <div id="acciones" style="display:flex;gap:10px;justify-content:flex-end">
+    <button class="btn sec" id="btn-guardar" onclick="guardar(false)">Guardar borrador</button>
+    <button class="btn" id="btn-registrar" onclick="guardar(true)">Registrar requerimiento</button>
+  </div>
+</div>
+<datalist id="dl-prendas"></datalist>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const TALLAJES = {{ tallajes | tojson }};
+const REQ_ID = {{ req_id | tojson }};
+const PUEDE_EDITAR = {{ (puede_editar | default(true)) | tojson }};
+let lineas = [];
+let ESTADO = 'BORRADOR';
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function nuevaLinea(){ return { grupo:'', item_num:'', sub_item:'', articulo:'', descripcion:'', composicion:'',
+  proveedor_tela:'', codigo_tela:'', color:'', tallaje:'C', prenda_catalogo_id:null, prenda_txt:'', tallas:{} }; }
+
+function agregarLinea(){ lineas.push(nuevaLinea()); render(); }
+function quitarLinea(i){ lineas.splice(i,1); render(); }
+function totalLinea(ln){ return Object.values(ln.tallas).reduce((a,b)=>a+(parseInt(b)||0),0); }
+
+function render(){
+  const cont = document.getElementById('lineas');
+  const ro = !editable();
+  cont.innerHTML = lineas.map((ln,i)=>{
+    const tallas = TALLAJES[ln.tallaje] || TALLAJES['C'];
+    const grid = tallas.map(t=>`<div class="talla-box"><label>${esc(t)}</label>
+      <input class="in" type="number" min="0" value="${ln.tallas[t]||''}" ${ro?'disabled':''}
+             oninput="setTalla(${i},'${esc(t)}',this.value)"></div>`).join('');
+    return `<div class="linea">
+      <div class="linea-head">
+        <b style="color:#ddd;font-size:13px">Línea ${i+1}</b>
+        ${ro?'':`<button class="btn danger" onclick="quitarLinea(${i})">Quitar</button>`}
+      </div>
+      <div class="rf-grid">
+        <div class="rf-field"><label>Grupo (terno/zona)</label><input class="in" value="${esc(ln.grupo)}" ${ro?'disabled':''} oninput="setCampo(${i},'grupo',this.value)"></div>
+        <div class="rf-field"><label>Artículo / código</label><input class="in" value="${esc(ln.articulo)}" ${ro?'disabled':''} oninput="setCampo(${i},'articulo',this.value)"></div>
+        <div class="rf-field"><label>Descripción *</label><input class="in" value="${esc(ln.descripcion)}" ${ro?'disabled':''} oninput="setCampo(${i},'descripcion',this.value)"></div>
+        <div class="rf-field"><label>Composición</label><input class="in" value="${esc(ln.composicion)}" ${ro?'disabled':''} oninput="setCampo(${i},'composicion',this.value)"></div>
+        <div class="rf-field"><label>Proveedor tela</label><input class="in" value="${esc(ln.proveedor_tela)}" ${ro?'disabled':''} oninput="setCampo(${i},'proveedor_tela',this.value)"></div>
+        <div class="rf-field"><label>Código tela</label><input class="in" value="${esc(ln.codigo_tela)}" ${ro?'disabled':''} oninput="setCampo(${i},'codigo_tela',this.value)"></div>
+        <div class="rf-field"><label>Color</label><input class="in" value="${esc(ln.color)}" ${ro?'disabled':''} oninput="setCampo(${i},'color',this.value)"></div>
+        <div class="rf-field"><label>Tallaje</label>
+          <select class="in" ${ro?'disabled':''} onchange="setTallaje(${i},this.value)">
+            <option value="A" ${ln.tallaje=='A'?'selected':''}>A · cuello (14.5–18)</option>
+            <option value="B" ${ln.tallaje=='B'?'selected':''}>B · numérico (28–42)</option>
+            <option value="C" ${ln.tallaje=='C'?'selected':''}>C · letra (XS–3XL)</option>
+          </select></div>
+        <div class="rf-field"><label>Prenda catálogo (opcional)</label>
+          <input class="in" list="dl-prendas" value="${esc(ln.prenda_txt)}" placeholder="buscar código/nombre…"
+                 ${ro?'disabled':''} oninput="buscarPrenda(this.value); setPrenda(${i},this.value)"></div>
+      </div>
+      <div class="tallas-grid">${grid}</div>
+      <div class="lt-total">Total línea: <span id="lt-${i}">${totalLinea(ln)}</span> prendas</div>
+    </div>`;
+  }).join('') || '<div style="color:#777;font-size:13px">Sin líneas. Agrega la primera.</div>';
+  actualizarTotalGeneral();
+}
+
+function setCampo(i,k,v){ lineas[i][k]=v; }
+function setTalla(i,t,v){ const n=parseInt(v)||0; if(n>0) lineas[i].tallas[t]=n; else delete lineas[i].tallas[t];
+  document.getElementById('lt-'+i).textContent = totalLinea(lineas[i]); actualizarTotalGeneral(); }
+function setTallaje(i,tj){ lineas[i].tallaje=tj;
+  const validas = new Set(TALLAJES[tj]||[]);
+  Object.keys(lineas[i].tallas).forEach(t=>{ if(!validas.has(t)) delete lineas[i].tallas[t]; });
+  render(); }
+function setPrenda(i,txt){ lineas[i].prenda_txt=txt; const id=PRENDA_MAP[txt]; lineas[i].prenda_catalogo_id = id||null; }
+
+function actualizarTotalGeneral(){
+  const tot = lineas.reduce((a,ln)=>a+totalLinea(ln),0);
+  document.getElementById('total-general').textContent = 'Total general: ' + tot + ' prendas';
+}
+
+// ── Autocomplete de prendas ──────────────────────────────────────────────────
+let PRENDA_MAP = {};
+let _pt;
+function buscarPrenda(q){
+  clearTimeout(_pt);
+  _pt = setTimeout(async ()=>{
+    try{
+      const rows = await apiFetch('/requerimientos/api/prendas' + (q?('?q='+encodeURIComponent(q)):''));
+      const dl = document.getElementById('dl-prendas');
+      dl.innerHTML = rows.map(r=>{ const lbl = r.codigo + ' — ' + (r.nombre||''); PRENDA_MAP[lbl]=r.id;
+        return `<option value="${esc(lbl)}">`; }).join('');
+    }catch(e){}
+  }, 250);
+}
+
+// ── Carga / guardado ─────────────────────────────────────────────────────────
+function editable(){ return PUEDE_EDITAR && ESTADO !== 'REGISTRADO'; }
+
+function aplicarModo(){
+  const ro = !editable();
+  ['numero_req','tipo','cliente','proceso','licitacion','fecha_solicitud','fecha_apt',
+   'ejecutivo','fecha_absolucion','nota'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=ro; });
+  document.getElementById('btn-add').style.display = ro?'none':'';
+  document.getElementById('acciones').style.display = ro?'none':'flex';
+  const info = document.getElementById('estado-info');
+  if(ESTADO==='REGISTRADO') info.innerHTML = '<span class="badge" style="color:#7fe0a0;border-color:#256b3f">REGISTRADO</span> · solo lectura';
+  else if(!PUEDE_EDITAR) info.innerHTML = 'Solo lectura (sin permiso de edición).';
+  else info.textContent = '';
+}
+
+async function cargar(){
+  if(!REQ_ID){ lineas=[nuevaLinea()]; render(); aplicarModo(); buscarPrenda(''); return; }
+  try{
+    const r = await apiFetch('/requerimientos/api/' + REQ_ID);
+    ESTADO = r.estado;
+    document.getElementById('titulo').textContent = 'Requerimiento ' + r.numero_req;
+    ['numero_req','cliente','proceso','licitacion','fecha_solicitud','fecha_apt',
+     'ejecutivo','fecha_absolucion','nota'].forEach(k=>{ if(r[k]!=null) document.getElementById(k).value=r[k]; });
+    document.getElementById('tipo').value = r.tipo;
+    lineas = r.lineas.map(ln=>{ const tallas={}; (ln.tallas||[]).forEach(t=>tallas[t.talla]=t.cantidad);
+      return { grupo:ln.grupo||'', item_num:ln.item_num||'', sub_item:ln.sub_item||'', articulo:ln.articulo||'',
+        descripcion:ln.descripcion||'', composicion:ln.composicion||'', proveedor_tela:ln.proveedor_tela||'',
+        codigo_tela:ln.codigo_tela||'', color:ln.color||'', tallaje:ln.tallaje||'C',
+        prenda_catalogo_id:ln.prenda_catalogo_id, prenda_txt:'', tallas }; });
+    if(!lineas.length) lineas=[nuevaLinea()];
+    render(); aplicarModo(); buscarPrenda('');
+  }catch(e){ toast(e.message,'error'); }
+}
+
+function payload(){
+  const cab = {};
+  ['numero_req','tipo','cliente','proceso','licitacion','fecha_solicitud','fecha_apt',
+   'ejecutivo','fecha_absolucion','nota'].forEach(k=>{ const v=document.getElementById(k).value; cab[k]=v||null; });
+  cab.lineas = lineas.map((ln,i)=>({
+    grupo:ln.grupo||null, item_num:ln.item_num||null, sub_item:ln.sub_item||null, articulo:ln.articulo||null,
+    descripcion:ln.descripcion, composicion:ln.composicion||null, proveedor_tela:ln.proveedor_tela||null,
+    codigo_tela:ln.codigo_tela||null, color:ln.color||null, tallaje:ln.tallaje,
+    prenda_catalogo_id:ln.prenda_catalogo_id||null, orden:i,
+    tallas: Object.entries(ln.tallas).map(([talla,cantidad])=>({talla, cantidad:parseInt(cantidad)||0})),
+  }));
+  return cab;
+}
+
+async function guardar(registrar){
+  const b1=document.getElementById('btn-guardar'), b2=document.getElementById('btn-registrar');
+  b1.disabled=b2.disabled=true;
+  try{
+    const H = {'Content-Type':'application/json'};
+    const url = REQ_ID ? ('/requerimientos/api/'+REQ_ID+'/editar') : '/requerimientos/api/crear';
+    const r = await apiFetch(url, { method:'POST', headers:H, body: JSON.stringify(payload()) });
+    let id = r.id;
+    if(registrar){
+      await apiFetch('/requerimientos/api/'+id+'/registrar', { method:'POST', headers:H, body:'{}' });
+      toast('Requerimiento registrado', 'success');
+      window.location.href = '/requerimientos/';
+      return;
+    }
+    toast('Guardado', 'success');
+    if(!REQ_ID) window.location.href = '/requerimientos/' + id;
+  }catch(e){ toast(e.message,'error'); }
+  finally{ b1.disabled=b2.disabled=false; }
+}
+
+cargar();
+</script>
+{% endblock %}

@@ -44,6 +44,10 @@ ROLES_COMERCIAL = {
 }
 ROLES_CREAR = {"ADMIN", "PLANEADOR", "COMERCIAL", "COMERCIAL_MARCA"}
 
+# Requerimientos comerciales (Muestra/Producción/Stock) — Fase 1
+ROLES_REQ_EDITAR = {"ADMIN", "COMERCIAL", "COMERCIAL_MARCA", "PLANEAMIENTO_MARCA"}
+ROLES_REQ_VER = ROLES_COMERCIAL          # comercial + planeamiento + gerencia
+
 # ── Catálogo ────────────────────────────────────────────────────────────────
 ROLES_EDITOR_CATALOGO = {"ADMIN", "UDP", "COMERCIAL_MARCA"}
 
@@ -59,6 +63,9 @@ ROLES_TC = {"ADMIN", "LOGISTICA"}   # quién fija el tipo de cambio del día
 
 # ── Plantas ─────────────────────────────────────────────────────────────────
 ROLES_PLANTAS = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "JEFE_PLANTA", "GERENCIA"}
+
+# ── Analítica / Process Mining (solo lectura) ───────────────────────────────
+ROLES_ANALITICA = {"ADMIN", "GERENTE_PLANTA", "JEFE_PLANTA", "GERENCIA", "PLANEADOR"}
 
 # ── Supervisor ──────────────────────────────────────────────────────────────
 ROLES_SUPERVISOR = {"ADMIN", "SUPERVISOR_CORTE", "GERENTE_PLANTA", "JEFE_PLANTA",

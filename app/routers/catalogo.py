@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel as _PBase
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database.connection import get_db
 from app.core.auth import get_current_user
 from app.core.templates import templates
@@ -728,6 +729,27 @@ def api_piezas_de_prenda(
 
 EXTS_DOC = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg", ".dxf"}
 
+# Firmas (magic bytes) por extensión. .dxf es texto (ASCII/UTF) → sin firma estricta.
+_MAGIC_DOC = {
+    ".pdf":  [b"%PDF"],
+    ".png":  [b"\x89PNG\r\n\x1a\n"],
+    ".jpg":  [b"\xff\xd8\xff"],
+    ".jpeg": [b"\xff\xd8\xff"],
+    ".docx": [b"PK\x03\x04"],
+    ".xlsx": [b"PK\x03\x04"],
+    ".doc":  [b"\xd0\xcf\x11\xe0"],   # OLE compound
+    ".xls":  [b"\xd0\xcf\x11\xe0"],
+}
+
+
+def _magic_doc_ok(contenido: bytes, ext: str) -> bool:
+    """True si los primeros bytes coinciden con la extensión. .dxf (texto) no se verifica."""
+    firmas = _MAGIC_DOC.get(ext)
+    if not firmas:
+        return True
+    head = contenido[:16]
+    return any(head.startswith(f) for f in firmas)
+
 
 @router.post("/api/{prenda_id}/documentos/subir")
 def api_subir_documento(
@@ -750,10 +772,16 @@ def api_subir_documento(
     if ext not in EXTS_DOC:
         raise HTTPException(400, f"Formato no permitido. Use: {', '.join(EXTS_DOC)}")
 
+    contenido = archivo.file.read()
+    max_bytes = settings.MAX_UPLOAD_MB * 1024 * 1024
+    if len(contenido) > max_bytes:
+        raise HTTPException(413, f"Archivo demasiado grande (máx. {settings.MAX_UPLOAD_MB} MB).")
+    if not _magic_doc_ok(contenido, ext):
+        raise HTTPException(400, "El contenido del archivo no coincide con su extensión.")
+
     _asegurar_carpetas()
     nombre_guardado = f"{uuid.uuid4().hex}{ext}"
     ruta = os.path.join(UPLOAD_DOCS, nombre_guardado)
-    contenido = archivo.file.read()
     with open(ruta, "wb") as f:
         f.write(contenido)
 

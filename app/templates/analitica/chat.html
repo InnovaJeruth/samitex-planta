@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Chat analítico — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .ch-wrap { max-width:900px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .ch-box { background:#0f1524; border:1px solid #1e2c48; border-radius:10px; padding:14px 16px; margin-bottom:14px; }
+  .ch-in { width:100%; box-sizing:border-box; background:#101728; border:1px solid #313f63; color:#eee;
+           border-radius:8px; padding:10px 12px; font-size:14px; resize:vertical; min-height:52px; }
+  .btn { font-size:13px; border:1px solid #164; background:#164; color:#fff; border-radius:6px; padding:8px 16px; cursor:pointer; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .chip { font-size:12px; color:#9fd; background:#0f2a17; border:1px solid #1e7d34; border-radius:14px;
+          padding:4px 10px; cursor:pointer; display:inline-block; margin:3px 4px 0 0; }
+  .resp { font-size:15px; color:#fff; line-height:1.5; }
+  table.rt { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+  table.rt th { text-align:left; padding:6px 9px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #1e2c48; }
+  table.rt td { padding:6px 9px; border-bottom:1px solid #151f33; }
+  .sql { font-family:monospace; font-size:12px; color:#bda; background:#070a12; border:1px solid #1a2338;
+         border-radius:6px; padding:8px 10px; margin-top:10px; white-space:pre-wrap; }
+  .muted { color:#777; font-size:12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ch-wrap">
+  <h1 style="font-size:20px;color:#fff;margin:0">Chat analítico</h1>
+  <div class="muted" style="margin:4px 0 12px">
+    Pregunta en lenguaje natural sobre producción y logística. Solo lectura — nunca modifica datos.
+  </div>
+
+  <div class="ch-box">
+    <textarea id="q" class="ch-in" placeholder="Ej.: ¿cuántas OF están atrasadas y de qué clientes?"></textarea>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:10px">
+      <label class="muted"><input type="checkbox" id="ver-sql"> Ver el SQL generado</label>
+      <button class="btn" id="btn-ask" onclick="preguntar()">Preguntar</button>
+    </div>
+    <div style="margin-top:8px">
+      <span class="chip" onclick="ejemplo(this)">¿Cuántas OF están activas?</span>
+      <span class="chip" onclick="ejemplo(this)">OF atrasadas con su cliente</span>
+      <span class="chip" onclick="ejemplo(this)">Rechazos de calidad por motivo</span>
+    </div>
+  </div>
+
+  <div id="salida" class="ch-box" style="display:none">
+    <div id="resp" class="resp"></div>
+    <div id="tabla"></div>
+    <div id="sql" class="sql" style="display:none"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function ejemplo(el){ document.getElementById('q').value = el.textContent; preguntar(); }
+
+function pintarTabla(cols, filas){
+  if(!cols.length || !filas.length) return '';
+  const th = cols.map(c=>`<th>${esc(c)}</th>`).join('');
+  const tr = filas.map(f=>'<tr>'+cols.map(c=>`<td>${esc(f[c])}</td>`).join('')+'</tr>').join('');
+  return `<table class="rt"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+}
+
+async function preguntar(){
+  const q = document.getElementById('q').value.trim();
+  if(!q){ toast('Escribe una pregunta', 'error'); return; }
+  const verSql = document.getElementById('ver-sql').checked;
+  const btn = document.getElementById('btn-ask');
+  btn.disabled = true; btn.textContent = 'Consultando…';
+  const out = document.getElementById('salida');
+  out.style.display = 'block';
+  document.getElementById('resp').textContent = 'Pensando…';
+  document.getElementById('tabla').innerHTML = '';
+  document.getElementById('sql').style.display = 'none';
+  try{
+    const r = await apiFetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ pregunta:q, incluir_sql:verSql }),
+    });
+    document.getElementById('resp').textContent = r.respuesta || '';
+    document.getElementById('tabla').innerHTML = pintarTabla(r.columnas||[], r.filas||[]);
+    if(verSql && r.sql){
+      const s = document.getElementById('sql');
+      s.textContent = r.sql; s.style.display = 'block';
+    }
+  }catch(e){
+    document.getElementById('resp').textContent = e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Preguntar';
+  }
+}
+
+document.getElementById('q').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) preguntar();
+});
+</script>
+{% endblock %}

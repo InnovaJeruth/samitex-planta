@@ -12,11 +12,11 @@
     --navy-line: #2c407e;
     --gold:      #b09060;
     --gold-hi:   #c8a877;
-    --bg-card:   #1a1a1a;
-    --bg-input:  #1e1e1e;
-    --bg-surface:#111;
-    --border:    #2a2a2a;
-    --border-hi: #383838;
+    --bg-card:   #131b2c;
+    --bg-input:  #172136;
+    --bg-surface:#0b101b;
+    --border:    #20304f;
+    --border-hi: #2f3d60;
     --text-1:    #e0e0e0;
     --text-2:    #aaa;
     --text-3:    #6f6f6f;
@@ -28,7 +28,7 @@
   .of-head .sub { font-size:12px; color:var(--text-3); margin-top:3px; }
   .btn-back {
     display:inline-flex; align-items:center; gap:7px;
-    background:#171717; color:var(--text-2);
+    background:#111829; color:var(--text-2);
     border:1px solid var(--border); border-radius:10px;
     padding:9px 15px; font-size:13px; font-weight:500; cursor:pointer;
     text-decoration:none; white-space:nowrap;
@@ -95,7 +95,7 @@
   .of-ctrl .tag {
     position:absolute; right:11px;
     font-size:10px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase;
-    color:var(--text-3); background:#151515; border:1px solid var(--border);
+    color:var(--text-3); background:#0f1626; border:1px solid var(--border);
     padding:3px 7px; border-radius:5px;
   }
   .of-ctrl input, .of-ctrl select {
@@ -113,7 +113,7 @@
     border-color:var(--gold); box-shadow:0 0 0 3px rgba(176,144,96,0.14);
   }
   .of-ctrl input[readonly] { color:var(--text-2); }
-  .of-ctrl option { background:#1a1a1a; color:var(--text-1); }
+  .of-ctrl option { background:#131b2c; color:var(--text-1); }
 
   /* ── Combo buscable ──────────────────────────────── */
   .combo-wrap { position:relative; width:100%; }
@@ -134,7 +134,7 @@
   }
   .combo-drop {
     position:absolute; z-index:200; left:0; right:0; top:calc(100% + 4px);
-    background:#1e1e1e; border:1px solid var(--border); border-radius:10px;
+    background:#172136; border:1px solid var(--border); border-radius:10px;
     max-height:260px; overflow-y:auto; display:none;
     box-shadow:0 12px 28px rgba(0,0,0,0.6);
   }
@@ -148,7 +148,7 @@
     border-left:2px solid transparent; transition:background 0.1s;
   }
   .combo-item:hover, .combo-item.active {
-    background:#252525; color:#fff; border-left-color:var(--gold);
+    background:#1d2a45; color:#fff; border-left-color:var(--gold);
   }
   .combo-empty { padding:14px; font-size:12px; color:var(--text-3); text-align:center; }
   #preview-piezas { font-size:11px; color:var(--text-3); min-height:14px; margin-top:5px; }
@@ -166,7 +166,7 @@
   .check-card .box {
     width:20px; height:20px; flex:none; margin-top:1px;
     border-radius:5px; border:2px solid var(--border-hi);
-    display:grid; place-items:center; background:#151515;
+    display:grid; place-items:center; background:#0f1626;
     transition:all 0.15s;
   }
   .check-card .box svg { opacity:0; color:#1a1305; }
@@ -206,7 +206,7 @@
     margin-top:20px; padding-top:18px; border-top:1px solid var(--border);
   }
   .btn-of-cancel {
-    background:#171717; color:var(--text-2);
+    background:#111829; color:var(--text-2);
     border:1px solid var(--border); border-radius:10px;
     padding:10px 20px; font-family:inherit; font-size:13.5px; font-weight:500;
     cursor:pointer; text-decoration:none;

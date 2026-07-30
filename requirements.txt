@@ -3,6 +3,12 @@ fastapi==0.110.1
 uvicorn[standard]==0.29.0          # servidor ASGI con WebSockets
 websockets==12.0                   # soporte WebSocket
 
+# ─── Servidor de producción ──────────────────────────────────
+# Gunicorn es SOLO Linux/contenedor (no corre en Windows). Ahí se usa como
+# gestor de procesos con UvicornWorker. En el host Windows actual, la
+# alternativa es `uvicorn --workers N` (ver docs/DESPLIEGUE_CONCURRENCIA.md).
+gunicorn==22.0.0 ; sys_platform != "win32"
+
 # ─── Templates ───────────────────────────────────────────────
 jinja2==3.1.3
 aiofiles==23.2.1                   # servir archivos estáticos async
@@ -34,3 +40,7 @@ xhtml2pdf==0.2.16                  # HTML → PDF puro Python, sin dependencias 
 
 # ─── Reportes Excel ──────────────────────────────────────────
 openpyxl==3.1.5                    # exportar reportes a .xlsx (placas, consumo, producción)
+
+# ─── RAG / Chat analítico (Text-to-SQL, solo lectura) ────────
+sqlparse==0.5.3                    # guardia de seguridad del SQL generado
+google-generativeai==0.8.3         # cliente Gemini para generar SQL / resumen

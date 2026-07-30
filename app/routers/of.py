@@ -1,7 +1,10 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from sqlalchemy.orm import Session, selectinload
 from datetime import date, timedelta
+
+logger = logging.getLogger("of")
 
 
 def _safe_date(s: str) -> date:
@@ -98,11 +101,17 @@ def lista_ofs(
 
 
 # ── Plan Corte (Gantt) ────────────────────────────────────────
-from app.roles import ROLES_PLAN_CORTE, ROLES_PRUEBA, ROLES_IMPORT_OF
+from app.roles import ROLES_PLAN_CORTE, ROLES_PRUEBA, ROLES_IMPORT_OF, ROLES_PLANEAMIENTO
 
 
 def _rol_str(usuario) -> str:
     return usuario.rol.value if hasattr(usuario.rol, "value") else str(usuario.rol)
+
+
+def _require(usuario, roles: set, accion: str = "esta acción") -> None:
+    """Autorización a nivel de endpoint: 403 si el rol no está permitido."""
+    if _rol_str(usuario) not in roles:
+        raise HTTPException(403, f"Sin permiso para {accion}")
 
 
 def get_of_or_404(of_id: int, db: Session) -> OrdenFabricacion:
@@ -439,6 +448,7 @@ def crear_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require(current_user, ROLES_PLANEAMIENTO, "crear OFs")
     # Solo roles autorizados pueden crear OFs de prueba (sin gates)
     if omitir_gates and _rol_str(current_user) not in ROLES_PRUEBA:
         raise HTTPException(403, "No tienes permiso para crear OFs de prueba")
@@ -494,7 +504,7 @@ def import_sap_page(request: Request, current_user: Usuario = Depends(get_curren
 
 
 @router.post("/api/import-sap")
-async def import_sap(
+def import_sap(   # sync → corre en el threadpool de FastAPI, no bloquea el event loop
     archivo: UploadFile = File(...),
     cliente: str = Form(None),
     db: Session = Depends(get_db),
@@ -507,12 +517,20 @@ async def import_sap(
         raise HTTPException(400, "El archivo debe ser .xlsx")
     if not cliente or not cliente.strip():
         raise HTTPException(400, "Ingresa el nombre del cliente antes de importar")
-    contenido = await archivo.read()
+    contenido = archivo.file.read()
     from app.services import of_import_service
+    from app.core.concurrency import limite_pesado
     try:
-        resumen = of_import_service.importar_excel_sap(
-            contenido, db, usuario_id=current_user.id, cliente=cliente.strip())
+        with limite_pesado("Importando el Excel de SAP"):
+            resumen = of_import_service.importar_excel_sap(
+                contenido, db, usuario_id=current_user.id, cliente=cliente.strip())
+    except HTTPException:
+        raise                      # 429 del limitador se propaga tal cual
     except Exception as e:
+        # Traceback en el log del servidor para poder rastrear qué fila/columna
+        # del Excel reventó (el usuario solo recibe un mensaje corto).
+        logger.exception("Import SAP falló (usuario=%s, cliente=%r, archivo=%r)",
+                         current_user.id, cliente, archivo.filename)
         raise HTTPException(400, f"No se pudo leer el Excel: {e}")
     return resumen
 
@@ -579,6 +597,7 @@ def agregar_pieza(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require(current_user, ROLES_PLANEAMIENTO, "agregar piezas")
     of = get_of_or_404(of_id, db)
 
     pieza = OFPieza(
@@ -599,6 +618,7 @@ def cargar_plantilla(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require(current_user, ROLES_PLANEAMIENTO, "cargar plantilla de piezas")
     of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.ACTIVA:
         raise HTTPException(400, "Solo se pueden generar piezas cuando la OF está ACTIVA")
@@ -723,13 +743,14 @@ def _magic_ok(contenido: bytes, ext: str) -> bool:
 
 # ── API: subir documento ──────────────────────────────────────
 @router.post("/api/{of_id}/documentos")
-async def subir_documento(
+def subir_documento(   # sync → threadpool, no bloquea el loop
     of_id: int,
     tipo: str = Form(...),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require(current_user, ROLES_PLANEAMIENTO, "subir documentos de la OF")
     # Validar extensión
     import pathlib
     ext = pathlib.Path(archivo.filename or "").suffix.lower()
@@ -741,7 +762,7 @@ async def subir_documento(
         )
 
     # Validar tamaño (leer todo en memoria para contar bytes)
-    contenido = await archivo.read()
+    contenido = archivo.file.read()
     if len(contenido) > _MAX_BYTES:
         raise HTTPException(
             400,
@@ -755,7 +776,7 @@ async def subir_documento(
             f"El contenido del archivo no coincide con su extensión ({ext}). "
             f"Sube un archivo válido."
         )
-    await archivo.seek(0)   # rebobinar para que shutil pueda leerlo
+    archivo.file.seek(0)   # rebobinar (sync)
 
     of = get_of_or_404(of_id, db)
 
@@ -908,6 +929,7 @@ def usar_ficha_catalogo(
     import shutil as _shutil
     from app.models.catalogo import PrendaDocumento
 
+    _require(current_user, ROLES_PLANEAMIENTO, "usar la ficha del catálogo")
     of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.BORRADOR:
         raise HTTPException(400, "Solo se puede usar esta opción en OFs en BORRADOR")
@@ -975,6 +997,7 @@ def actualizar_codigos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require(current_user, ROLES_PLANEAMIENTO, "actualizar códigos/gates de la OF")
     of = get_of_or_404(of_id, db)
 
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
@@ -1047,6 +1070,7 @@ def activar_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require(current_user, ROLES_PLANEAMIENTO, "activar OFs")
     of = get_of_or_404(of_id, db)
 
     if len(of.piezas) == 0:
@@ -1079,6 +1103,7 @@ def planificar_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require(current_user, ROLES_PLANEAMIENTO, "planificar OFs")
     of = get_of_or_404(of_id, db)
 
     # Guardrail fecha pasada
