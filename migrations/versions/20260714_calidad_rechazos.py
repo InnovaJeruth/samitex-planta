@@ -49,7 +49,7 @@ def upgrade():
             sa.Column('codigo', sa.String(length=10), nullable=False),
             sa.Column('descripcion', sa.String(length=120), nullable=False),
             sa.Column('severidad', sa.String(length=10), nullable=True),
-            sa.Column('activo', sa.Boolean(), nullable=False, server_default=sa.text('1')),
+            sa.Column('activo', sa.Boolean(), nullable=False, server_default=sa.text('true')),
             sa.UniqueConstraint('codigo', name='uq_motivo_rechazo_codigo'),
         )
 
@@ -70,14 +70,22 @@ def upgrade():
         op.create_index('ix_of_paquete_rechazos_paquete', 'of_paquete_rechazos', ['paquete_id'])
 
     # Seed idempotente de los 53 defectos de corte
-    motivos = sa.table(
-        'motivos_rechazo',
+    # Nota: si la tabla fue creada por create_all antes de que corriera esta migración,
+    # puede tener columnas NOT NULL agregadas en migraciones posteriores (rehacer_default).
+    # Incluimos esas columnas con su valor por defecto para evitar NOT NULL violations.
+    col_names = {c['name'] for c in insp.get_columns('motivos_rechazo')}
+    has_rehacer = 'rehacer_default' in col_names
+    motivos_cols = [
         sa.column('codigo', sa.String),
         sa.column('descripcion', sa.String),
         sa.column('activo', sa.Boolean),
-    )
+    ]
+    if has_rehacer:
+        motivos_cols.append(sa.column('rehacer_default', sa.Boolean))
+    motivos = sa.table('motivos_rechazo', *motivos_cols)
     existentes = {r[0] for r in bind.execute(sa.text("SELECT codigo FROM motivos_rechazo")).fetchall()}
-    faltantes = [{'codigo': c, 'descripcion': d, 'activo': True}
+    base_row = {'activo': True, **(({'rehacer_default': False}) if has_rehacer else {})}
+    faltantes = [{**base_row, 'codigo': c, 'descripcion': d}
                  for (c, d) in DEFECTOS if c not in existentes]
     if faltantes:
         op.bulk_insert(motivos, faltantes)

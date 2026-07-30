@@ -26,7 +26,7 @@ def upgrade():
         if 'hoja_numeracion_cerrada' not in cols:
             op.add_column('ordenes_fabricacion',
                            sa.Column('hoja_numeracion_cerrada', sa.Boolean(),
-                                     nullable=False, server_default=sa.text('0')))
+                                     nullable=False, server_default=sa.text('false')))
         if 'hoja_numeracion_cerrada_por' not in cols:
             op.add_column('ordenes_fabricacion',
                            sa.Column('hoja_numeracion_cerrada_por', sa.Integer(),

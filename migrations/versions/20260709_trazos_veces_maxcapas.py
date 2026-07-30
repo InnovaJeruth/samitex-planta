@@ -17,8 +17,14 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('of_trazo_tallas', sa.Column('veces', sa.Integer(), nullable=False, server_default='1'))
-    op.add_column('ordenes_fabricacion', sa.Column('max_capas', sa.Integer(), nullable=True))
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    cols_trazo_tallas = {c['name'] for c in insp.get_columns('of_trazo_tallas')}
+    if 'veces' not in cols_trazo_tallas:
+        op.add_column('of_trazo_tallas', sa.Column('veces', sa.Integer(), nullable=False, server_default='1'))
+    cols_of = {c['name'] for c in insp.get_columns('ordenes_fabricacion')}
+    if 'max_capas' not in cols_of:
+        op.add_column('ordenes_fabricacion', sa.Column('max_capas', sa.Integer(), nullable=True))
 
 
 def downgrade():

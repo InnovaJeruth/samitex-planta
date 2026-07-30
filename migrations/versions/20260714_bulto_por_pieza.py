@@ -59,11 +59,11 @@ def upgrade():
         _drop_uq(_OLD_UQ)
         _add_uq(_NEW_UQ, 'of_id, pieza_id, numero')
     else:
-        try:
+        uqs = {uc['name'] for uc in insp.get_unique_constraints('of_paquetes')}
+        if _OLD_UQ in uqs:
             op.drop_constraint(_OLD_UQ, 'of_paquetes', type_='unique')
-        except Exception:
-            pass
-        op.create_unique_constraint(_NEW_UQ, 'of_paquetes', ['of_id', 'pieza_id', 'numero'])
+        if _NEW_UQ not in uqs:
+            op.create_unique_constraint(_NEW_UQ, 'of_paquetes', ['of_id', 'pieza_id', 'numero'])
 
 
 def downgrade():

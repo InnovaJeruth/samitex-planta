@@ -28,7 +28,7 @@ def upgrade():
         op.add_column('motivos_rechazo',
                       sa.Column('rehacer_default', sa.Boolean(), nullable=False, server_default=sa.text('0')))
     for codigo in SIEMPRE_REHACER:
-        op.execute(sa.text("UPDATE motivos_rechazo SET rehacer_default=1 WHERE codigo=:c").bindparams(c=codigo))
+        op.execute(sa.text("UPDATE motivos_rechazo SET rehacer_default=true WHERE codigo=:c").bindparams(c=codigo))
 
 
 def downgrade():
