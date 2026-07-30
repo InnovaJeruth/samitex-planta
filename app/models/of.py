@@ -80,7 +80,6 @@ class OrdenFabricacion(Base):
     fecha_recepcion_real = Column(Date, nullable=True)
     estado_tercerizado   = Column(String(20), nullable=True)
     juegos_recibidos     = Column(Integer, default=0, nullable=False)
-    fase_tercerizada     = Column(String(5),  nullable=True)
     es_muestra           = Column(Boolean, default=False, nullable=False, server_default="0")
     omitir_gates         = Column(Boolean, default=False, nullable=False, server_default="0")
     max_capas            = Column(Integer, nullable=True)
