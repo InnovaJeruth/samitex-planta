@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Bandeja de reprocesos — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .rp-wrap { max-width:1100px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .rp-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .rp-head h1 { font-size:20px; font-weight:700; color:#fff; margin:0; }
+  .in { background:#101728; border:1px solid #313f63; color:#eee; border-radius:6px; padding:5px 8px; }
+  .grp { margin-bottom:18px; }
+  .grp h2 { font-size:14px; font-weight:600; color:#fff; margin:0 0 8px; display:flex; align-items:center; gap:8px; }
+  .badge { font-size:11px; background:#1a2338; border:1px solid #2a3557; color:#aaa; border-radius:20px; padding:1px 9px; }
+  .g-rehacer { color:#f08a8a; } .g-refusion { color:#7cc4ff; } .g-recorte { color:#e6c14a; }
+  table.pq { width:100%; border-collapse:collapse; font-size:13px; background:#0f1524; border:1px solid #1e2c48; border-radius:10px; overflow:hidden; }
+  table.pq th { text-align:left; padding:7px 10px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #1e2c48; }
+  table.pq td { padding:7px 10px; border-bottom:1px solid #151f33; }
+  .btn { font-size:12px; border:1px solid #3a4a6f; background:#1a2338; color:#ddd; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .btn:hover { background:#223255; } .btn.primary { background:#164; border-color:#164; color:#fff; }
+  .st { font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px; }
+  .st-pen { background:#2d2400; color:#e6c14a; } .st-ep { background:#12233a; color:#7cc4ff; }
+  .dot { width:11px; height:11px; border-radius:3px; border:1px solid #20304f; display:inline-block; vertical-align:-1px; }
+  .oflink { color:#7cc4ff; text-decoration:none; } .oflink:hover { text-decoration:underline; }
+  .stp { font-size:10px; padding:1px 6px; border-radius:4px; }
+  .s-done { background:#0f2a17; color:#6fdf9a; } .s-cur { background:#12233a; color:#7cc4ff; } .s-todo { color:#666; }
+  .s-sep { color:#555; margin:0 3px; font-size:10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rp-wrap">
+  <div class="rp-head">
+    <h1>Bandeja de reprocesos</h1>
+    <span style="color:#999;font-size:13px">Piezas rechazadas por Calidad, agrupadas por proceso</span>
+    <span style="margin-left:auto"></span>
+    <label style="font-size:12px;color:#999">Área</label>
+    <select class="in" id="area-filtro" onchange="load()"><option value="">Todas</option></select>
+    <label style="font-size:12px;color:#999">OF</label>
+    <select class="in" id="of-filtro" onchange="load()"><option value="">Todas</option></select>
+  </div>
+  <div id="cont"><span style="color:#777">Cargando…</span></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PUEDE_REP = {{ 'true' if puede_reproceso else 'false' }};
+let REJ = [], OFS = [], AREAS = [];
+
+function csrf(){ try { return getCsrfToken(); } catch(e){ return ''; } }
+async function api(url, opts={}){
+  opts.headers = Object.assign({'Content-Type':'application/json','x-csrf-token':csrf()}, opts.headers||{});
+  const r = await fetch(url, opts);
+  if(!r.ok){ const d = await r.json().catch(()=>({})); throw new Error(d.detail||'Error'); }
+  return r.json();
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function colorDot(c){ const bg=(c==='BLANCO')?'#e8e8e8':(c==='AMARILLO'?'#e0a93b':'#556'); return `<span class="dot" style="background:${bg}"></span> ${c||'—'}`; }
+function stR(e){
+  if(e==='ESPERA_TELA') return '<span class="st" style="background:#3a1500;color:#f0a060">Esperando tela</span>';
+  if(e==='EN_REPROCESO') return '<span class="st st-ep">En reproceso</span>';
+  return '<span class="st st-pen">Pendiente</span>';
+}
+function grpClass(g){ return {CORTE:'g-recorte',TIZADO:'g-rehacer',TENDIDO:'g-rehacer',NUMERADO:'g-recorte'}[g]||''; }
+function grpLabel(g){ return (g||'').charAt(0)+(g||'').slice(1).toLowerCase(); }
+function cap(s){ return (s||'').charAt(0)+(s||'').slice(1).toLowerCase(); }
+function reinicioCell(r){
+  let h = r.reinicio ? `<span class="stp s-todo">rehacer desde: ${esc(cap(r.reinicio))}</span>` : '<span class="s-todo">—</span>';
+  if(r.rehacer) h += ' <span class="stp s-todo">rehacer</span>';
+  return h;
+}
+
+async function load(){
+  const so = document.getElementById('of-filtro');
+  const urlOf = new URLSearchParams(location.search).get('of');
+  const of = so.value || (so.dataset.done ? '' : (urlOf || ''));
+  const area = document.getElementById('area-filtro').value;
+  const qs = new URLSearchParams(); if(of) qs.set('of_id', of); if(area) qs.set('area', area);
+  const d = await api(`/paquetes/api/reprocesos/data${qs.toString()?`?${qs}`:''}`);
+  REJ = d.rechazos; OFS = d.ofs||[]; AREAS = d.areas||[];
+  syncFiltro(of); render();
+}
+function syncFiltro(preset){
+  const so = document.getElementById('of-filtro');
+  if(!so.dataset.done){
+    so.innerHTML = '<option value="">Todas</option>' + OFS.map(o=>`<option value="${o.id}">${esc(o.numero_of)}</option>`).join('');
+    if(preset) so.value = preset;
+    so.dataset.done = '1';
+  }
+  const sa = document.getElementById('area-filtro');
+  if(!sa.dataset.done && AREAS.length){
+    const cur = sa.value;
+    sa.innerHTML = '<option value="">Todas</option>' + AREAS.map(a=>`<option value="${a}">${esc(grpLabel(a))}</option>`).join('');
+    sa.value = cur; sa.dataset.done = '1';
+  }
+}
+function render(){
+  const box = document.getElementById('cont');
+  if(!REJ.length){ box.innerHTML='<span style="color:#777">No hay piezas en reproceso. 🎉</span>'; return; }
+  const grupos = {};
+  for(const r of REJ){ (grupos[r.grupo] = grupos[r.grupo] || []).push(r); }
+  let h='';
+  for(const g of Object.keys(grupos)){
+    const rows = grupos[g];
+    const total = rows.reduce((a,b)=>a+b.cantidad,0);
+    h+=`<div class="grp"><h2 class="${grpClass(g)}">${esc(grpLabel(g))} <span class="badge">${rows.length} ítems · ${total} u</span></h2>
+      <table class="pq"><thead><tr><th>OF</th><th>Pieza</th><th>Bulto</th><th>Talla</th><th>Color</th><th>Numeración</th><th>Defecto</th><th>Cant</th><th>Reinicio</th><th>Estado</th><th></th></tr></thead><tbody>`;
+    for(const r of rows){
+      let acc='';
+      if(PUEDE_REP){
+        if(r.estado==='PENDIENTE'){
+          acc += `<button class="btn primary" onclick="tomar(${r.id})">Tomar · ${esc(grpLabel(r.grupo))}</button>`;
+          if(r.rehacer) acc += ` <button class="btn" onclick="faltaTela(${r.id})">Falta tela</button>`;
+        } else if(r.estado==='EN_REPROCESO'){
+          acc += `<button class="btn primary" onclick="terminar(${r.id})">Terminar</button>`;
+        }
+      }
+      h+=`<tr>
+        <td><a class="oflink" href="/paquetes/${r.of_id}">${esc(r.numero_of)}</a></td>
+        <td>${esc(r.pieza||'')}</td><td><b>${r.paquete_numero}</b></td><td>${esc(r.talla||'')}</td><td>${colorDot(r.color)}</td>
+        <td style="font-variant-numeric:tabular-nums">${esc(r.numeracion||'')}</td>
+        <td><b style="color:#f0a060">${esc(r.codigo||'')}</b> ${esc(r.descripcion||'')}</td>
+        <td>${r.cantidad} u</td><td>${reinicioCell(r)}</td>
+        <td>${stR(r.estado)}</td><td style="white-space:nowrap">${acc}</td></tr>`;
+    }
+    h+='</tbody></table></div>';
+  }
+  box.innerHTML = h;
+}
+async function tomar(id){
+  try{ await api(`/paquetes/api/rechazo/${id}/tomar`,{method:'POST',body:'{}'}); toast('Tomado','success'); load(); }
+  catch(e){ toast(e.message,'error'); }
+}
+async function terminar(id){
+  showConfirm('¿La estación terminó su parte? La pieza pasa a Fusionado o reingresa a Calidad.', async ()=>{
+    try{ await api(`/paquetes/api/rechazo/${id}/terminar`,{method:'POST',body:'{}'}); toast('Terminado','success'); load(); }
+    catch(e){ toast(e.message,'error'); }
+  }, 'Terminar');
+}
+async function faltaTela(id){
+  showConfirm('¿No hay tela para rehacer? Se avisará a Planeamiento (aumentar consumo / SOLPED en SAP).', async ()=>{
+    try{ await api(`/paquetes/api/rechazo/${id}/falta-tela`,{method:'POST',body:'{}'}); toast('Esperando tela','success'); load(); }
+    catch(e){ toast(e.message,'error'); }
+  }, 'Falta tela');
+}
+load();
+</script>
+{% endblock %}

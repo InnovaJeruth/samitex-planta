@@ -31,8 +31,8 @@ from app.models.catalogo import (
 
 router = APIRouter()
 
-ROLES_EDITOR   = {"ADMIN", "UDP", "INGENIERIA"}
-ROLES_APROBAR  = {"ADMIN", "INGENIERIA"}
+from app.roles import (ROLES_EDITOR_HDC as ROLES_EDITOR,
+                       ROLES_APROBAR_HDC as ROLES_APROBAR, ROLES_TC)
 
 
 def _rol(u: Usuario) -> str:
@@ -59,7 +59,7 @@ class LineaIn(_PBase):
 
 class HojaIn(_PBase):
     moneda_base: str           = "SO"
-    tipo_cambio: float         = 3.70
+    tipo_cambio: Optional[float] = None   # si no viene, se usa el TC del día (tc_hoy)
     notas:       Optional[str] = None
     lineas:      List[LineaIn] = []
 
@@ -118,7 +118,7 @@ def _calcular_subtotal(
     precio: Optional[float],
     factor_conversion: float = 1.0,
     moneda: Optional[str] = None,
-    tipo_cambio: float = 3.70,
+    tipo_cambio: float = 3.45,
 ) -> Optional[float]:
     """subtotal en soles = consumo × (1+pct) / factor_conversion × precio_SO_por_UC"""
     if precio is None:
@@ -126,6 +126,46 @@ def _calcular_subtotal(
     factor = max(factor_conversion, 0.000001)
     precio_so = precio * tipo_cambio if (moneda and moneda != 'SO') else precio
     return round(consumo * (1 + pct) / factor * precio_so, 4)
+
+
+# Parámetros de costeo (del HDC; ajustables luego)
+TC_HDC       = 3.45     # tipo de cambio USD→S/ (FALLBACK si Logística no cargó el del día)
+GIF_PCT      = 0.124    # gastos indirectos de fabricación (% sobre costo primo)
+MARGEN_CV    = 0.90     # el costo de producción es 90% → precio = costo / 0.90
+
+TC_PARAM_KEY = "TC_USD_PEN"   # clave del parámetro editable por Logística
+
+
+def tc_hoy(db) -> float:
+    """Tipo de cambio USD→S/ vigente: lo carga Logística por día (parámetro del
+    sistema). Si no hay valor, cae al fallback TC_HDC. Solo aplica a hojas NUEVAS;
+    las ya guardadas conservan su propio `tipo_cambio`."""
+    from app.models.parametro import ParametroSistema
+    try:
+        return float(ParametroSistema.get(db, TC_PARAM_KEY, TC_HDC))
+    except (TypeError, ValueError):
+        return TC_HDC
+
+
+def _costo_full(prenda, total_mp, total_avios, tc=TC_HDC):
+    """Completa el costo estimado: insumos + servicios + MOD + GIF + margen.
+    Servicios y MOD vienen del HDC en USD → se pasan a soles con `tc`."""
+    total_serv = round(sum((s.costo or 0) for s in prenda.servicios_efectivos) * tc, 2)
+    total_mod  = round(sum((m.subtotal or 0) for m in prenda.mod_efectivos) * tc, 2)
+    costo_primo = round((total_mp or 0) + (total_avios or 0) + total_serv + total_mod, 2)
+    gif = round(costo_primo * GIF_PCT, 2)
+    costo_prod = round(costo_primo + gif, 2)
+    total = round(costo_prod / MARGEN_CV, 2) if MARGEN_CV else costo_prod
+    return {
+        "total_servicios":  total_serv,
+        "total_mod":        total_mod,
+        "costo_primo":      costo_primo,
+        "gif":              gif,
+        "gif_pct":          GIF_PCT,
+        "costo_produccion": costo_prod,
+        "margen_cv":        MARGEN_CV,
+        "total_general":    total,
+    }
 
 
 def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
@@ -138,7 +178,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
         mp_configs   = {}
         avio_configs = {}
     else:
-        base = (
+        base = prenda.base or (
             db.query(PrendaCatalogo)
             .filter_by(tipo_base=prenda.tipo_base, tipo_cliente="BASE", activo=True)
             .first()
@@ -148,6 +188,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
         mp_configs   = {c.mp_id:   c for c in prenda.mp_configs}
         avio_configs = {c.avio_id: c for c in prenda.avio_configs}
 
+    tc = tc_hoy(db)            # TC del día (Logística) → prefill de hoja NUEVA
     lineas = []
     orden  = 0
 
@@ -162,7 +203,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
         consumo  = cfg.consumo_override if (cfg and cfg.consumo_override) else mp.consumo_unitario
         precio   = mp.precio_referencia
         fc       = getattr(mp, 'factor_conversion', 1.0) or 1.0
-        subtotal = _calcular_subtotal(consumo, mp.pct_adicional, precio, fc, mp.moneda, 3.70)
+        subtotal = _calcular_subtotal(consumo, mp.pct_adicional, precio, fc, mp.moneda, tc)
         lineas.append({
             "tipo":             "MP",
             "item_id":          mp.id,
@@ -189,7 +230,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
                 continue
             fc       = getattr(mp, 'factor_conversion', 1.0) or 1.0
             precio   = mp.precio_referencia
-            subtotal = _calcular_subtotal(mp.consumo_unitario, mp.pct_adicional, precio, fc, mp.moneda, 3.70)
+            subtotal = _calcular_subtotal(mp.consumo_unitario, mp.pct_adicional, precio, fc, mp.moneda, tc)
             lineas.append({
                 "tipo":              "MP",
                 "item_id":           mp.id,
@@ -220,7 +261,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
         consumo  = cfg.consumo_override if (cfg and cfg.consumo_override) else avio.consumo_unitario
         precio   = avio.precio
         fc       = getattr(avio, 'factor_conversion', 1.0) or 1.0
-        subtotal = _calcular_subtotal(consumo, avio.pct_adicional, precio, fc, avio.moneda, 3.70)
+        subtotal = _calcular_subtotal(consumo, avio.pct_adicional, precio, fc, avio.moneda, tc)
         lineas.append({
             "tipo":             "AVIO",
             "item_id":          avio.id,
@@ -247,7 +288,7 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
                 continue
             fc       = getattr(avio, 'factor_conversion', 1.0) or 1.0
             precio   = avio.precio
-            subtotal = _calcular_subtotal(avio.consumo_unitario, avio.pct_adicional, precio, fc, avio.moneda, 3.70)
+            subtotal = _calcular_subtotal(avio.consumo_unitario, avio.pct_adicional, precio, fc, avio.moneda, tc)
             lineas.append({
                 "tipo":              "AVIO",
                 "item_id":           avio.id,
@@ -267,16 +308,18 @@ def _build_prefill_desde_base(prenda: PrendaCatalogo, db: Session) -> dict:
             })
             orden += 1
 
-    total_mp    = sum(l["subtotal"] for l in lineas if l["tipo"] == "MP"   and l["subtotal"] is not None)
-    total_avios = sum(l["subtotal"] for l in lineas if l["tipo"] == "AVIO" and l["subtotal"] is not None)
-    tipo_cambio_default = 3.70
+    total_mp    = round(sum(l["subtotal"] for l in lineas if l["tipo"] == "MP"   and l["subtotal"] is not None), 2)
+    total_avios = round(sum(l["subtotal"] for l in lineas if l["tipo"] == "AVIO" and l["subtotal"] is not None), 2)
 
+    full = _costo_full(prenda, total_mp, total_avios, tc)
     return {
-        "lineas":       lineas,
-        "total_mp":     round(total_mp, 2),
-        "total_avios":  round(total_avios, 2),
-        "total_general": round(total_mp + total_avios, 2),
-        "aviso":        None,
+        "lineas":        lineas,
+        "total_mp":      total_mp,
+        "total_avios":   total_avios,
+        "total_insumos": round(total_mp + total_avios, 2),
+        **full,                              # servicios, mod, gif, costo_primo, produccion, total_general
+        "tipo_cambio":   tc,
+        "aviso":         None,
     }
 
 
@@ -292,6 +335,39 @@ def api_prefill_hoja(
     Paulo las revisa, ajusta precios con logística y luego hace POST para guardar."""
     prenda = _get_prenda(prenda_id, db)
     return _build_prefill_desde_base(prenda, db)
+
+
+# ── Tipo de cambio del día (editable por Logística) ───────────
+class TipoCambioIn(_PBase):
+    tipo_cambio: float
+
+
+@router.get("/api/tipo-cambio")
+def api_get_tipo_cambio(db: Session = Depends(get_db),
+                        current_user: Usuario = Depends(get_current_user)):
+    """TC USD→S/ vigente (el que Logística cargó). Cualquiera lo puede ver."""
+    from app.models.parametro import ParametroSistema
+    row = db.query(ParametroSistema).filter_by(clave=TC_PARAM_KEY).first()
+    return {
+        "tipo_cambio":  tc_hoy(db),
+        "updated_at":   row.updated_at.isoformat() if (row and row.updated_at) else None,
+        "puede_editar": _rol(current_user) in ROLES_TC,
+        "fallback":     row is None,          # True = usando el valor por defecto
+    }
+
+
+@router.post("/api/tipo-cambio")
+def api_set_tipo_cambio(body: TipoCambioIn, db: Session = Depends(get_db),
+                        current_user: Usuario = Depends(get_current_user)):
+    """Logística fija el TC del día. Solo aplica a hojas NUEVAS; las guardadas
+    conservan el suyo."""
+    if _rol(current_user) not in ROLES_TC:
+        raise HTTPException(403, "Solo Logística puede actualizar el tipo de cambio")
+    if not body.tipo_cambio or body.tipo_cambio <= 0:
+        raise HTTPException(400, "El tipo de cambio debe ser mayor a 0")
+    from app.models.parametro import ParametroSistema
+    ParametroSistema.set(db, TC_PARAM_KEY, str(body.tipo_cambio))
+    return {"tipo_cambio": tc_hoy(db)}
 
 
 @router.get("/api/{prenda_id}/hoja-costos")
@@ -357,17 +433,17 @@ def api_guardar_hoja(
 
     # Calcular totales
     lineas_data = body.lineas
-    tc = body.tipo_cambio or 3.70
-    total_mp    = sum(
+    tc = body.tipo_cambio or tc_hoy(db)
+    total_mp    = round(sum(
         _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot,
                            l.factor_conversion, l.moneda, tc) or 0
-        for l in lineas_data if l.tipo == "MP"
-    )
-    total_avios = sum(
+        for l in lineas_data if l.tipo == "MP"), 2)
+    total_avios = round(sum(
         _calcular_subtotal(l.consumo_unitario, l.pct_adicional, l.precio_snapshot,
                            l.factor_conversion, l.moneda, tc) or 0
-        for l in lineas_data if l.tipo == "AVIO"
-    )
+        for l in lineas_data if l.tipo == "AVIO"), 2)
+    # Costo completo: + servicios + MOD + GIF + margen (de la base, heredado)
+    full = _costo_full(prenda, total_mp, total_avios, tc)
 
     # Buscar hoja BORRADOR existente para reutilizar (no aprobada)
     hoja = (
@@ -390,11 +466,11 @@ def api_guardar_hoja(
 
     hoja.estado        = "BORRADOR"
     hoja.moneda_base   = body.moneda_base
-    hoja.tipo_cambio   = body.tipo_cambio or 3.70
+    hoja.tipo_cambio   = body.tipo_cambio or TC_HDC
     hoja.notas         = body.notas
-    hoja.total_mp      = round(total_mp, 2)
-    hoja.total_avios   = round(total_avios, 2)
-    hoja.total_general = round(total_mp + total_avios, 2)
+    hoja.total_mp      = total_mp
+    hoja.total_avios   = total_avios
+    hoja.total_general = full["total_general"]     # costo total (insumos + servicios + MOD + GIF + margen)
     hoja.updated_at    = datetime.utcnow()
 
     for i, l in enumerate(lineas_data):

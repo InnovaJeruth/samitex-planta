@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}Placas — OF {{ of.numero_of }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.tz-wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px; color: #ddd; }
+.tz-head { display:flex; align-items:center; gap:12px; margin-bottom:6px; flex-wrap:wrap; }
+.tz-head h1 { font-size:20px; font-weight:700; color:#fff; margin:0; }
+.tz-head .sub { color:#999; font-size:13px; }
+.tz-note { color:#999; font-size:12px; margin-bottom:14px; }
+.tz-card { background:#172136; border:1px solid #2a3557; border-radius:10px; padding:14px 16px; margin-bottom:16px; }
+.tz-card h2 { font-size:14px; font-weight:600; color:#fff; margin:0 0 12px; }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:800px){ .row2 { grid-template-columns:1fr; } }
+table.tz { width:100%; border-collapse:collapse; font-size:13px; }
+table.tz th, table.tz td { border:1px solid #2a3557; padding:7px 9px; text-align:left; }
+table.tz th { background:#1e2c48; color:#aaa; font-weight:600; }
+.chip { display:inline-block; font-size:11px; background:#123; color:#7cf; border:1px solid #245; padding:1px 7px; border-radius:5px; margin:1px 3px 1px 0; }
+.st { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
+.st-hecho { background:#0f2a17; color:#6fdf9a; } .st-curso { background:#2a220f; color:#e6c15a; } .st-pend { background:#20304f; color:#888; }
+.btn { font-size:12px; border:1px solid #3a4a6f; background:#1a2338; color:#ddd; border-radius:6px; padding:5px 10px; cursor:pointer; }
+.btn:hover { background:#223255; } .btn.primary { background:#164; border-color:#164; color:#fff; } .btn.danger { color:#f88; border-color:#622; }
+.field { display:flex; flex-direction:column; gap:4px; } .field label { font-size:11px; color:#999; }
+.field input { background:#101728; border:1px solid #313f63; color:#eee; border-radius:6px; padding:6px 8px; width:100%; }
+.grid3 { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:10px; margin-bottom:12px; }
+.dibgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; margin-bottom:12px; }
+.dcell { border:1px solid #2a3557; border-radius:6px; padding:7px 9px; } .dcell.off { opacity:.5; }
+.dcell .t { font-size:12px; font-weight:600; color:#eee; } .dcell .r { font-size:11px; color:#888; margin-bottom:4px; }
+.cov { display:flex; flex-wrap:wrap; gap:6px; } .cvi { font-size:11px; padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums; }
+.cvi.ok { background:#0f2a17; color:#6fdf9a; } .cvi.bad { background:#2a1414; color:#f0a; }
+.big-ok { font-weight:600; margin-top:8px; } .ok { color:#6fdf9a; } .low { color:#e6a15a; font-weight:600; }
+.kv { display:flex; justify-content:space-between; font-size:12.5px; padding:3px 0; } .kv .k { color:#999; } .kv .v { font-weight:600; font-variant-numeric:tabular-nums; }
+.prev { background:#101728; border:1px solid #2a3557; border-radius:6px; padding:10px 12px; margin-bottom:12px; font-size:12.5px; }
+.prev .der { color:#888; margin-top:6px; } .muted { color:#777; }
+.capline { display:flex; align-items:center; gap:8px; }
+.capline input { width:90px; }
+.fases { display:flex; gap:10px; flex-wrap:wrap; }
+.fase { flex:1; min-width:180px; border:1px solid #2a3557; border-radius:8px; padding:10px 12px; }
+.fase .nm { font-weight:600; color:#fff; margin-bottom:6px; }
+.fase .tm { font-size:12px; color:#aaa; margin-top:6px; font-variant-numeric:tabular-nums; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tz-wrap">
+  <div class="tz-head">
+    <h1>Placas de corte</h1>
+    <span class="sub">OF {{ of.numero_of }} · {{ of.total_juegos }} prendas</span>
+    <a href="/trazos/api/{{ of.id }}/reporte-excel" class="btn" style="margin-left:auto" target="_blank">⬇ Exportar Excel</a>
+    <a href="/corte/{{ of.id }}" class="btn">← Seguimiento de corte</a>
+  </div>
+  {% if of.prenda_catalogo %}
+  {% set _telas = of.prenda_catalogo.materiales | selectattr('tipo','equalto','TELA_PRINCIPAL') | list %}
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#141b2a;border:1px solid #24425f;border-radius:10px;padding:12px 16px;margin-bottom:14px">
+    <span style="font-size:22px">🧵</span>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="font-size:13px;color:#cfe3ff">
+        <b style="color:#fff">{{ of.prenda_catalogo.codigo }}</b> · {{ of.prenda_catalogo.nombre }}
+      </div>
+      <div style="font-size:12px;color:#9fb6d0">
+        Tela en mesa:
+        <b style="color:#fff">{{ (_telas[0].nombre if _telas else 'tela principal') }}</b>
+        {% if of.prenda_catalogo.color %}
+        &nbsp;·&nbsp; Color:
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <span style="width:12px;height:12px;border-radius:3px;border:1px solid #20304f;background:#334;display:inline-block"></span>
+          <b style="color:#fff;text-transform:uppercase">{{ of.prenda_catalogo.color }}</b>
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    <span style="margin-left:auto;font-size:11px;color:#e6a15a;background:#241a0e;border:1px solid #5a3f1a;border-radius:6px;padding:4px 9px">⚠ Una OF = un solo color · no mezclar telas en la mesa</span>
+  </div>
+  {% endif %}
+  <div class="tz-note">Cada placa es un dibujo. Prendas por talla = capas × veces; metros = capas × largo del tizado. Arma placas hasta cubrir el pedido (restante en 0).</div>
+
+  <div class="row2">
+    <div class="tz-card">
+      <h2>Cobertura del pedido</h2>
+      <div id="valid" class="cov"><span class="muted">Cargando…</span></div>
+      <div id="valid-big" class="big-ok"></div>
+    </div>
+    <div class="tz-card">
+      <h2>Control de consumo (m/prenda)</h2>
+      <div id="consumo"><span class="muted">Cargando…</span></div>
+    </div>
+  </div>
+
+  <div class="tz-card">
+    <h2>Fases de tela — tiempos</h2>
+    <div id="fases-box"><span class="muted">Cargando…</span></div>
+    <div style="font-size:11px;color:#777;margin-top:8px">El inicio se marca al hacer clic; el fin se pone solo cuando todas las placas terminan la fase y el pedido está cubierto.</div>
+  </div>
+
+  {% if puede_editar %}
+  <div class="tz-card">
+    <h2>Máquina</h2>
+    <div class="capline">
+      <span style="font-size:12px;color:#999">Tope de capas por placa:</span>
+      <input id="maxcapas" type="number" min="1">
+      <button class="btn" onclick="guardarTope()">Guardar tope</button>
+      <span id="tope-msg" class="muted"></span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="tz-card">
+    <h2>Placas creadas</h2>
+    <div id="placas-box"><span class="muted">Cargando…</span></div>
+  </div>
+
+  <div class="tz-card">
+    <h2>Historial de tela (tendido / corte)</h2>
+    <div id="mov-box"><span class="muted">Cargando…</span></div>
+  </div>
+
+  {% if puede_editar %}
+  <div class="tz-card">
+    <h2>Armar placa (dibujo)</h2>
+    <div class="grid3">
+      <div class="field"><label>Nombre</label><input id="f-nombre" placeholder="Placa 1"></div>
+      <div class="field"><label>Capas (paños)</label><input id="f-capas" type="number" min="1" oninput="preview()"></div>
+      <div class="field"><label>Largo del tizado (m)</label><input id="f-largo" type="number" step="0.01" oninput="preview()"></div>
+    </div>
+    <div style="font-size:11px;color:#999;margin-bottom:6px">Dibujo — veces que aparece cada talla en el marker:</div>
+    <div id="dib-inputs" class="dibgrid"></div>
+    <div class="prev" id="prev"><span class="muted">Ingresa capas y el dibujo para ver la vista previa.</span></div>
+    <button class="btn primary" onclick="crearPlaca()">Guardar placa</button>
+    <span id="crear-msg" class="muted" style="margin-left:10px"></span>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const OF_ID = {{ of.id }};
+const PUEDE = {{ 'true' if puede_editar else 'false' }};
+let CURVA = [], VALID = null, MAXCAPAS = 80;
+
+function csrf(){ try { return getCsrf(); } catch(e){ return ''; } }
+async function api(url, opts={}){
+  opts.headers = Object.assign({'Content-Type':'application/json','x-csrf-token':csrf()}, opts.headers||{});
+  const r = await fetch(url, opts);
+  if(!r.ok){ const d = await r.json().catch(()=>({})); throw new Error(d.detail||'Error'); }
+  return r.json();
+}
+function stBadge(s){ const m={HECHO:['st-hecho','hecho'],EN_CURSO:['st-curso','en curso'],PENDIENTE:['st-pend','pendiente']}; const[c,t]=m[s]||m.PENDIENTE; return `<span class="st ${c}">${t}</span>`; }
+function restanteDe(sku){ const t=(VALID&&VALID.por_talla||[]).find(x=>x.sku_id===sku); return t?t.restante:0; }
+
+function render(d){
+  CURVA = d.tallas_curva; VALID = d.validacion; MAXCAPAS = d.max_capas;
+  if(PUEDE){ const mc=document.getElementById('maxcapas'); if(mc && !mc.value) mc.value = MAXCAPAS; }
+
+  const vbox=document.getElementById('valid');
+  vbox.innerHTML = VALID.por_talla.map(t=>`<span class="cvi ${t.ok?'ok':'bad'}">${t.talla} ${t.asignado}/${t.meta}${t.restante>0?` (falta ${t.restante})`:''}</span>`).join('') || '<span class="muted">La OF no tiene curva cargada.</span>';
+  const big=document.getElementById('valid-big');
+  big.innerHTML = VALID.total_meta>0 ? (VALID.cubierto ? `<span class="ok">Pedido cubierto: ${VALID.total_asignado}/${VALID.total_meta} ✓</span>` : `<span class="low">Asignado ${VALID.total_asignado}/${VALID.total_meta} — falta cuadrar</span>`) : '';
+
+  const c=d.consumo, cb=document.getElementById('consumo');
+  cb.innerHTML = `<div class="kv"><span class="k">Proyectado (HDC)</span><span class="v">${c.proyectado??'—'}</span></div>
+    <div class="kv"><span class="k">Real ponderado (${c.metros} m ÷ ${c.prendas})</span><span class="v">${c.real??'—'}</span></div>
+    <div class="kv"><span class="k">Desvío</span><span class="v ${c.desvio>0?'low':'ok'}">${c.desvio!=null?((c.desvio>0?'+':'')+c.desvio+' · '+(c.desvio_pct>0?'+':'')+c.desvio_pct+'%'):'—'}</span></div>`;
+
+  const fb=document.getElementById('fases-box');
+  fb.innerHTML='<div class="fases">'+(d.fases_tela||[]).map(f=>{
+    const badge = f.estado==='hecho'?'<span class="st st-hecho">hecho</span>':(f.estado==='en_curso'?'<span class="st st-curso">en curso</span>':'<span class="st st-pend">pendiente</span>');
+    const tm=`<div class="tm">Inicio: ${f.inicio||'—'} · Fin: ${f.fin||'—'}</div>`;
+    const btn=(PUEDE && f.habilitada)?`<div style="margin-top:8px"><button class="btn primary" onclick="iniciarFase('${f.fase}')">▶ Iniciar</button></div>`:'';
+    return `<div class="fase"><div class="nm">${f.nombre}</div>${badge}${tm}${btn}</div>`;
+  }).join('')+'</div>';
+
+  const box=document.getElementById('placas-box');
+  if(!d.trazos.length){ box.innerHTML='<span class="muted">Sin placas. Arma la primera abajo.</span>'; }
+  else{
+    let h=`<table class="tz"><thead><tr><th>Placa</th><th>Dibujo (talla×veces)</th><th>Capas</th><th>Largo</th><th>Metros</th><th>Tizado</th><th>Tendido</th><th>Corte</th>${PUEDE?'<th></th>':''}</tr></thead><tbody>`;
+    for(const t of d.trazos){
+      const dib=t.tallas.map(x=>`<span class="chip">${x.talla} ×${x.veces} → ${x.cantidad}</span>`).join('');
+      let acts='';
+      if(PUEDE){ acts='<td style="white-space:nowrap">';
+        if(t.estado_tendido!=='HECHO') acts+=`<button class="btn" onclick="tendido(${t.id},${t.capas||0},${t.capas_tendidas||0})">Tendido</button> `;
+        else if(t.estado_corte!=='HECHO') acts+=`<button class="btn primary" onclick="marcarCorte(${t.id},${t.capas||0},${t.capas_cortadas||0})">Corte</button> `;
+        acts+=`<button class="btn danger" onclick="borrar(${t.id})">✕</button></td>`; }
+      const tendBadge = stBadge(t.estado_tendido) + (t.estado_tendido==='EN_CURSO' ? ` <span style="font-size:10px;color:#e6c15a">${t.capas_tendidas}/${t.capas}</span>` : '');
+      const corteBadge = stBadge(t.estado_corte) + (t.estado_corte==='EN_CURSO' ? ` <span style="font-size:10px;color:#e6c15a">${t.capas_cortadas}/${t.capas}</span>` : '');
+      h+=`<tr><td><b>${t.nombre}</b></td><td>${dib}</td><td>${t.capas??'—'}</td><td>${t.largo??'—'}</td><td>${t.metraje??'—'} m</td><td>${stBadge(t.estado_tizado)}</td><td>${tendBadge}</td><td>${corteBadge}</td>${acts}</tr>`;
+    }
+    box.innerHTML=h+'</tbody></table>';
+  }
+
+  if(PUEDE){
+    const di=document.getElementById('dib-inputs');
+    di.innerHTML = CURVA.map(t=>{ const r=restanteDe(t.sku_id);
+      return `<div class="dcell ${r<=0?'off':''}"><div class="t">${t.talla}</div><div class="r">restante ${r}</div><input type="number" min="0" value="0" data-sku="${t.sku_id}" oninput="preview()"></div>`;
+    }).join('') || '<span class="muted">Carga la curva primero.</span>';
+    preview();
+  }
+}
+
+function preview(){
+  const capas=parseInt(document.getElementById('f-capas').value)||0;
+  const largo=parseFloat(document.getElementById('f-largo').value)||0;
+  const el=document.getElementById('prev');
+  const inps=[...document.querySelectorAll('#dib-inputs input')].filter(i=>(parseInt(i.value)||0)>0);
+  if(!capas || !inps.length){ el.innerHTML='<span class="muted">Ingresa capas y el dibujo para ver la vista previa.</span>'; return; }
+  if(capas>MAXCAPAS){ el.innerHTML=`<span class="low">Las capas (${capas}) superan el tope de la máquina (${MAXCAPAS}).</span>`; return; }
+  let totV=0, exceso=[]; const der=inps.map(i=>{ const v=parseInt(i.value)||0; totV+=v;
+    const sku=parseInt(i.dataset.sku); const talla=i.closest('.dcell').querySelector('.t').textContent;
+    const nueva=capas*v, rest=restanteDe(sku);
+    if(nueva>rest) exceso.push(`${talla}: ${nueva} > falta ${rest}`);
+    return `${talla}:${nueva}`; });
+  const metros = largo? (capas*largo).toFixed(1)+' m' : '—';
+  let warn = exceso.length ? `<div class="low" style="margin-top:6px">Excede el pedido → ${exceso.join(' · ')}</div>` : '';
+  el.innerHTML=`<div><b>Prendas de esta placa:</b> ${capas*totV} &nbsp;·&nbsp; <b>Metros:</b> ${metros}</div><div class="der">Derivado (capas × veces): ${der.join(' · ')}</div>${warn}`;
+}
+
+async function load(){
+  try{ render(await api(`/trazos/api/${OF_ID}/data`)); }catch(e){ console.error(e); }
+  loadMovs();
+}
+async function loadMovs(){
+  const box=document.getElementById('mov-box'); if(!box) return;
+  try{
+    const movs=await api(`/trazos/api/${OF_ID}/movimientos`);
+    if(!movs.length){ box.innerHTML='<span class="muted">Sin movimientos de tendido/corte aún.</span>'; return; }
+    const badge=t=> t==='TENDIDO' ? '<span class="st st-curso">Tendido</span>' : '<span class="st st-hecho">Corte</span>';
+    let h='<table class="tz"><thead><tr><th>Fecha</th><th>Placa</th><th>Tipo</th><th>Capas</th><th>Acum.</th><th>Usuario</th></tr></thead><tbody>';
+    for(const m of movs){
+      h+=`<tr><td>${m.fecha||'—'}</td><td><b>${m.placa}</b></td><td>${badge(m.tipo)}</td><td>+${m.capas}</td><td>${m.acumulado}</td><td>${m.usuario||'—'}</td></tr>`;
+    }
+    box.innerHTML=h+'</tbody></table>';
+  }catch(e){ box.innerHTML='<span class="muted">No se pudo cargar el historial.</span>'; }
+}
+
+async function crearPlaca(){
+  const capas=parseInt(document.getElementById('f-capas').value)||0;
+  const tallas=[...document.querySelectorAll('#dib-inputs input')].map(i=>({sku_id:parseInt(i.dataset.sku),veces:parseInt(i.value)||0})).filter(t=>t.veces>0);
+  if(!tallas.length){ document.getElementById('crear-msg').textContent='Arma el dibujo (al menos una talla).'; return; }
+  if(capas<=0){ document.getElementById('crear-msg').textContent='Ingresa las capas.'; return; }
+  if(capas>MAXCAPAS){ document.getElementById('crear-msg').textContent=`Capas (${capas}) superan el tope (${MAXCAPAS}).`; return; }
+  const exc=tallas.filter(t=>capas*t.veces>restanteDe(t.sku_id));
+  if(exc.length){ const t0=exc[0]; document.getElementById('crear-msg').textContent=`Excede el pedido en una talla (${capas*t0.veces} > falta ${restanteDe(t0.sku_id)}). Ajusta capas o veces.`; return; }
+  const body={ nombre:document.getElementById('f-nombre').value||null, largo:parseFloat(document.getElementById('f-largo').value)||null, capas, tallas };
+  try{ await api(`/trazos/api/${OF_ID}/crear`,{method:'POST',body:JSON.stringify(body)});
+    document.getElementById('f-nombre').value=''; document.getElementById('f-capas').value=''; document.getElementById('f-largo').value='';
+    document.getElementById('crear-msg').textContent=''; load();
+  }catch(e){ document.getElementById('crear-msg').textContent=e.message; }
+}
+async function guardarTope(){
+  const v=parseInt(document.getElementById('maxcapas').value)||null;
+  try{ const r=await api(`/trazos/api/${OF_ID}/max-capas`,{method:'POST',body:JSON.stringify({max_capas:v})}); MAXCAPAS=r.max_capas; document.getElementById('tope-msg').textContent='Guardado ✓'; preview(); }
+  catch(e){ document.getElementById('tope-msg').textContent=e.message; }
+}
+async function tendido(id, planeado, tendidas){
+  planeado = planeado||0; tendidas = tendidas||0;
+  const restante = Math.max(0, planeado - tendidas);
+  const c = await showNumber({
+    msg: 'Registrar tendido (por partes)',
+    hint: `Capas de esta sesión. Ya tendidas ${tendidas} de ${planeado} — restante ${restante}. Deja vacío para completar el resto.`,
+    min: 1, max: restante, value: '', allowEmpty: true, okLabel: 'Guardar tendido',
+  });
+  if (c === undefined) return;              // canceló → no hace nada
+  const body = {}; if (c !== null) body.capas = c;   // null = completar lo restante
+  try{ await api(`/trazos/api/trazo/${id}/tendido`,{method:'POST',body:JSON.stringify(body)}); load(); }catch(e){ alert(e.message); }
+}
+async function marcarCorte(id, planeado, cortadas){
+  planeado = planeado||0; cortadas = cortadas||0;
+  const restante = Math.max(0, planeado - cortadas);
+  const c = await showNumber({
+    msg: 'Registrar corte (por partes)',
+    hint: `Capas cortadas en esta sesión. Ya cortadas ${cortadas} de ${planeado} — restante ${restante}. Deja vacío para completar el resto.`,
+    min: 1, max: restante, value: '', allowEmpty: true, okLabel: 'Guardar corte',
+  });
+  if (c === undefined) return;              // canceló
+  const body = {}; if (c !== null) body.capas = c;   // null = completar el resto
+  try{ await api(`/trazos/api/trazo/${id}/corte`,{method:'POST',body:JSON.stringify(body)}); load(); }catch(e){ alert(e.message); }
+}
+async function iniciarFase(fase){ try{ await api(`/trazos/api/${OF_ID}/fase/${fase}/iniciar`,{method:'POST',body:'{}'}); load(); }catch(e){ alert(e.message); } }
+async function borrar(id){ showConfirm('¿Eliminar esta placa? No se puede deshacer.', async () => { try{ await api(`/trazos/api/trazo/${id}`,{method:'DELETE'}); load(); }catch(e){ alert(e.message); } }, 'Eliminar', 'danger'); }
+
+// ── Actualización en vivo (WebSocket) ─────────────────────────
+function initLive(){
+  const badge=document.createElement('div');
+  badge.style.cssText='position:fixed;left:12px;bottom:12px;z-index:9998;font-size:11px;padding:5px 10px;border-radius:16px;border:1px solid #2a3557;background:#0f1524;color:#9a9a9a;display:flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(0,0,0,.4);';
+  badge.innerHTML='<span id="live-dot" style="width:8px;height:8px;border-radius:50%;background:#666;display:inline-block"></span><span id="live-text">Conectando…</span>';
+  document.body.appendChild(badge);
+  let reconnectMs=2000, ws=null;
+  const set=(c,l)=>{const d=document.getElementById('live-dot'),t=document.getElementById('live-text');if(d)d.style.background=c;if(t)t.textContent=l;};
+  const pulse=()=>{const d=document.getElementById('live-dot');if(!d)return;d.style.transition='none';d.style.transform='scale(2)';setTimeout(()=>{d.style.transition='transform .45s';d.style.transform='scale(1)';},30);};
+  function connect(){
+    const proto=location.protocol==='https:'?'wss':'ws';
+    try{ ws=new WebSocket(proto+'://'+location.host+'/ws/of/'+OF_ID); }catch(e){ set('#e06060','Sin conexión'); return; }
+    ws.onopen=()=>{ set('#4caf7d','En vivo'); reconnectMs=2000; };
+    ws.onmessage=(ev)=>{ let m={}; try{m=JSON.parse(ev.data);}catch(_){} load(); const q=(m.data&&m.data.por)?' · '+m.data.por:''; set('#4caf7d','Actualizado '+new Date().toLocaleTimeString()+q); pulse(); };
+    ws.onclose=()=>{ set('#e6a817','Reconectando…'); setTimeout(connect,reconnectMs); reconnectMs=Math.min(reconnectMs*1.5,15000); };
+    ws.onerror=()=>{ try{ws.close();}catch(_){} };
+  }
+  connect();
+}
+
+load();
+initLive();
+</script>
+{% endblock %}

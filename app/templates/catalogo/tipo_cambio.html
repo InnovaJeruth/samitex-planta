@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Tipo de cambio — Samitex{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;margin:0 auto;padding:20px 16px;color:#ddd">
+  <h1 style="font-size:20px;color:#fff;margin:0 0 4px">Tipo de cambio del día</h1>
+  <div style="color:#999;font-size:13px;margin-bottom:16px">
+    USD → S/ · lo carga Logística. Solo aplica a hojas de costos <b>nuevas</b>;
+    las ya guardadas conservan el tipo de cambio con el que se calcularon.
+  </div>
+
+  <div style="background:#0f1524;border:1px solid #1e2c48;border-radius:10px;padding:18px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="color:#888;font-size:13px">Vigente:</span>
+      <span id="tc-val" style="font-size:30px;font-weight:700;color:#fff">—</span>
+      <span style="color:#888;font-size:13px">S/ por US$</span>
+    </div>
+    <div id="tc-meta" style="color:#777;font-size:12px;margin-top:6px"></div>
+
+    {% if puede_editar %}
+    <div style="margin-top:18px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid #1a2338;padding-top:16px">
+      <label style="font-size:12px;color:#999">Nuevo valor</label>
+      <input id="tc-input" type="number" step="0.001" min="0"
+             style="background:#101728;border:1px solid #313f63;color:#eee;border-radius:6px;padding:7px 10px;width:130px;font-size:15px">
+      <button id="tc-save" onclick="guardar()"
+              style="font-size:13px;border:1px solid #164;background:#164;color:#fff;border-radius:6px;padding:7px 16px;cursor:pointer">Guardar</button>
+      <span id="tc-msg" style="font-size:12px;color:#777"></span>
+    </div>
+    {% else %}
+    <div style="margin-top:14px;color:#777;font-size:12px">Solo Logística puede editar este valor.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function load(){
+  try{
+    const d = await apiFetch('/catalogo/api/tipo-cambio');
+    document.getElementById('tc-val').textContent = d.tipo_cambio;
+    const meta = d.fallback
+      ? 'Usando valor por defecto — Logística aún no cargó el de hoy.'
+      : ('Actualizado: ' + (d.updated_at ? new Date(d.updated_at).toLocaleString() : '—'));
+    document.getElementById('tc-meta').textContent = meta;
+    const inp = document.getElementById('tc-input');
+    if(inp && !inp.value) inp.value = d.tipo_cambio;
+  }catch(e){ toast(e.message, 'error'); }
+}
+async function guardar(){
+  const v = parseFloat(document.getElementById('tc-input').value);
+  if(!v || v <= 0){ toast('Ingresa un valor mayor a 0', 'error'); return; }
+  showConfirm('¿Fijar el tipo de cambio del día en ' + v + '? Aplica solo a hojas nuevas.', async ()=>{
+    try{
+      await apiFetch('/catalogo/api/tipo-cambio', {method:'POST', body:JSON.stringify({tipo_cambio:v})});
+      toast('Tipo de cambio actualizado', 'success'); load();
+    }catch(e){ toast(e.message, 'error'); }
+  }, 'Guardar');
+}
+load();
+</script>
+{% endblock %}

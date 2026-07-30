@@ -1,7 +1,8 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
-from pydantic import BaseModel as PydanticBase
+from pydantic import BaseModel as PydanticBase, field_validator
 from typing import Optional
 
 from app.database.connection import get_db
@@ -12,6 +13,15 @@ from app.core.templates import templates
 router = APIRouter()
 
 _admin = Depends(require_roles(RolEnum.ADMIN))
+
+
+def _password_fuerte(v: str) -> str:
+    """Política mínima de contraseña: 8+ caracteres, con letras y números."""
+    if v is None or len(v) < 8:
+        raise ValueError("La contraseña debe tener al menos 8 caracteres")
+    if not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
+        raise ValueError("La contraseña debe incluir letras y números")
+    return v
 
 # ── Página usuarios ───────────────────────────────────────────
 @router.get("/", response_class=HTMLResponse)
@@ -36,6 +46,11 @@ class UsuarioCreate(PydanticBase):
     email:    str
     password: str
     rol:      str = "SOLO_LECTURA"
+
+    @field_validator("password")
+    @classmethod
+    def _val_pw(cls, v):
+        return _password_fuerte(v)
 
 
 @router.post("/api/usuarios")
@@ -81,6 +96,11 @@ def toggle_usuario(
 # ── API: cambiar contraseña ───────────────────────────────────
 class CambiarPasswordBody(PydanticBase):
     password: str
+
+    @field_validator("password")
+    @classmethod
+    def _val_pw(cls, v):
+        return _password_fuerte(v)
 
 
 @router.patch("/api/usuarios/{user_id}/password")

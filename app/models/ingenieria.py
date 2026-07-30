@@ -3,7 +3,7 @@ Modelos de ingeniería industrial — Samitex Planta
 Prefijo: ing_  (tablas independientes, no modifican las operativas)
 """
 from sqlalchemy import (
-    Column, Integer, String, Float, Boolean, Date, DateTime, Text, Index
+    Column, Integer, String, Float, Boolean, Date, DateTime, Text, Index, ForeignKey
 )
 from sqlalchemy.sql import func
 
@@ -16,6 +16,7 @@ class IngSamRegistro(Base):
 
     id               = Column(Integer, primary_key=True, index=True)
     of_numero        = Column(String(50),  nullable=False, index=True)
+    of_id            = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=True, index=True)  # FK opcional
     fecha            = Column(Date,        nullable=False)
     operario         = Column(String(100), nullable=False)
     fase             = Column(String(50),  nullable=False)
@@ -39,6 +40,7 @@ class IngParadaRegistro(Base):
 
     id          = Column(Integer,    primary_key=True, index=True)
     of_numero   = Column(String(50), nullable=False, index=True)
+    of_id       = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=True, index=True)  # FK opcional
     fecha       = Column(Date,       nullable=False)
     turno       = Column(String(20), nullable=False)
     fase        = Column(String(50), nullable=False)
@@ -58,6 +60,7 @@ class IngMuestreoObs(Base):
 
     id          = Column(Integer,    primary_key=True, index=True)
     of_numero   = Column(String(50), nullable=False, index=True)
+    of_id       = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=True, index=True)  # FK opcional
     fecha       = Column(Date,       nullable=False)
     hora        = Column(String(10), nullable=False)   # HH:MM
     fase        = Column(String(50), nullable=False)
@@ -77,6 +80,7 @@ class IngTendidoFicha(Base):
     id                  = Column(Integer,    primary_key=True, index=True)
     fecha               = Column(Date,       nullable=False)
     of_numero           = Column(String(50), nullable=False, index=True)
+    of_id               = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=True, index=True)  # FK opcional
     tipo_prenda         = Column(String(100),nullable=False)
     tela_partida        = Column(String(100),nullable=False)
     largo_tender_m      = Column(Float,      nullable=False)
@@ -101,6 +105,7 @@ class IngCalidadInspeccion(Base):
     id                  = Column(Integer,    primary_key=True, index=True)
     fecha               = Column(Date,       nullable=False)
     of_numero           = Column(String(50), nullable=False, index=True)
+    of_id               = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=True, index=True)  # FK opcional
     tipo_prenda         = Column(String(100),nullable=False)
     total_inspeccionado = Column(Integer,    nullable=False)
     def_mal_corte       = Column(Integer,    nullable=False, default=0)
@@ -125,6 +130,7 @@ class IngOleDiario(Base):
 
     id                = Column(Integer,    primary_key=True, index=True)
     of_numero         = Column(String(50), nullable=False, index=True)
+    of_id             = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=True, index=True)  # FK opcional
     fecha             = Column(Date,       nullable=False)
     turno             = Column(String(20), nullable=False)
     fase              = Column(String(50), nullable=False)
@@ -151,6 +157,7 @@ class IngFusionadoParam(Base):
 
     id            = Column(Integer,    primary_key=True, index=True)
     of_numero     = Column(String(50), nullable=False, index=True)
+    of_id         = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=True, index=True)  # FK opcional
     fecha         = Column(Date,       nullable=False)
     turno         = Column(String(20), nullable=False)
     referencia    = Column(String(200),nullable=False)
@@ -172,6 +179,7 @@ class IngHabilitadoCierre(Base):
 
     id                  = Column(Integer,    primary_key=True, index=True)
     of_numero           = Column(String(50), nullable=False, index=True)
+    of_id               = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=True, index=True)  # FK opcional
     fecha               = Column(Date,       nullable=False)
     turno               = Column(String(20), nullable=False)
     supervisor          = Column(String(100),nullable=False)

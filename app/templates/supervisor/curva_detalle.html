@@ -7,7 +7,7 @@
 .back-link{color:#555;text-decoration:none;font-size:13px;}
 .back-link:hover{color:#ccc;}
 .page-title{font-size:18px;font-weight:600;color:#e0e0e0;}
-.card{background:#111;border:1px solid #222;border-radius:8px;padding:16px;margin-bottom:14px;}
+.card{background:#0b101b;border:1px solid #1a2338;border-radius:8px;padding:16px;margin-bottom:14px;}
 .section-title{font-size:13px;font-weight:500;color:#ccc;margin-bottom:12px;}
 .meta-row{display:flex;gap:28px;flex-wrap:wrap;margin-bottom:6px;}
 .meta-item{font-size:12px;color:#555;}
@@ -16,26 +16,26 @@
 .talla-item{border:1px solid #4a9fff;background:#0d1f2e;border-radius:6px;padding:10px 6px;text-align:center;}
 .talla-label{font-size:12px;color:#ccc;margin-bottom:4px;}
 .talla-qty{font-size:18px;font-weight:600;color:#e0e0e0;}
-.doc-row{display:flex;align-items:center;gap:10px;padding:10px;background:#0e0e0e;border-radius:6px;border:1px solid #1e1e1e;}
-.of-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid #1a1a1a;}
+.doc-row{display:flex;align-items:center;gap:10px;padding:10px;background:#080b14;border-radius:6px;border:1px solid #172136;}
+.of-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid #131b2c;}
 .of-row:last-child{border-bottom:none;}
 .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
 .badge-ok{background:#0d2a1a;color:#4caf7d;}
 .badge-warn{background:#2a1500;color:#e6a817;}
-.badge-gray{background:#1a1a1a;color:#555;}
+.badge-gray{background:#131b2c;color:#555;}
 .btn{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;text-decoration:none;display:inline-block;}
 .btn-primary{background:#4a9fff;color:#fff;}
-.btn-secondary{background:#1e1e1e;color:#aaa;border:1px solid #333;}
+.btn-secondary{background:#172136;color:#aaa;border:1px solid #2a3557;}
 .note{font-size:11px;color:#555;}
-label.upload-btn{background:#1e1e1e;color:#aaa;border:1px solid #333;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;display:inline-block;}
-label.upload-btn:hover{background:#252525;}
+label.upload-btn{background:#172136;color:#aaa;border:1px solid #2a3557;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;display:inline-block;}
+label.upload-btn:hover{background:#1d2a45;}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
   <a href="/curvas/" class="back-link">← Curvas de tallas</a>
-  <span style="color:#333;">/</span>
+  <span style="color:#2a3557;">/</span>
   <span class="page-title">CRV-{{ '%03d' % curva.id }} — {{ curva.prenda.nombre }}</span>
 </div>
 
@@ -55,7 +55,7 @@ label.upload-btn:hover{background:#252525;}
     <div class="meta-item">Total unidades: <span style="color:#4a9fff;font-weight:600;">{{ curva.detalle | sum(attribute='cantidad') }}</span></div>
   </div>
   {% if curva.notas %}
-  <div style="margin-top:8px;font-size:12px;color:#666;border-top:1px solid #1e1e1e;padding-top:8px;">{{ curva.notas }}</div>
+  <div style="margin-top:8px;font-size:12px;color:#666;border-top:1px solid #172136;padding-top:8px;">{{ curva.notas }}</div>
   {% endif %}
 </div>
 
@@ -74,7 +74,7 @@ label.upload-btn:hover{background:#252525;}
     </div>
     {% endfor %}
   </div>
-  <p id="tallas-hint" style="font-size:11px;color:#555;margin-top:8px;display:none;">Ajusta las cantidades para que sumen los juegos de la OF seleccionada.</p>
+  <p id="tallas-hint" style="font-size:11px;color:#555;margin-top:8px;display:none;">Ajusta las cantidades para que sumen las prendas de la OF seleccionada.</p>
 </div>
 
 <!-- Documento -->
@@ -92,8 +92,8 @@ label.upload-btn:hover{background:#252525;}
   </div>
   {% else %}
   {% if puede_editar %}
-  <div style="border:1px dashed #2a2a2a;border-radius:6px;padding:16px;text-align:center;background:#0e0e0e;margin-bottom:10px;">
-    <div style="font-size:28px;color:#333;margin-bottom:6px;">📎</div>
+  <div style="border:1px dashed #20304f;border-radius:6px;padding:16px;text-align:center;background:#080b14;margin-bottom:10px;">
+    <div style="font-size:28px;color:#2a3557;margin-bottom:6px;">📎</div>
     <p style="font-size:12px;color:#555;margin-bottom:10px;">Sin documento adjunto</p>
     <label class="upload-btn" for="file-nuevo">Adjuntar documento</label>
     <input type="file" id="file-nuevo" style="display:none;" onchange="adjuntarDoc(this)">
@@ -120,9 +120,9 @@ label.upload-btn:hover{background:#252525;}
 
   {% if ofs_activas %}
   <p style="font-size:11px;color:#555;margin-bottom:8px;">
-    Selecciona una OF — el total de tallas de la curva debe cuadrar exactamente con los juegos de la OF.
+    Selecciona una OF — el total de tallas de la curva debe cuadrar exactamente con las prendas de la OF.
   </p>
-  <div id="of-lista" style="background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;overflow:hidden;margin-bottom:10px;">
+  <div id="of-lista" style="background:#080b14;border:1px solid #172136;border-radius:6px;overflow:hidden;margin-bottom:10px;">
     {% for of in ofs_activas %}
     <div class="of-row">
       <input type="radio" name="of-sel" id="of-{{ of.id }}" value="{{ of.id }}"
@@ -130,7 +130,7 @@ label.upload-btn:hover{background:#252525;}
              onchange="seleccionarOf({{ of.id }}, {{ of.total_juegos or 0 }}, '{{ of.numero_of }}')">
       <label for="of-{{ of.id }}" style="flex:1;cursor:pointer;margin:0;">
         <div style="font-size:12px;font-weight:500;color:#e0e0e0;">OF {{ of.numero_of }}
-          <span style="font-size:10px;color:#555;font-weight:400;margin-left:6px;">{{ of.total_juegos }} juegos</span>
+          <span style="font-size:10px;color:#555;font-weight:400;margin-left:6px;">{{ of.total_juegos }} prendas</span>
         </div>
         <div style="font-size:10px;color:#555;">{{ of.cliente }} · {{ of.estado.value }}</div>
       </label>
@@ -194,17 +194,17 @@ function seleccionarOf(id, totalJuegos, numeroOf){
 
   if(CURVA_TOTAL === totalJuegos){
     bar.style.cssText = 'display:block;margin-bottom:10px;padding:10px 12px;border-radius:6px;font-size:12px;background:#0d2a1a;border:1px solid #1a4a2a;color:#4caf7d;';
-    bar.innerHTML = `✓ Total cuadra con OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} juegos`;
+    bar.innerHTML = `✓ Total cuadra con OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} prendas`;
     btn.disabled = false;
     btn.textContent = '{{ "Enviar documento y distribución a OF" if curva.nombre_archivo else "Enviar distribución a OF" }}';
   } else if(CURVA_TOTAL > totalJuegos){
     bar.style.cssText = 'display:block;margin-bottom:10px;padding:10px 12px;border-radius:6px;font-size:12px;background:#2a0d0d;border:1px solid #4a1a1a;color:#f06060;';
-    bar.innerHTML = `✗ Excede OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} juegos (exceso: ${CURVA_TOTAL - totalJuegos})`;
+    bar.innerHTML = `✗ Excede OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} prendas (exceso: ${CURVA_TOTAL - totalJuegos})`;
     btn.disabled = true;
     btn.textContent = 'Totales no cuadran';
   } else {
     bar.style.cssText = 'display:block;margin-bottom:10px;padding:10px 12px;border-radius:6px;font-size:12px;background:#1a1a0d;border:1px solid #3a3a1a;color:#e6a817;';
-    bar.innerHTML = `⚠ Faltan unidades para OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} juegos (faltan: ${totalJuegos - CURVA_TOTAL})`;
+    bar.innerHTML = `⚠ Faltan unidades para OF ${numeroOf}: <strong>${CURVA_TOTAL}</strong> / ${totalJuegos} prendas (faltan: ${totalJuegos - CURVA_TOTAL})`;
     btn.disabled = true;
     btn.textContent = 'Totales no cuadran';
   }
@@ -213,7 +213,7 @@ function seleccionarOf(id, totalJuegos, numeroOf){
 async function enviarAOfs(){
   if(!_ofSeleccionada){ toast('Selecciona una OF', 'error'); return; }
   if(CURVA_TOTAL !== _ofSeleccionada.total_juegos){
-    toast(`El total (${CURVA_TOTAL}) no cuadra con la OF: ${_ofSeleccionada.total_juegos} juegos`, 'error');
+    toast(`El total (${CURVA_TOTAL}) no cuadra con la OF: ${_ofSeleccionada.total_juegos} prendas`, 'error');
     return;
   }
   const cantidades = Array.from(document.querySelectorAll('.talla-input')).map(i => ({

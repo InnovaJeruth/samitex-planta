@@ -5,9 +5,12 @@ Roles permitidos para CRUD: ADMIN, UDP, COMERCIAL_MARCA
 Roles solo lectura: todos los demas
 """
 import os
+import io
 import uuid
 import datetime
 from typing import Optional, List
+
+from PIL import Image
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, UploadFile, File
 from fastapi import Form as _Form
@@ -15,6 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel as _PBase
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database.connection import get_db
 from app.core.auth import get_current_user
 from app.core.templates import templates
@@ -32,7 +36,7 @@ from app.models.pieza import PlantillaPieza
 
 router = APIRouter()
 
-ROLES_EDITOR = {"ADMIN", "UDP", "COMERCIAL_MARCA"}
+from app.roles import ROLES_EDITOR_CATALOGO as ROLES_EDITOR
 
 UPLOAD_PRENDA = "static/uploads/prendas"
 UPLOAD_PIEZA  = "static/uploads/piezas"
@@ -57,10 +61,21 @@ def _guardar_imagen(archivo: UploadFile, carpeta: str) -> str:
     ext = os.path.splitext(archivo.filename or "")[1].lower()
     if ext not in EXTS_IMAGEN:
         raise HTTPException(400, f"Formato no permitido. Use: {', '.join(EXTS_IMAGEN)}")
-    nombre = f"{uuid.uuid4().hex}{ext}"
-    ruta = os.path.join(carpeta, nombre)
-    with open(ruta, "wb") as f:
-        f.write(archivo.file.read())
+    # Procesar con Pillow: recortar al centro 1:1 y redimensionar a 600x600 JPG
+    try:
+        data = archivo.file.read()
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+        w, h = img.size
+        lado = min(w, h)
+        left = (w - lado) // 2
+        top  = (h - lado) // 2
+        img  = img.crop((left, top, left + lado, top + lado))
+        img  = img.resize((600, 600), Image.LANCZOS)
+        nombre = f"{uuid.uuid4().hex}.jpg"
+        ruta   = os.path.join(carpeta, nombre)
+        img.save(ruta, "JPEG", quality=85, optimize=True)
+    except Exception:
+        raise HTTPException(400, "No se pudo procesar la imagen. Verifica que el archivo no esté dañado.")
     return ruta
 
 
@@ -90,7 +105,7 @@ def catalogo_lista(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
     tipo_base:    str = "",
-    tipo_cliente: str = "BASE",
+    tipo_cliente: str = "",
     q:            str = "",
     solo_activos: str = "1",
 ):
@@ -112,18 +127,29 @@ def catalogo_lista(
     prendas = query.order_by(PrendaCatalogo.tipo_base, PrendaCatalogo.nombre).all()
     for p in prendas:
         p._num_piezas = len(p.plantilla_piezas)
+        p._num_skus   = len(p.skus)
+
+    # Stats calculados sobre el resultado filtrado
+    total_bases       = sum(1 for p in prendas if p.tipo_cliente == "BASE")
+    total_variantes   = sum(1 for p in prendas if p.tipo_cliente != "BASE")
+    total_skus        = sum(p._num_skus for p in prendas)
+    total_piezas_base = sum(p._num_piezas for p in prendas if p.tipo_cliente == "BASE")
 
     return templates.TemplateResponse("catalogo/lista.html", {
-        "request":       request,
-        "current_user":  current_user,
-        "prendas":       prendas,
-        "tipos_base":    TIPOS_BASE_PRENDA,
-        "fits":          FITS_PRENDA,
-        "tipo_base":     tipo_base,
-        "tipo_cliente":  tipo_cliente,
-        "q":             q,
-        "solo_activos":  solo_activos,
-        "puede_editar":  _rol(current_user) in ROLES_EDITOR,
+        "request":            request,
+        "current_user":       current_user,
+        "prendas":            prendas,
+        "tipos_base":         TIPOS_BASE_PRENDA,
+        "fits":               FITS_PRENDA,
+        "tipo_base":          tipo_base,
+        "tipo_cliente":       tipo_cliente,
+        "q":                  q,
+        "solo_activos":       solo_activos,
+        "puede_editar":       _rol(current_user) in ROLES_EDITOR,
+        "total_bases":        total_bases,
+        "total_variantes":    total_variantes,
+        "total_skus":         total_skus,
+        "total_piezas_base":  total_piezas_base,
     })
 
 
@@ -146,6 +172,22 @@ def catalogo_nueva_page(
     })
 
 
+@router.get("/tipo-cambio", response_class=HTMLResponse)
+def catalogo_tipo_cambio_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Apartado de Logística: ver/editar el tipo de cambio USD→S/ del día.
+    Debe declararse ANTES de /{prenda_id} para no chocar con esa ruta."""
+    from app.roles import ROLES_TC
+    return templates.TemplateResponse("catalogo/tipo_cambio.html", {
+        "request":      request,
+        "current_user": current_user,
+        "puede_editar": _rol(current_user) in ROLES_TC,
+    })
+
+
 @router.get("/{prenda_id}", response_class=HTMLResponse)
 def catalogo_detalle(
     prenda_id: int,
@@ -157,15 +199,16 @@ def catalogo_detalle(
     if not prenda:
         raise HTTPException(404, "Prenda no encontrada")
 
-    piezas     = sorted(prenda.plantilla_piezas, key=lambda p: p.orden)
+    # Piezas efectivas: propias (base o variante con ficha propia) o heredadas de la base.
+    piezas     = sorted(prenda.piezas_efectivas, key=lambda p: p.orden)
     documentos = sorted(prenda.documentos, key=lambda d: d.created_at or datetime.datetime.min, reverse=True)
 
-    # Resolver prenda BASE
+    # Resolver prenda BASE (prioriza el FK base_id; fallback al viejo match por tipo_base)
     if prenda.tipo_cliente == "BASE":
         prenda_base        = prenda
         prenda_base_nombre = None
     else:
-        prenda_base = (
+        prenda_base = prenda.base or (
             db.query(PrendaCatalogo)
             .filter_by(tipo_base=prenda.tipo_base, tipo_cliente="BASE", activo=True)
             .first()
@@ -195,6 +238,12 @@ def catalogo_detalle(
     # Tab SKUs
     tallas = sorted(prenda.skus, key=lambda t: t.orden)
 
+    # Tabs Servicios + MOD (heredados de la base o propios)
+    servicios = sorted(prenda.servicios_efectivos, key=lambda s: s.orden)
+    mod_ops   = sorted(prenda.mod_efectivos, key=lambda m: m.orden)
+    mod_total = round(sum((m.subtotal or 0) for m in mod_ops), 4)
+    servicios_total = round(sum((s.costo or 0) for s in servicios), 4)
+
     return templates.TemplateResponse("catalogo/detalle.html", {
         "request":             request,
         "current_user":        current_user,
@@ -217,6 +266,10 @@ def catalogo_detalle(
         "tipos_mp":            TIPOS_MP,
         "unidades_mp":         UNIDADES_MP,
         "tallas":              tallas,
+        "servicios":           servicios,
+        "mod_ops":             mod_ops,
+        "mod_total":           mod_total,
+        "servicios_total":     servicios_total,
     })
 
 
@@ -254,6 +307,7 @@ def api_crear_prenda(
     fit:           str  = Form(""),
     descripcion:   str  = Form(""),
     composicion:   str  = Form(""),
+    base_id:       Optional[int] = Form(None),
     imagen:        Optional[UploadFile] = File(None),
     db:            Session = Depends(get_db),
     current_user:  Usuario = Depends(get_current_user),
@@ -271,6 +325,14 @@ def api_crear_prenda(
     if db.query(PrendaCatalogo).filter_by(codigo=codigo.upper().strip()).first():
         raise HTTPException(409, f"Ya existe una prenda con el codigo '{codigo}'")
 
+    # Integridad de subtipo: una BASE no cuelga de otra; una variante debe apuntar a una BASE real.
+    if tipo_cliente == "BASE":
+        base_id = None
+    elif base_id:
+        base = db.query(PrendaCatalogo).filter_by(id=base_id).first()
+        if not base or base.tipo_cliente != "BASE":
+            raise HTTPException(400, "base_id debe apuntar a una prenda BASE existente")
+
     imagen_ruta = None
     if imagen and imagen.filename:
         imagen_ruta = _guardar_imagen(imagen, UPLOAD_PRENDA)
@@ -280,6 +342,7 @@ def api_crear_prenda(
         nombre         = nombre.strip(),
         tipo_base      = tipo_base,
         tipo_cliente   = tipo_cliente,
+        base_id        = base_id,
         fit            = fit or None,
         descripcion    = descripcion.strip() or None,
         composicion    = composicion.strip() or None,
@@ -291,6 +354,28 @@ def api_crear_prenda(
     db.commit()
     db.refresh(prenda)
     return {"ok": True, "id": prenda.id, "codigo": prenda.codigo}
+
+
+@router.post("/api/{prenda_id}/hereda-ficha")
+def api_toggle_hereda_ficha(
+    prenda_id: int,
+    hereda: bool = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Alterna si una variante usa la ficha de su base (herencia viva) o ficha propia."""
+    if _rol(current_user) not in ROLES_EDITOR:
+        raise HTTPException(403, "Sin permiso")
+    prenda = db.query(PrendaCatalogo).filter_by(id=prenda_id).first()
+    if not prenda:
+        raise HTTPException(404, "Prenda no encontrada")
+    if prenda.tipo_cliente == "BASE":
+        raise HTTPException(400, "Una prenda base no hereda ficha")
+    if not prenda.base_id:
+        raise HTTPException(400, "Esta variante no tiene base asignada")
+    prenda.hereda_ficha = bool(hereda)
+    db.commit()
+    return {"ok": True, "hereda_ficha": prenda.hereda_ficha}
 
 
 @router.post("/api/{prenda_id}/editar")
@@ -644,6 +729,27 @@ def api_piezas_de_prenda(
 
 EXTS_DOC = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg", ".dxf"}
 
+# Firmas (magic bytes) por extensión. .dxf es texto (ASCII/UTF) → sin firma estricta.
+_MAGIC_DOC = {
+    ".pdf":  [b"%PDF"],
+    ".png":  [b"\x89PNG\r\n\x1a\n"],
+    ".jpg":  [b"\xff\xd8\xff"],
+    ".jpeg": [b"\xff\xd8\xff"],
+    ".docx": [b"PK\x03\x04"],
+    ".xlsx": [b"PK\x03\x04"],
+    ".doc":  [b"\xd0\xcf\x11\xe0"],   # OLE compound
+    ".xls":  [b"\xd0\xcf\x11\xe0"],
+}
+
+
+def _magic_doc_ok(contenido: bytes, ext: str) -> bool:
+    """True si los primeros bytes coinciden con la extensión. .dxf (texto) no se verifica."""
+    firmas = _MAGIC_DOC.get(ext)
+    if not firmas:
+        return True
+    head = contenido[:16]
+    return any(head.startswith(f) for f in firmas)
+
 
 @router.post("/api/{prenda_id}/documentos/subir")
 def api_subir_documento(
@@ -666,10 +772,16 @@ def api_subir_documento(
     if ext not in EXTS_DOC:
         raise HTTPException(400, f"Formato no permitido. Use: {', '.join(EXTS_DOC)}")
 
+    contenido = archivo.file.read()
+    max_bytes = settings.MAX_UPLOAD_MB * 1024 * 1024
+    if len(contenido) > max_bytes:
+        raise HTTPException(413, f"Archivo demasiado grande (máx. {settings.MAX_UPLOAD_MB} MB).")
+    if not _magic_doc_ok(contenido, ext):
+        raise HTTPException(400, "El contenido del archivo no coincide con su extensión.")
+
     _asegurar_carpetas()
     nombre_guardado = f"{uuid.uuid4().hex}{ext}"
     ruta = os.path.join(UPLOAD_DOCS, nombre_guardado)
-    contenido = archivo.file.read()
     with open(ruta, "wb") as f:
         f.write(contenido)
 
@@ -1479,7 +1591,7 @@ def api_ofs_activas(
         db.query(OrdenFabricacion)
           .filter(
               OrdenFabricacion.prenda_catalogo_id == prenda_id,
-              OrdenFabricacion.estado == EstadoOF.BORRADOR,
+              OrdenFabricacion.estado.in_([EstadoOF.BORRADOR, EstadoOF.ACTIVA, EstadoOF.EN_PROCESO]),
           ).order_by(OrdenFabricacion.numero_of).all()
     )
     return [

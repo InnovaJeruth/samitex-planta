@@ -53,8 +53,9 @@ class OrdenFabricacion(Base):
     tipo_prenda          = Column(String(50),  nullable=False)
     prenda_catalogo_id   = Column(Integer, ForeignKey("prendas_catalogo.id"), nullable=True)
     total_juegos         = Column(Integer, nullable=False)
-    fecha_creacion       = Column(Date, nullable=False, default=_dt.date.today)
-    fecha_apt            = Column(Date, nullable=True)
+    fecha_creacion       = Column(Date, nullable=False, default=_dt.date.today)  # fecha de creación en ESTE sistema
+    fecha_sap            = Column(DateTime, nullable=True)   # fecha+hora de creación en SAP (fecha inicio extrema + hora creación)
+    fecha_apt            = Column(Date, nullable=True)   # APT = fecha fin extrema (entrega) de SAP
     estado               = Column(Enum(EstadoOF), default=EstadoOF.BORRADOR)
     tipo_cliente         = Column(Enum(TipoClienteEnum), default=TipoClienteEnum.INSTITUCION, nullable=False)
     estado_docs          = Column(Enum(EstadoDocsEnum), default=EstadoDocsEnum.PENDIENTE, nullable=False)
@@ -62,21 +63,40 @@ class OrdenFabricacion(Base):
     solped_prenda        = Column(String(50), nullable=True)
     orden_compra         = Column(String(50), nullable=True)
     solped_mp            = Column(String(50), nullable=True)
+    # --- Datos de origen SAP (import de la OF desde la COIS) ---
+    material_sap         = Column(String(30), nullable=True, index=True)  # Nº material SAP del modelo (llave al catálogo)
+    clase_orden          = Column(String(10), nullable=True)   # ZP41 institución / ZP42 marca / ZP43 reprocesos / ZP44 serv. terceros
+    centro               = Column(String(10), nullable=True)   # ej. PP40
+    sociedad             = Column(String(10), nullable=True)   # ej. P040
+    area_planificacion   = Column(String(10), nullable=True)   # ej. PP40
+    almacen              = Column(String(10), nullable=True)   # ej. PR01
+    autor_sap            = Column(String(30), nullable=True)   # usuario SAP que creó la orden (ej. PALVA)
     fecha_inicio_plan    = Column(Date, nullable=True)
     orden_plan           = Column(Integer, nullable=True)
     tercerizado          = Column(Boolean, default=False, nullable=False)
     planta_id            = Column(Integer, ForeignKey("plantas_externas.id"), nullable=True)
-    planta_externa       = Column(String(120), nullable=True)
     fecha_envio          = Column(Date, nullable=True)
     fecha_recepcion_est  = Column(Date, nullable=True)
     fecha_recepcion_real = Column(Date, nullable=True)
     estado_tercerizado   = Column(String(20), nullable=True)
     juegos_recibidos     = Column(Integer, default=0, nullable=False)
+    es_muestra           = Column(Boolean, default=False, nullable=False)  # Requerimiento de Muestra (sin gates)
+    omitir_gates         = Column(Boolean, default=False, nullable=False)  # OF de prueba: se activa sin gates documentales
+    max_capas            = Column(Integer, nullable=True)   # tope de capas por placa (override; default global MAX_CAPAS_DEFAULT)
+    unidades_por_paquete = Column(Integer, nullable=True)   # tope de u por paquete de numeración (override; default global)
+    corte_por_talla      = Column(Boolean, default=True, nullable=False)   # F4–F7 por pieza×talla (nuevas). Viejas: False
+    # Candado de la hoja de numeración: se cierra al confirmar/generar; solo se
+    # reabre con motivo (ADMIN, GERENTE_PLANTA, SUPERVISOR_CORTE, JEFE_PLANTA).
+    hoja_numeracion_cerrada     = Column(Boolean, default=False, nullable=False, server_default='0')
+    hoja_numeracion_cerrada_por = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    hoja_numeracion_cerrada_at  = Column(DateTime, nullable=True)
     responsable_id       = Column(Integer, ForeignKey("usuarios.id"))
     created_at           = Column(DateTime, server_default=func.now())
     updated_at           = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    responsable           = relationship("Usuario",             back_populates="of_creadas")
+    responsable           = relationship("Usuario",             back_populates="of_creadas",
+                                         primaryjoin="OrdenFabricacion.responsable_id == Usuario.id",
+                                         foreign_keys=[responsable_id])
     prenda_catalogo       = relationship("PrendaCatalogo",      back_populates="ofs", foreign_keys=[prenda_catalogo_id])
     planta                = relationship("PlantaExterna",       back_populates="ofs_tercerizadas", foreign_keys=[planta_id])
     documentos            = relationship("DocumentoOF",         back_populates="of", cascade="all, delete-orphan")
@@ -89,13 +109,14 @@ class OrdenFabricacion(Base):
     historial_fechas_terc = relationship("TercHistorialFecha",  back_populates="of", cascade="all, delete-orphan")
     recepciones_terc      = relationship("TercRecepcion",       back_populates="of", cascade="all, delete-orphan")
     talla_distribucion    = relationship("OFTallaDistribucion", back_populates="of", cascade="all, delete-orphan")
+    terc_logs             = relationship("TercSubprocesoLog",   back_populates="of", cascade="all, delete-orphan", foreign_keys="TercSubprocesoLog.of_id")
 
 
 class DocumentoOF(Base):
     __tablename__ = "documentos_of"
 
     id             = Column(Integer, primary_key=True, index=True)
-    of_id          = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=False)
+    of_id          = Column(Integer, ForeignKey("ordenes_fabricacion.id"), nullable=False, index=True)
     tipo           = Column(String(50), nullable=False)
     nombre_archivo = Column(String(255), nullable=False)
     ruta_archivo   = Column(String(500), nullable=False)

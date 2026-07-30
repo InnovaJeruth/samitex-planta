@@ -6,14 +6,14 @@
 /* ── Layout ──────────────────────────────────────────────────── */
 .gc-outer { display:flex; flex-direction:column; gap:0; }
 .gc-controls { display:flex; align-items:center; gap:8px; padding-bottom:10px; flex-wrap:wrap; }
-.gc-wrap { display:flex; border:1px solid #1c1c1c; border-radius:6px; overflow:hidden;
-           background:#0b0b0b; height:calc(100vh - 210px); min-height:340px; }
+.gc-wrap { display:flex; border:1px solid #151f33; border-radius:6px; overflow:hidden;
+           background:#060811; height:calc(100vh - 210px); min-height:340px; }
 
 /* ── Sidebar ─────────────────────────────────────────────────── */
 .gc-side { width:308px; min-width:308px; display:flex; flex-direction:column;
-           border-right:1px solid #1c1c1c; overflow:hidden; }
+           border-right:1px solid #151f33; overflow:hidden; }
 .gc-side-head { height:60px; display:flex; align-items:flex-end; padding:0 10px 8px;
-                border-bottom:1px solid #1c1c1c; background:#0a0a0a; flex-shrink:0; }
+                border-bottom:1px solid #151f33; background:#060811; flex-shrink:0; }
 .gc-sh-col1 { width:22px; flex-shrink:0; }
 .gc-sh-col2 { flex:1; min-width:0; font-size:10px; color:#767676; text-transform:uppercase; letter-spacing:.4px; }
 .gc-sh-col3 { width:78px; flex-shrink:0; font-size:10px; color:#767676; text-transform:uppercase; letter-spacing:.4px; }
@@ -21,12 +21,12 @@
 
 .gc-side-body { overflow-y:auto; overflow-x:hidden; flex:1; }
 .gc-row { display:flex; align-items:center; padding:0 10px; height:46px;
-          border-bottom:1px solid #141414; cursor:grab; transition:background .1s; user-select:none; }
-.gc-row:hover        { background:#141414; }
+          border-bottom:1px solid #0f1524; cursor:grab; transition:background .1s; user-select:none; }
+.gc-row:hover        { background:#0f1524; }
 .gc-row.highlight    { background:#0d1e35 !important; }
 .gc-row.is-dragging  { opacity:.3; }
 .gc-row.drag-over    { border-top:2px solid #4a9fff !important; }
-.gc-row-num { width:22px; flex-shrink:0; font-size:11px; color:#444; text-align:center; }
+.gc-row-num { width:22px; flex-shrink:0; font-size:11px; color:#3a4a6f; text-align:center; }
 .gc-row-info { flex:1; min-width:0; }
 .gc-row-of  { font-size:12px; font-weight:600; color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gc-row-sub { font-size:10px; color:#767676; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:4px; }
@@ -35,7 +35,7 @@
 .gc-row-pct { width:36px; flex-shrink:0; text-align:right; font-size:12px; font-weight:600; }
 
 /* Inline date editor */
-.inicio-display { cursor:pointer; border-bottom:1px dashed #2a2a2a; }
+.inicio-display { cursor:pointer; border-bottom:1px dashed #20304f; }
 .inicio-display.has-val { color:#4a9fff; border-bottom-color:#4a9fff; }
 .inicio-editor { display:none; align-items:center; gap:1px;
                  background:#0d1e35; border:1px solid #1a6fbe;
@@ -44,35 +44,35 @@
 .inicio-editor .fecha-dd   { width:20px; }
 .inicio-editor .fecha-mm   { width:20px; }
 .inicio-editor .fecha-yyyy { width:34px; }
-.inicio-editor .fecha-sep  { color:#444; font-size:10px; }
-.inicio-editor .fecha-x    { color:#444; font-size:10px; cursor:pointer; margin-left:2px; }
+.inicio-editor .fecha-sep  { color:#3a4a6f; font-size:10px; }
+.inicio-editor .fecha-x    { color:#3a4a6f; font-size:10px; cursor:pointer; margin-left:2px; }
 .inicio-editor .fecha-x:hover { color:#ccc; }
 
 /* ── Chart area ──────────────────────────────────────────────── */
 .gc-chart { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
-.gc-chart-head { height:72px; flex-shrink:0; border-bottom:1px solid #1c1c1c;
-                 background:#0a0a0a; overflow:hidden; position:relative; }
+.gc-chart-head { height:72px; flex-shrink:0; border-bottom:1px solid #151f33;
+                 background:#060811; overflow:hidden; position:relative; }
 .gc-head-inner { position:absolute; top:0; left:0; height:100%; display:flex; flex-direction:column; }
-.gc-months { height:26px; display:flex; align-items:center; border-bottom:1px solid #161616; position:relative; }
+.gc-months { height:26px; display:flex; align-items:center; border-bottom:1px solid #101728; position:relative; }
 .gc-month-cell { position:absolute; height:100%; display:flex; align-items:center; padding-left:7px; }
 .gc-month-cell span { font-size:11px; color:#777; font-weight:600; white-space:nowrap; }
 .gc-weeks { height:34px; display:flex; align-items:center; position:relative; }
-.gc-week-cell { position:absolute; height:100%; display:flex; align-items:center; padding-left:5px; border-left:1px solid #1a1a1a; }
-.gc-week-cell span { font-size:10px; color:#444; white-space:nowrap; }
+.gc-week-cell { position:absolute; height:100%; display:flex; align-items:center; padding-left:5px; border-left:1px solid #131b2c; }
+.gc-week-cell span { font-size:10px; color:#3a4a6f; white-space:nowrap; }
 
 .gc-chart-body { flex:1; overflow:auto; }
 .gc-chart-inner { position:relative; min-height:100%; }
 
 /* Grid lines */
-.gc-vline { position:absolute; top:0; bottom:0; width:1px; background:#151515; pointer-events:none; }
-.gc-vline.major { background:#1c1c1c; }
+.gc-vline { position:absolute; top:0; bottom:0; width:1px; background:#0f1626; pointer-events:none; }
+.gc-vline.major { background:#151f33; }
 .gc-today-line { position:absolute; top:0; bottom:0; width:2px;
                  background:rgba(74,159,255,.35); pointer-events:none; z-index:4; }
 .gc-today-dot { position:absolute; top:0; left:-4px; width:8px; height:8px;
                 border-radius:50%; background:#4a9fff; opacity:.6; }
 
 /* Bar rows */
-.gc-bar-row { height:46px; position:relative; border-bottom:1px solid #141414; }
+.gc-bar-row { height:46px; position:relative; border-bottom:1px solid #0f1524; }
 .gc-bar-row:hover { background:rgba(255,255,255,.01); }
 
 /* Normal bars */
@@ -91,7 +91,7 @@
 
 /* Ghost bars (no fecha_inicio_plan) */
 .gc-bar-ghost { position:absolute; top:11px; height:24px; border-radius:4px;
-                border:1px dashed #2a2a2a; background:rgba(255,255,255,.025);
+                border:1px dashed #20304f; background:rgba(255,255,255,.025);
                 display:flex; align-items:center; justify-content:center;
                 cursor:crosshair; min-width:80px; transition:all .15s; }
 .gc-bar-ghost:hover { border-color:#4a9fff; background:rgba(74,159,255,.06); }
@@ -142,43 +142,43 @@
 #gcDragTip.error { background:#3d0e0e; border-color:#c0392b; color:#c0392b; }
 
 /* ── Detail panel ────────────────────────────────────────────── */
-.dp { position:fixed; right:0; top:0; bottom:0; width:320px; background:#111;
-      border-left:1px solid #1e1e1e; z-index:300;
+.dp { position:fixed; right:0; top:0; bottom:0; width:320px; background:#0b101b;
+      border-left:1px solid #172136; z-index:300;
       transform:translateX(100%); transition:transform .22s cubic-bezier(.25,.46,.45,.94);
       display:flex; flex-direction:column; overflow:hidden; }
 .dp.open { transform:translateX(0); }
-.dp-head { padding:16px; border-bottom:1px solid #1a1a1a;
+.dp-head { padding:16px; border-bottom:1px solid #131b2c;
            display:flex; justify-content:space-between; align-items:flex-start; flex-shrink:0; }
 .dp-of { font-size:18px; font-weight:700; color:#ddd; }
 .dp-cliente { font-size:12px; color:#666; margin-top:3px; }
-.dp-close { background:none; border:none; color:#444; font-size:20px; cursor:pointer; padding:0; line-height:1; }
+.dp-close { background:none; border:none; color:#3a4a6f; font-size:20px; cursor:pointer; padding:0; line-height:1; }
 .dp-close:hover { color:#ccc; }
 .dp-body { padding:16px; flex:1; overflow-y:auto; }
 .dp-section { margin-top:14px; }
-.dp-label { font-size:10px; color:#444; text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px; }
+.dp-label { font-size:10px; color:#3a4a6f; text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px; }
 .dp-value { font-size:13px; color:#bbb; }
 .dp-row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
 .dp-prog { margin-top:16px; }
-.dp-bar-outer { height:8px; background:#1a1a1a; border-radius:4px; margin-top:6px; overflow:hidden; border:1px solid #222; }
+.dp-bar-outer { height:8px; background:#131b2c; border-radius:4px; margin-top:6px; overflow:hidden; border:1px solid #1a2338; }
 .dp-bar-inner { height:100%; border-radius:4px; transition:width .4s; }
 .dp-pct-row { display:flex; align-items:center; gap:8px; }
 .dp-pct-num { font-size:15px; font-weight:700; color:#ddd; min-width:38px; text-align:right; }
 .dp-terc { margin-top:14px; padding:10px 12px; background:#1a1030; border-radius:5px; border:1px solid #2a1a50; }
-.dp-footer { padding:14px; border-top:1px solid #1a1a1a; display:flex; gap:8px; flex-shrink:0; }
+.dp-footer { padding:14px; border-top:1px solid #131b2c; display:flex; gap:8px; flex-shrink:0; }
 
 /* ── Overlay ─────────────────────────────────────────────────── */
 #panelOverlay { display:none; position:fixed; inset:0; z-index:299; background:rgba(0,0,0,.3); }
 
 /* ── Chips ───────────────────────────────────────────────────── */
 .filter-chips { display:flex; gap:5px; flex-wrap:wrap; }
-.f-chip { padding:3px 11px; border-radius:20px; font-size:11px; border:1px solid #222;
+.f-chip { padding:3px 11px; border-radius:20px; font-size:11px; border:1px solid #1a2338;
           color:#767676; cursor:pointer; transition:all .15s; background:none; }
 .f-chip:hover  { border-color:#4a9fff; color:#4a9fff; }
 .f-chip.active { background:#1c3050; border-color:#4a9fff; color:#4a9fff; }
 
 /* ── View buttons ────────────────────────────────────────────── */
 .view-btns { display:flex; gap:3px; }
-.view-btn { padding:4px 10px; font-size:11px; background:#1a1a1a; border:1px solid #2a2a2a;
+.view-btn { padding:4px 10px; font-size:11px; background:#131b2c; border:1px solid #20304f;
             color:#777; border-radius:4px; cursor:pointer; transition:all .15s; }
 .view-btn:hover  { border-color:#4a9fff; color:#4a9fff; }
 .view-btn.active { background:#1c3050; border-color:#4a9fff; color:#4a9fff; }
@@ -195,13 +195,13 @@
 .gc-side-body::-webkit-scrollbar-track,
 .gc-chart-body::-webkit-scrollbar-track { background:transparent; }
 .gc-side-body::-webkit-scrollbar-thumb,
-.gc-chart-body::-webkit-scrollbar-thumb { background:#222; border-radius:2px; }
+.gc-chart-body::-webkit-scrollbar-thumb { background:#1a2338; border-radius:2px; }
 
 /* ── Modal overlay genérico (capacidad + config) ────────────── */
 .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
                  align-items:center; justify-content:center; }
 .modal-overlay.show { display:flex; }
-.modal-box { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px;
+.modal-box { background:#131b2c; border:1px solid #20304f; border-radius:8px;
              padding:24px 28px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,.6); }
 .modal-titulo { font-size:15px; font-weight:700; margin-bottom:8px; color:#e0e0e0; }
 .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
@@ -211,17 +211,17 @@
 .gc-guard-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.72);
                     z-index:3000; align-items:center; justify-content:center; }
 .gc-guard-overlay.show { display:flex; }
-.gc-guard-box { background:#141414; border:1px solid #2a2a2a; border-radius:6px;
+.gc-guard-box { background:#0f1524; border:1px solid #20304f; border-radius:6px;
                 padding:24px 28px; max-width:440px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,.6); }
 .gc-guard-title { color:#e6a817; font-size:14px; font-weight:600; margin-bottom:8px; }
 .gc-guard-msg { color:#888; font-size:12px; line-height:1.6; margin-bottom:14px; }
 .gc-guard-list { list-style:none; padding:0; margin:0 0 20px; }
 .gc-guard-list li { display:flex; justify-content:space-between; align-items:center;
-                    padding:7px 12px; background:#1a1a1a; border-radius:4px;
+                    padding:7px 12px; background:#131b2c; border-radius:4px;
                     margin-bottom:4px; font-size:12px; color:#ccc; }
 .gc-guard-list li span { color:#666; font-size:11px; }
 .gc-guard-btns { display:flex; gap:10px; justify-content:flex-end; }
-.gc-guard-cancel  { padding:7px 16px; background:transparent; border:1px solid #333;
+.gc-guard-cancel  { padding:7px 16px; background:transparent; border:1px solid #2a3557;
                     color:#777; border-radius:4px; cursor:pointer; font-size:12px; }
 .gc-guard-cancel:hover { border-color:#767676; color:#aaa; }
 .gc-guard-confirm { padding:7px 18px; background:#7c2d12; border:1px solid #991b1b;
@@ -262,7 +262,7 @@
       <button class="f-chip" data-filter="COMPLETADA">Completada</button>
       <button class="f-chip" data-filter="TERCERIZADA">Tercerizada</button>
     </div>
-    <span id="countBadge" style="font-size:11px;color:#444;margin-left:4px"></span>
+    <span id="countBadge" style="font-size:11px;color:#3a4a6f;margin-left:4px"></span>
   </div>
 
   <!-- Gantt wrapper -->
@@ -302,7 +302,7 @@
                 <input class="fecha-yyyy" maxlength="4" placeholder="YYYY" onkeydown="fechaKey(this,event,'yyyy')" aria-label="YYYY">
                 <span class="fecha-x" onclick="cancelarFechaInicio(this.closest('.inicio-editor'))">✕</span>
               </span>
-              <span style="color:#444;font-size:10px">· {{ of.cliente[:22] }}</span>
+              <span style="color:#3a4a6f;font-size:10px">· {{ of.cliente[:22] }}</span>
             </div>
           </div>
           <div class="gc-row-apt">
@@ -360,7 +360,7 @@
       <div><div class="dp-label">APT</div><div class="dp-value" id="dpApt"></div></div>
     </div>
     <div class="dp-row2">
-      <div><div class="dp-label">Total Juegos</div><div class="dp-value" id="dpJuegos"></div></div>
+      <div><div class="dp-label">Total Prendas</div><div class="dp-value" id="dpJuegos"></div></div>
       <div><div class="dp-label">Piezas</div><div class="dp-value" id="dpPiezas"></div></div>
     </div>
     <div class="dp-prog">
@@ -417,7 +417,7 @@ const ofMeta = {
     juegos:     {{ of.total_juegos or 0 }},
     piezas:     {{ of.piezas | length }},
     terc:       {{ 'true' if of.tercerizado else 'false' }},
-    planta:     {{ (of.planta_externa or '') | tojson }},
+    planta:     {{ (of.planta.nombre if of.planta else '') | tojson }},
     terc_est:      {{ (of.estado_tercerizado or '') | tojson }},
     color:         {{ item.color_class | tojson }},
     fases_con_real:{{ item.fases_con_real | tojson }},
@@ -463,8 +463,8 @@ async function patchPlan(ofId, payload) {
         return new Promise(resolve => {
           const overlay = document.getElementById('gcCapOverlay');
           document.getElementById('gcCapMsg').innerHTML =
-            `El día <strong>${fmtDMY(data.fecha)}</strong> ya tiene <strong>${data.carga_actual} juegos</strong> programados.<br>` +
-            `Esta OF agrega <strong>${data.of_juegos} juegos</strong> → total <strong>${data.nueva_carga}</strong> ` +
+            `El día <strong>${fmtDMY(data.fecha)}</strong> ya tiene <strong>${data.carga_actual} prendas</strong> programadas.<br>` +
+            `Esta OF agrega <strong>${data.of_juegos} prendas</strong> → total <strong>${data.nueva_carga}</strong> ` +
             `(máx. ${data.capacidad_max}, exceso: <span style="color:#e05030">${data.exceso}</span>).`;
           // Cerrar config modal si está abierto para evitar interferencia
           document.getElementById('cap-overlay').classList.remove('show');
@@ -578,7 +578,7 @@ function render() {
   document.getElementById('countBadge').textContent = shown + ' OF' + (shown !== 1 ? 's' : '');
 
   if (!visible.length) {
-    document.getElementById('gcInner').innerHTML = '<div style="padding:24px;color:#444;font-size:12px">Sin resultados.</div>';
+    document.getElementById('gcInner').innerHTML = '<div style="padding:24px;color:#3a4a6f;font-size:12px">Sin resultados.</div>';
     document.getElementById('gcHeadInner').innerHTML = '';
     return;
   }
@@ -620,7 +620,7 @@ function renderHead(W, ppd) {
       const d   = addD(rangeStart, i);
       const x   = i * ppd;
       const mon = d.getDay() === 1;
-      sHtml   += `<div class="gc-week-cell" style="left:${x}px;width:${ppd}px${mon?';border-left-color:#2a2a2a':''}"><span>${d.getDate()}</span></div>`;
+      sHtml   += `<div class="gc-week-cell" style="left:${x}px;width:${ppd}px${mon?';border-left-color:#20304f':''}"><span>${d.getDate()}</span></div>`;
       _vlines += `<div class="gc-vline${mon?' major':''}" style="left:${x}px"></div>`;
     }
   } else if (viewMode === 'week') {
@@ -1248,17 +1248,17 @@ function renderCumplimiento() {
     const [y, m, d] = iso.split('-');
     const faseRows = Object.entries(rData.por_fase || {})
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([f, j]) => `<tr class="cumpl-det" id="det-row-${iso}-${f}" style="display:none;background:#0a0a0a">
+      .map(([f, j]) => `<tr class="cumpl-det" id="det-row-${iso}-${f}" style="display:none;background:#060811">
         <td colspan="2" style="padding:2px 12px 2px 24px;font-size:10px;color:#767676">${NOMBRES_FASE_GANTT[f] || f}</td>
         <td style="padding:2px 8px;font-size:10px;color:#aaa">${j} j</td><td colspan="2"></td></tr>`)
       .join('');
-    return `<tr style="cursor:pointer;border-bottom:1px solid #1a1a1a"
+    return `<tr style="cursor:pointer;border-bottom:1px solid #131b2c"
         onclick="document.querySelectorAll('[id^=\\'det-row-${iso}-\\']').forEach(r=>r.style.display=r.style.display==='none'?'':'none')">
       <td style="padding:6px 10px;font-size:12px;color:#ccc">${d}/${m}</td>
       <td style="padding:6px 8px;font-size:12px;color:#aaa">${plan || '—'}</td>
       <td style="padding:6px 8px;font-size:12px;color:#aaa">${real || '—'}</td>
       <td style="padding:6px 8px;font-size:12px"><span style="color:${col}">${icon} ${pct}%</span></td>
-      <td style="padding:6px 4px;font-size:10px;color:#444">${faseRows ? '▾' : ''}</td>
+      <td style="padding:6px 4px;font-size:10px;color:#3a4a6f">${faseRows ? '▾' : ''}</td>
     </tr>${faseRows}`;
   }).join('');
 }
@@ -1277,7 +1277,7 @@ async function guardarCapacidad() {
     const lbl = document.getElementById('cap-label');
     if (lbl) lbl.textContent = val;
     renderCargaBars();
-    showToast(`✓ Capacidad actualizada: ${val} juegos/día`, 'success');
+    showToast(`✓ Capacidad actualizada: ${val} prendas/día`, 'success');
   } else {
     showToast('Error al guardar', 'error');
   }
@@ -1305,11 +1305,11 @@ setTimeout(function() { renderCargaBars(); renderCumplimiento(); }, 100);
 <div class="modal-overlay" id="cap-overlay" style="z-index:1100">
   <div class="modal-box" style="max-width:320px">
     <div class="modal-titulo">⚙ Capacidad diaria de Corte</div>
-    <div style="font-size:12px;color:#767676;margin-bottom:12px">Máximo de juegos programables por día</div>
+    <div style="font-size:12px;color:#767676;margin-bottom:12px">Máximo de prendas programables por día</div>
     <div class="modal-field">
-      <label>Juegos / día</label>
+      <label>Prendas / día</label>
       <input type="number" id="inp-capacidad" min="1"
-        style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:16px">
+        style="width:100%;background:#0b101b;border:1px solid #2a3557;border-radius:6px;padding:8px 10px;color:#e0e0e0;font-size:16px">
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="document.getElementById('cap-overlay').classList.remove('show')">Cancelar</button>
@@ -1319,20 +1319,20 @@ setTimeout(function() { renderCargaBars(); renderCumplimiento(); }, 100);
 </div>
 
 <!-- Panel cumplimiento diario -->
-<div style="margin-top:18px;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden">
-  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0d0d0d;cursor:pointer"
+<div style="margin-top:18px;border:1px solid #131b2c;border-radius:8px;overflow:hidden">
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#070a12;cursor:pointer"
        onclick="document.getElementById('cumpl-panel').classList.toggle('hidden')">
     <span style="font-size:13px;font-weight:600;color:#ccc">📊 Cumplimiento diario</span>
     <span style="font-size:11px;color:#767676">(últimos 14 días)</span>
     <button onclick="event.stopPropagation();document.getElementById('inp-capacidad').value=CAP_DIARIA;document.getElementById('cap-overlay').classList.add('show')"
-      style="margin-left:auto;background:#111;border:1px solid #333;border-radius:4px;color:#767676;font-size:11px;padding:3px 8px;cursor:pointer">
+      style="margin-left:auto;background:#0b101b;border:1px solid #2a3557;border-radius:4px;color:#767676;font-size:11px;padding:3px 8px;cursor:pointer">
       ⚙ Cap: <span id="cap-label">{{ capacidad | default(500) }}</span> j/día
     </button>
   </div>
   <div class="hidden" id="cumpl-panel">
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead>
-        <tr style="background:#0a0a0a">
+        <tr style="background:#060811">
           <th style="padding:6px 10px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase">Fecha</th>
           <th style="padding:6px 8px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase">Planif.</th>
           <th style="padding:6px 8px;text-align:left;color:#767676;font-size:10px;text-transform:uppercase">Real</th>
