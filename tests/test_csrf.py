@@ -73,8 +73,9 @@ class TestIsExempt:
     def test_post_to_health_exempt(self):
         assert is_exempt("/health", "POST") is True
 
-    def test_post_to_telegram_webhook_exempt(self):
-        assert is_exempt("/telegram/webhook", "POST") is True
+    def test_post_to_telegram_webhook_ya_no_exento(self):
+        # Bot de Telegram eliminado: la ruta ya no existe ni está exenta.
+        assert is_exempt("/telegram/webhook", "POST") is False
 
     def test_post_to_ws_exempt(self):
         assert is_exempt("/ws/corte/42", "POST") is True

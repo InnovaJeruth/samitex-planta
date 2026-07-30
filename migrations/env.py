@@ -28,6 +28,8 @@ import app.models.catalogo  # noqa: F401
 import app.models.curva_tallas  # noqa: F401
 import app.models.ingenieria    # noqa: F401
 import app.models.parametro     # noqa: F401
+import app.models.trazo         # noqa: F401
+import app.models.paquete       # noqa: F401
 
 target_metadata = Base.metadata
 

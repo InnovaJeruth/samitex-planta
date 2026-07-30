@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Importar OF desde SAP — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .is-wrap { max-width:1000px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .is-wrap h1 { font-size:20px; font-weight:700; color:#fff; margin:0 0 4px; }
+  .card { background:#0f1524; border:1px solid #1e2c48; border-radius:10px; padding:16px; margin-top:14px; }
+  .drop { border:1.5px dashed #313f63; border-radius:10px; padding:26px; text-align:center; color:#999; }
+  .btn { font-size:13px; border:1px solid #3a4a6f; background:#1a2338; color:#ddd; border-radius:7px; padding:7px 14px; cursor:pointer; }
+  .btn.primary { background:#164; border-color:#164; color:#fff; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  table.rs { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+  table.rs th { text-align:left; padding:7px 9px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #1e2c48; }
+  table.rs td { padding:7px 9px; border-bottom:1px solid #151f33; }
+  .ok { color:#6fdf9a; } .err { color:#f88; } .warn { color:#e6c14a; }
+  .sum { display:flex; gap:18px; margin-top:10px; font-size:13px; }
+  .muted { color:#888; font-size:12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="is-wrap">
+  <h1>Importar OF desde SAP</h1>
+  <div class="muted">Sube el Excel exportado de la COIS. Cada fila = una OF. El N° de orden SAP se usa como número de OF.</div>
+
+  <div class="card">
+    <div class="drop">
+      <input type="file" id="file" accept=".xlsx,.xlsm" style="display:none" onchange="pick()">
+      <div id="fname" class="muted">Ningún archivo seleccionado</div>
+      <div style="margin-top:12px">
+        <button class="btn" onclick="document.getElementById('file').click()">Elegir Excel</button>
+      </div>
+    </div>
+
+    <div id="paso-cliente" style="display:none;margin-top:14px">
+      <label style="font-size:12px;color:#999;display:block;margin-bottom:5px">Cliente <span style="color:#f88">*</span></label>
+      <input type="text" id="cliente" placeholder="Ej. John Holden" autocomplete="off"
+             style="width:100%;max-width:420px;background:#101728;border:1px solid #313f63;color:#eee;border-radius:7px;padding:8px 10px"
+             oninput="toggleImp()">
+      <div class="muted" style="margin-top:5px">SAP no trae el cliente. Se aplica a todas las OFs de este archivo.</div>
+      <div style="margin-top:12px">
+        <button class="btn primary" id="btn-imp" onclick="subir()" disabled>Importar</button>
+      </div>
+    </div>
+
+    <div id="out"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function csrf(){ try { return getCsrfToken(); } catch(e){ return ''; } }
+let FILE=null;
+function pick(){
+  FILE = document.getElementById('file').files[0] || null;
+  document.getElementById('fname').textContent = FILE ? FILE.name : 'Ningún archivo seleccionado';
+  // El paso de cliente aparece recién después de adjuntar el Excel
+  document.getElementById('paso-cliente').style.display = FILE ? 'block' : 'none';
+  toggleImp();
+}
+function toggleImp(){
+  const cli=(document.getElementById('cliente').value||'').trim();
+  document.getElementById('btn-imp').disabled = !(FILE && cli);
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+async function subir(){
+  const cli=(document.getElementById('cliente').value||'').trim();
+  if(!FILE || !cli) return;
+  const btn=document.getElementById('btn-imp'); btn.disabled=true; btn.textContent='Importando…';
+  const fd=new FormData(); fd.append('archivo', FILE); fd.append('cliente', cli);
+  try{
+    const r=await fetch('/of/api/import-sap',{method:'POST',headers:{'x-csrf-token':csrf()},body:fd});
+    const d=await r.json();
+    if(!r.ok){ throw new Error(d.detail||'Error'); }
+    render(d);
+    toast(d.mensaje,'success');
+  }catch(e){ toast(e.message,'error'); }
+  finally{ btn.disabled=false; btn.textContent='Importar'; }
+}
+
+function render(d){
+  const box=document.getElementById('out');
+  let h=`<div class="sum">
+    <span>Total: <b>${d.total}</b></span>
+    <span class="ok">Creadas: <b>${d.creadas}</b></span>
+    <span class="err">Errores: <b>${d.errores}</b></span></div>`;
+  if(d.detalle && d.detalle.length){
+    h+='<table class="rs"><thead><tr><th>N° Orden</th><th>Resultado</th><th>Detalle</th></tr></thead><tbody>';
+    for(const x of d.detalle){
+      const cls = x.ok ? (x.mensaje.includes('pendiente')||x.mensaje.includes('no encontrada') ? 'warn':'ok') : 'err';
+      h+=`<tr><td>${esc(x.numero_of)}</td>
+        <td class="${x.ok?'ok':'err'}">${x.ok?'OK':'Error'}</td>
+        <td class="${cls}">${esc(x.mensaje)}</td></tr>`;
+    }
+    h+='</tbody></table>';
+  }
+  box.innerHTML=h;
+}
+</script>
+{% endblock %}

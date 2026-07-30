@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Planta de corte — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  #main-content { max-width:none; margin:0; padding:0; }
+  .pc-wrap { width:100%; margin:0; padding:20px 28px; color:#ddd; box-sizing:border-box; }
+  .pc-wrap h1 { font-size:20px; font-weight:700; color:#fff; margin:0 0 4px; }
+  .pc-tabs { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 8px; }
+  .pc-tab { font-size:13px; padding:6px 14px; border-radius:6px; border:1px solid #2a3557; background:#121a2c; color:#aaa; cursor:pointer; }
+  .pc-tab:hover { background:#1a2338; } .pc-tab.active { background:#eee; color:#0b101b; border-color:#eee; font-weight:600; }
+  .pc-hint { font-size:12px; color:#888; margin:0 0 16px; }
+  .of-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+  .of-card { background:#0f1524; border:1px solid #1e2c48; border-radius:10px; padding:14px 16px; cursor:pointer; transition:border-color .15s,background .15s; }
+  .of-card:hover { border-color:#3a6ea5; background:#161b22; }
+  .of-card .num { font-size:16px; font-weight:700; color:#fff; }
+  .of-card .cli { font-size:13px; color:#9ab; margin-top:2px; }
+  .of-card .meta { font-size:12px; color:#888; margin-top:8px; display:flex; justify-content:space-between; }
+  .go { font-size:11px; color:#7cc4ff; }
+  .empty { color:#777; font-size:13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pc-wrap">
+  <h1>Planta de corte</h1>
+  <div style="color:#999;font-size:13px">Elige la OF para entrar a tu pantalla</div>
+  <p class="pc-hint" id="pc-hint" style="margin-top:14px"></p>
+
+  {% if ofs %}
+  <div class="of-grid">
+    {% for o in ofs %}
+    <div class="of-card" onclick="enter({{ o.id }})">
+      <div class="num">{{ o.numero_of }}</div>
+      <div class="cli">{{ o.cliente or o.prenda }}</div>
+      <div class="meta"><span>{{ o.prendas or 0 }} prendas</span><span class="go">entrar →</span></div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <span class="empty">No hay órdenes activas.</span>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const DEST = {
+  placas:     id => `/trazos/${id}`,
+  paquetes:   id => `/paquetes/${id}`,
+  fusionado:  id => `/paquetes/fusionado?of=${id}`,
+  calidad:    id => `/paquetes/calidad?of=${id}`,
+  reprocesos: id => `/paquetes/reprocesos?of=${id}`,
+};
+const HINT = {
+  placas:'Placas (tizado/tendido/corte) — elige la OF.',
+  paquetes:'Paquetes (numerado) — elige la OF.',
+  fusionado:'Fusionado — elige la OF.',
+  calidad:'Calidad — elige la OF.',
+  reprocesos:'Reprocesos — elige la OF.',
+};
+const _f = new URLSearchParams(location.search).get('f');
+let FUNC = HINT[_f] ? _f : 'placas';
+function enter(id){ window.location.href = DEST[FUNC](id); }
+document.getElementById('pc-hint').textContent = HINT[FUNC];
+</script>
+{% endblock %}

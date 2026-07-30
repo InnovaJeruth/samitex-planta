@@ -15,23 +15,32 @@ from app.services.corte_service import (
     _fase_anterior,
     _fase_anterior_pieza,
     registrar_avance,
+    registrar_avance_bulk,
+    completar_fase_bulk,
 )
+from app.services.gate_service import puede_activar
 from app.constants import ORDEN_FASES
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _make_of(db, estampado_activo: bool = False, estado=EstadoOF.ACTIVA) -> OrdenFabricacion:
+def _make_of(
+    db, estampado_activo: bool = False, estado=EstadoOF.ACTIVA,
+    es_muestra: bool = False, omitir_gates: bool = False,
+    estado_docs=EstadoDocsEnum.COMPLETA,
+) -> OrdenFabricacion:
     of = OrdenFabricacion(
-        numero_of=f"OF-TEST-{id(db)}",
+        numero_of=f"OF-TEST-{id(db)}-{es_muestra}-{omitir_gates}",
         cliente="Cliente Test",
         tipo_prenda=TipoPrendaEnum.SACO,
         total_juegos=10,
         fecha_creacion=date.today(),
         estado=estado,
         tipo_cliente=TipoClienteEnum.MARCA,
-        estado_docs=EstadoDocsEnum.COMPLETA,
+        estado_docs=estado_docs,
         estampado_activo=estampado_activo,
+        es_muestra=es_muestra,
+        omitir_gates=omitir_gates,
     )
     db.add(of)
     db.flush()
@@ -66,6 +75,28 @@ def _make_fase_estado(
     db.add(fe)
     db.flush()
     return fe
+
+
+def test_bulk_avance_y_completar_multiples_piezas(db):
+    """Protege la Fase 6 (precarga en dict): el bulk por pieza debe avanzar y
+    completar igual, leyendo/mutando la fila correcta de cada pieza."""
+    of = _make_of(db)
+    p1 = _make_pieza(db, of, "DELANTERO")
+    p2 = _make_pieza(db, of, "ESPALDA")
+    for p in (p1, p2):
+        _make_fase_estado(db, of, p, "F1", cantidad_actual=10, max_cantidad=10, completada=True)
+        _make_fase_estado(db, of, p, "F2", cantidad_actual=0, max_cantidad=10)
+    db.commit()
+
+    # Avance bulk de 5 en F2 a ambas piezas (cascada: F1 tiene 10 disponibles)
+    estados = registrar_avance_bulk(of, "F2", 5, [p1.id, p2.id], usuario_id=1, db=db)
+    assert len(estados) == 2
+    assert all(e.cantidad_actual == 5 and not e.completada for e in estados)
+
+    # Completar bulk F2 → llena hasta 10 y marca completada
+    estados = completar_fase_bulk(of, "F2", [p1.id, p2.id], usuario_id=1, db=db)
+    assert len(estados) == 2
+    assert all(e.cantidad_actual == 10 and e.completada for e in estados)
 
 
 # ── Tests: _orden_fases_activo ────────────────────────────────────────────────
@@ -295,3 +326,31 @@ class TestCascadaCantidades:
 
         db.refresh(of)
         assert of.estado == EstadoOF.EN_PROCESO
+
+
+# ── Tests: OF de prueba (omitir_gates) ────────────────────────────────────────
+
+class TestOmitirGates:
+    def test_of_prueba_activa_sin_gates(self, db):
+        """OF con omitir_gates=True puede activarse sin gates documentales."""
+        of = _make_of(db, estado=EstadoOF.BORRADOR, omitir_gates=True)
+        db.commit()
+        ok, faltantes = puede_activar(of, db)
+        assert ok is True
+        assert faltantes == []
+
+    def test_of_normal_sigue_requiriendo_gates(self, db):
+        """No-regresión: una OF normal (sin flag) sigue exigiendo gates."""
+        of = _make_of(db, estado=EstadoOF.BORRADOR, omitir_gates=False, es_muestra=False)
+        db.commit()
+        ok, faltantes = puede_activar(of, db)
+        assert ok is False
+        assert len(faltantes) > 0
+
+    def test_muestra_sigue_activando_sin_gates(self, db):
+        """No-regresión: es_muestra sigue saltando gates."""
+        of = _make_of(db, estado=EstadoOF.BORRADOR, es_muestra=True)
+        db.commit()
+        ok, faltantes = puede_activar(of, db)
+        assert ok is True
+        assert faltantes == []

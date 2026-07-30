@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: A4; margin: 1.6cm 1.4cm; }
+    body { font-family: Helvetica, Arial, sans-serif; color: #222; font-size: 10px; }
+    h1 { font-size: 16px; margin: 0 0 2px; }
+    h2 { font-size: 11px; margin: 14px 0 5px; color: #1a5fa0; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+    .muted { color: #777; }
+    .head-meta { color: #666; font-size: 9px; margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 3px; }
+    th { background: #f0f2f5; text-align: left; padding: 4px 6px; font-size: 9px; color: #555; border-bottom: 1px solid #ccc; }
+    td { padding: 4px 6px; border-bottom: 1px solid #eee; }
+    .kv td { border: none; padding: 2px 6px; }
+    .kv td.k { color: #777; width: 28%; }
+    .ok { color: #1e7d34; font-weight: bold; }
+    .warn { color: #b8860b; font-weight: bold; }
+    .bad { color: #b03030; font-weight: bold; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .tot td { font-weight: bold; border-top: 1px solid #999; }
+</style>
+</head>
+<body>
+
+    <h1>Ficha de avance — OF {{ of.numero_of }}</h1>
+    <div class="head-meta">
+        Generado por {{ generado_por }} · {{ hoy }} {{ hora }}
+    </div>
+
+    <!-- Cabecera -->
+    <table class="kv">
+        <tr><td class="k">Cliente</td><td>{{ of.cliente }}</td>
+            <td class="k">Estado</td><td>{{ of.estado.value }}</td></tr>
+        <tr><td class="k">Prenda</td>
+            <td>{% if prenda %}{{ prenda.codigo }} · {{ prenda.nombre }}{% if prenda.color %} · {{ prenda.color }}{% endif %}{% else %}{{ of.tipo_prenda }}{% endif %}</td>
+            <td class="k">Tipo cliente</td><td>{{ of.tipo_cliente.value if of.tipo_cliente else '—' }}</td></tr>
+        <tr><td class="k">Total prendas</td><td>{{ of.total_juegos }}</td>
+            <td class="k">Fecha APT</td><td>{{ of.fecha_apt or '—' }}</td></tr>
+        <tr><td class="k">Creación</td><td>{{ of.fecha_creacion or '—' }}</td>
+            <td class="k">Fecha SAP</td><td>{{ of.fecha_sap or '—' }}</td></tr>
+    </table>
+
+    <!-- Gates -->
+    {% if gates %}
+    <h2>Gates — cadena documental</h2>
+    <table>
+        <thead><tr><th>Gate</th><th>Área</th><th>Estado</th><th>Valor</th></tr></thead>
+        <tbody>
+        {% for g in gates %}
+            <tr>
+                <td>{{ g.label }}</td>
+                <td>{{ g.area }}</td>
+                <td class="{{ 'ok' if g.pasado else ('muted' if g.bloqueado else 'warn') }}">
+                    {{ 'OK' if g.pasado else ('Bloqueado' if g.bloqueado else 'Pendiente') }}
+                </td>
+                <td class="muted">{{ g.valor or '' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Distribución por talla -->
+    {% if distribucion %}
+    <h2>Distribución por talla (prendas)</h2>
+    <table>
+        <thead><tr><th>Talla</th><th>Código SKU</th><th class="right">Prendas</th></tr></thead>
+        <tbody>
+        {% for d in distribucion %}
+            <tr><td>{{ d.talla }}</td><td class="muted">{{ d.codigo or '—' }}</td><td class="right">{{ d.cantidad }}</td></tr>
+        {% endfor %}
+            <tr class="tot"><td colspan="2">Total</td><td class="right">{{ total_dist }}</td></tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Avance por fase -->
+    <h2>Avance por fase</h2>
+    <table>
+        <thead><tr><th>Fase</th><th>Estado</th><th class="right">Avance</th></tr></thead>
+        <tbody>
+        {% for f in fases %}
+            <tr>
+                <td>{{ f.fase_id }} · {{ f.nombre }}</td>
+                <td class="{{ 'ok' if f.estado == 'completada' else ('warn' if f.estado == 'en_proceso' else 'muted') }}">
+                    {{ f.estado|replace('_',' ') }}
+                </td>
+                <td class="right">{{ 100 if f.estado == 'completada' else f.pct }}%</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Placas / tela -->
+    {% if trazos %}
+    <h2>Placas de corte (tela)</h2>
+    <table>
+        <thead><tr><th>Placa</th><th class="center">Capas</th><th class="center">Tendidas</th><th class="center">Cortadas</th>
+            <th class="right">Metros</th><th class="center">Tizado</th><th class="center">Tendido</th><th class="center">Corte</th></tr></thead>
+        <tbody>
+        {% for t in trazos %}
+            <tr>
+                <td>{{ t.nombre }}</td>
+                <td class="center">{{ t.capas or '—' }}</td>
+                <td class="center">{{ t.capas_tendidas }}</td>
+                <td class="center">{{ t.capas_cortadas }}</td>
+                <td class="right">{{ t.metraje if t.metraje is not none else '—' }}</td>
+                <td class="center">{{ t.estado_tizado[:4] }}</td>
+                <td class="center">{{ t.estado_tendido[:4] }}</td>
+                <td class="center">{{ t.estado_corte[:4] }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Tiempos de corte -->
+    <h2>Tiempos de corte (tela)</h2>
+    <table>
+        <thead><tr><th>Fase</th><th>Inicio</th><th>Fin</th><th class="right">Duración</th></tr></thead>
+        <tbody>
+        {% for f in tiempos.fases %}
+            <tr><td>{{ f.nombre }}</td><td>{{ f.inicio }}</td><td>{{ f.fin }}</td>
+                <td class="right">{{ (f.dur ~ ' min') if f.dur is not none else '—' }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <table class="kv" style="margin-top:6px">
+        <tr>
+            <td class="k">Tiempo total (reloj)</td><td><b>{{ (tiempos.span ~ ' min') if tiempos.span is not none else '—' }}</b></td>
+            <td class="k">Trabajo efectivo</td><td>{{ (tiempos.efectivo ~ ' min') if tiempos.efectivo is not none else '—' }}</td>
+        </tr>
+        <tr>
+            <td class="k">En paradas</td>
+            <td class="{{ 'warn' if tiempos.paradas_total else '' }}">{{ tiempos.paradas_total }} min</td>
+            <td class="k">Nº de paradas</td><td>{{ tiempos.lista_paradas|length }}</td>
+        </tr>
+    </table>
+    {% if tiempos.lista_paradas %}
+    <table style="margin-top:6px">
+        <thead><tr><th>Parada — fase</th><th>Motivo</th><th>Inicio</th><th class="right">Duración</th></tr></thead>
+        <tbody>
+        {% for p in tiempos.lista_paradas %}
+            <tr><td>{{ p.fase }}</td><td>{{ p.motivo or '—' }}</td><td>{{ p.fecha }}</td>
+                <td class="right">{{ (p.dur ~ ' min') if p.dur is not none else 'en curso' }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Consumo -->
+    <h2>Control de consumo de tela (m/prenda)</h2>
+    <table class="kv">
+        <tr><td class="k">Proyectado (HDC)</td><td>{{ consumo.proyectado if consumo.proyectado is not none else '—' }}</td></tr>
+        <tr><td class="k">Real ponderado</td><td>{{ consumo.real if consumo.real is not none else '—' }}
+            {% if consumo.metros %}<span class="muted">({{ consumo.metros }} m ÷ {{ consumo.prendas }})</span>{% endif %}</td></tr>
+        <tr><td class="k">Desvío</td>
+            <td class="{{ 'bad' if (consumo.desvio or 0) > 0 else 'ok' }}">
+                {% if consumo.desvio is not none %}{{ '+' if consumo.desvio > 0 else '' }}{{ consumo.desvio }}
+                {% if consumo.desvio_pct is not none %}· {{ '+' if consumo.desvio_pct > 0 else '' }}{{ consumo.desvio_pct }}%{% endif %}
+                {% else %}—{% endif %}
+            </td></tr>
+    </table>
+
+    <!-- Numeración (F4) -->
+    {% if numeracion %}
+    <h2>Numeración (F4)</h2>
+    <div class="muted" style="margin-bottom:6px">
+        Numeración correlativa por prenda. Un <b>paquete</b> agrupa prendas numeradas de una misma talla (según el tope de unidades por paquete).
+    </div>
+    <table class="kv">
+        <tr><td class="k">Inicio</td><td>{{ numeracion.inicio }}</td>
+            <td class="k">Fin</td><td>{{ numeracion.fin }}</td></tr>
+        <tr><td class="k">Duración</td><td>{{ (numeracion.dur ~ ' min') if numeracion.dur is not none else '—' }}</td>
+            <td class="k">Total de paquetes</td><td>{{ numeracion.total_paquetes }}</td></tr>
+    </table>
+    <table style="margin-top:6px; width:100%">
+        <thead><tr><th>Talla</th><th class="right">Prendas</th>
+            <th>Numeración</th><th class="center">Paquetes</th>
+            <th class="right">% Numerado</th></tr></thead>
+        <tbody>
+        {% for t in numeracion.tallas %}
+            <tr><td>{{ t.talla }}</td><td class="right">{{ t.prendas }}</td>
+                <td style="font-variant-numeric:tabular-nums">{{ t.rango }}</td>
+                <td class="center">{{ t.paquetes }}</td>
+                <td class="right {{ 'ok' if t.num_pct == 100 else 'warn' }}">{{ t.num_pct }}%</td></tr>
+        {% endfor %}
+            <tr class="tot"><td>Total</td><td class="right">{{ total_dist }}</td><td></td>
+                <td class="center">{{ numeracion.total_paquetes }}</td>
+                <td class="right">{{ numeracion.pct }}%</td></tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Fusionado (F5) -->
+    {% if fusionado %}
+    <h2>Fusionado (F5)</h2>
+    <div class="muted" style="margin-bottom:4px">El % es sobre bultos (piezas) fusibles terminados de fusionar.</div>
+    <table class="kv">
+        <tr><td class="k">Inicio fusionado</td><td>{{ fusionado.inicio }}</td>
+            <td class="k">Fin fusionado</td><td>{{ fusionado.fin }}</td></tr>
+        <tr><td class="k">Duración</td><td>{{ (fusionado.dur ~ ' min') if fusionado.dur is not none else '—' }}</td>
+            <td class="k">Avance (bultos)</td><td class="{{ 'ok' if fusionado.pct == 100 else 'warn' }}">{{ fusionado.pct }}%</td></tr>
+    </table>
+    {% endif %}
+
+    <!-- Calidad (F6) -->
+    {% if calidad %}
+    <h2>Calidad (F6)</h2>
+    <div class="muted" style="margin-bottom:6px">Avance de la revisión de Calidad por talla. "En reproceso" son piezas devueltas a corregir.</div>
+    <table style="width:100%">
+        <thead><tr><th>Talla</th><th class="right">Prendas</th>
+            <th class="right">En reproceso</th><th class="right">% Avance</th></tr></thead>
+        <tbody>
+        {% for t in calidad.tallas %}
+            <tr><td>{{ t.talla }}</td><td class="right">{{ t.prendas }}</td>
+                <td class="right {{ 'warn' if t.en_reproceso else '' }}">{{ t.en_reproceso }}</td>
+                <td class="right {{ 'ok' if t.cal_pct == 100 else 'warn' }}">{{ t.cal_pct }}%</td></tr>
+        {% endfor %}
+            <tr class="tot"><td>Total</td><td class="right">{{ total_dist }}</td>
+                <td class="right">{{ calidad.en_reproceso }}</td><td class="right">{{ calidad.pct }}%</td></tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Reprocesos -->
+    {% if calidad %}
+    <h2>Reprocesos (por pieza)</h2>
+    {% if reprocesos %}
+    <table>
+        <thead><tr><th>Pieza</th><th>Talla</th><th class="center">Bulto</th><th>Defecto</th>
+            <th class="right">Cant (pzs)</th><th>Destino</th><th class="center">Rehacer</th><th>Estado</th></tr></thead>
+        <tbody>
+        {% for r in reprocesos %}
+            <tr><td>{{ r.pieza }}</td><td>{{ r.talla }}</td><td class="center">{{ r.bulto }}</td>
+                <td>{{ r.codigo }} · {{ r.descripcion }}</td><td class="right">{{ r.cantidad }}</td>
+                <td>{{ r.destino }}</td><td class="center">{{ r.rehacer }}</td>
+                <td class="muted">{{ r.estado }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="muted">Sin reprocesos.</p>
+    {% endif %}
+    {% endif %}
+
+</body>
+</html>

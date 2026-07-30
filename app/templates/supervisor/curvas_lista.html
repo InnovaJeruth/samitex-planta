@@ -5,24 +5,24 @@
 <style>
 .prog-header{display:flex;align-items:center;gap:12px;margin-bottom:0;flex-wrap:wrap;}
 .prog-title{font-size:20px;font-weight:700;}
-.prog-tabs{display:flex;border-bottom:1px solid #222;margin-bottom:20px;margin-top:16px;}
+.prog-tabs{display:flex;border-bottom:1px solid #1a2338;margin-bottom:20px;margin-top:16px;}
 .prog-tab{padding:10px 20px;font-size:13px;color:#555;text-decoration:none;border-bottom:2px solid transparent;transition:color .15s;}
 .prog-tab:hover{color:#ccc;}
 .prog-tab.active{color:#e0e0e0;border-bottom-color:#4a9fff;}
-.table-wrap{background:#111;border:1px solid #222;border-radius:8px;overflow:hidden;}
-.tbl-head{display:grid;grid-template-columns:80px 1fr 140px 80px 110px 90px 80px 80px 90px;gap:0;padding:8px 14px;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #1e1e1e;}
-.tbl-row{display:grid;grid-template-columns:80px 1fr 140px 80px 110px 90px 80px 80px 90px;gap:0;padding:10px 14px;border-bottom:1px solid #141414;font-size:12px;align-items:center;}
+.table-wrap{background:#0b101b;border:1px solid #1a2338;border-radius:8px;overflow:hidden;}
+.tbl-head{display:grid;grid-template-columns:80px 1fr 140px 80px 110px 90px 80px 80px 90px;gap:0;padding:8px 14px;font-size:10px;color:#3a4a6f;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #172136;}
+.tbl-row{display:grid;grid-template-columns:80px 1fr 140px 80px 110px 90px 80px 80px 90px;gap:0;padding:10px 14px;border-bottom:1px solid #0f1524;font-size:12px;align-items:center;}
 .tbl-row:last-child{border-bottom:none;}
-.tbl-row:hover{background:#161616;}
+.tbl-row:hover{background:#101728;}
 .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
 .badge-ok{background:#0d2a1a;color:#4caf7d;}
 .badge-warn{background:#2a1500;color:#e6a817;}
-.badge-gray{background:#1a1a1a;color:#555;}
+.badge-gray{background:#131b2c;color:#555;}
 .tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;background:#0d1f2e;color:#4a9fff;margin-right:2px;margin-bottom:2px;}
 .btn{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:none;text-decoration:none;display:inline-block;}
 .btn-primary{background:#4a9fff;color:#fff;}
 .btn-ghost{background:transparent;color:#4a9fff;border:0.5px solid #4a9fff;padding:4px 10px;}
-.empty{text-align:center;padding:48px 20px;color:#444;}
+.empty{text-align:center;padding:48px 20px;color:#3a4a6f;}
 </style>
 {% endblock %}
 
@@ -83,7 +83,7 @@
       {% if c.nombre_archivo %}
       <a href="/curvas/api/curvas/{{ c.id }}/descargar" title="{{ c.nombre_archivo }}" style="color:#4a9fff;font-size:16px;">📄</a>
       {% else %}
-      <span style="color:#333;font-size:16px;">—</span>
+      <span style="color:#2a3557;font-size:16px;">—</span>
       {% endif %}
     </div>
     <div style="text-align:right;">

@@ -4,17 +4,17 @@
 {% block extra_head %}
 <style>
 .piezas-edit-table { width:100%; border-collapse:collapse; font-size:13px; }
-.piezas-edit-table th { background:#0e0e0e; color:#767676; font-size:10px; font-weight:600;
-  text-transform:uppercase; letter-spacing:.4px; padding:8px 10px; border-bottom:1px solid #1e1e1e; }
-.piezas-edit-table td { padding:6px 8px; border-bottom:1px solid #161616; vertical-align:middle; }
-.piezas-edit-table tr:hover td { background:#111; }
-.edit-input { background:#0f0f0f; border:1px solid #2a2a2a; border-radius:4px;
+.piezas-edit-table th { background:#080b14; color:#767676; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.4px; padding:8px 10px; border-bottom:1px solid #172136; }
+.piezas-edit-table td { padding:6px 8px; border-bottom:1px solid #101728; vertical-align:middle; }
+.piezas-edit-table tr:hover td { background:#0b101b; }
+.edit-input { background:#070910; border:1px solid #20304f; border-radius:4px;
   padding:5px 8px; color:#e0e0e0; font-size:12px; width:100%; }
 .edit-input:focus { border-color:#4a9fff; }
 .edit-input.sap-ok  { border-color:#1d5f40; }
 .edit-input.sap-err { border-color:#6a1a1a; }
 .fus-btn { padding:3px 10px; border-radius:4px; font-size:11px; font-weight:600;
-  border:1px solid #333; background:#1e1e1e; color:#888; cursor:pointer; white-space:nowrap; }
+  border:1px solid #2a3557; background:#172136; color:#888; cursor:pointer; white-space:nowrap; }
 .fus-btn.on { background:#0a2018; border-color:#1d5f40; color:#4caf7d; }
 .sap-warning { background:#2d1500; border:1px solid #5a3000; border-radius:6px;
   padding:8px 12px; font-size:12px; color:#e6a817; margin-bottom:12px; }
@@ -54,7 +54,7 @@
       <tbody>
       {% for pieza in of.piezas %}
       <tr data-pieza-id="{{ pieza.id }}">
-        <td style="color:#444;font-size:11px">{{ loop.index }}</td>
+        <td style="color:#3a4a6f;font-size:11px">{{ loop.index }}</td>
         <td><input class="edit-input" data-field="nombre" value="{{ pieza.nombre }}"></td>
         <td>
           <input class="edit-input {{ 'sap-ok' if pieza.codigo_sap else 'sap-err' }}"

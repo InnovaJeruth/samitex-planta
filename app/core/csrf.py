@@ -12,7 +12,6 @@ Cómo funciona:
 Rutas exentas (no requieren validación):
   - Métodos seguros: GET, HEAD, OPTIONS
   - /auth/login  (no hay cookie aún; CSRF en login es bajo riesgo)
-  - /telegram/webhook  (origen externo; tiene su propio BOT_SECRET_KEY)
   - /ws/  (WebSocket; no usa HTTP headers de la misma forma)
   - /health  (sólo lectura)
 """
@@ -27,7 +26,7 @@ CSRF_HEADER = "x-csrf-token"
 CSRF_UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 # Rutas exentas (exactas o prefijos)
-CSRF_EXEMPT_EXACT   = {"/auth/login", "/health", "/telegram/webhook", "/telegram/setup"}
+CSRF_EXEMPT_EXACT   = {"/auth/login", "/health"}
 CSRF_EXEMPT_PREFIX  = ("/ws/",)
 
 

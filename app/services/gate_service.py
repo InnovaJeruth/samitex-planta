@@ -42,7 +42,7 @@ GATES: List[GateDef] = [
     GateDef("HOJA_COSTOS",      "Hoja de Costos",       "Ingeniería",         "doc",    doc_type="HOJA_COSTOS",    depende_de=["FICHA_TECNICA"]),
     GateDef("SOLPED_PRENDA",    "SOLPED Prenda",        "Comercial / P.Marca","codigo", campo="solped_prenda",     depende_de=["HOJA_COSTOS"]),
     # ── Cadena 2: raíz ────────────────────────────────────────
-    GateDef("MUESTRA_APROBADA", "Muestra Aprobada",     "Comercial",          "doc",    doc_type="MUESTRA_APROBADA"),
+    GateDef("MUESTRA_APROBADA", "Muestra Aprobada",     "Comercial / Com.Marca","doc",   doc_type="MUESTRA_APROBADA"),
     # ── Cadena 2: rama SAP ────────────────────────────────────
     GateDef("SOLPED_MP",        "SOLPED Materia Prima", "Planeamiento",       "codigo", campo="solped_mp",         depende_de=["MUESTRA_APROBADA"]),
     GateDef("ORDEN_COMPRA",     "Orden de Compra",      "Logística",          "codigo", campo="orden_compra",      depende_de=["SOLPED_MP"]),
@@ -71,7 +71,19 @@ AREA_COLORS = {
     "Modelista":    "#16a085",
     "UDP / Com.Marca":      "#c0392b",
     "Comercial / P.Marca":  "#e67e22",
+    "Comercial / Com.Marca":"#e67e22",
+    "Comercial Marca":      "#e67e22",
+    "Planeamiento Marca":   "#8e44ad",
     "Calidad":              "#16a085",
+}
+
+# Área que aplica según el tipo de cliente de la OF (etiqueta dinámica).
+# Los gates ausentes usan su área fija (igual para institución y marca).
+GATE_AREA_TC: Dict[str, Dict[str, str]] = {
+    "FICHA_TECNICA":    {"INSTITUCION": "UDP",       "MARCA": "Comercial Marca"},
+    "SOLPED_PRENDA":    {"INSTITUCION": "Comercial", "MARCA": "Planeamiento Marca"},
+    "MUESTRA_APROBADA": {"INSTITUCION": "Comercial", "MARCA": "Comercial Marca"},
+    "REPORTE_TALLAS":   {"INSTITUCION": "UDP",       "MARCA": "Comercial Marca"},
 }
 
 # ── Roles autorizados por gate y tipo_cliente ─────────────────
@@ -119,6 +131,9 @@ def calcular_gates(of: OrdenFabricacion, db: Session) -> Dict[str, GateResult]:
         str(d.tipo.value if hasattr(d.tipo, "value") else d.tipo)
         for d in of.documentos
     }
+
+    # Tipo de cliente de la OF (para etiquetas de área dinámicas)
+    tc = of.tipo_cliente.value if hasattr(of.tipo_cliente, "value") else str(of.tipo_cliente)
 
     resultados: Dict[str, GateResult] = {}
 
@@ -173,11 +188,12 @@ def calcular_gates(of: OrdenFabricacion, db: Session) -> Dict[str, GateResult]:
                 valor = getattr(of, gate.campo, None)
                 pasado = bool(valor and str(valor).strip())
 
+        area = GATE_AREA_TC.get(gate.gate_id, {}).get(tc, gate.area)
         resultados[gate.gate_id] = GateResult(
             gate_id=gate.gate_id,
             label=gate.label,
-            area=gate.area,
-            area_color=AREA_COLORS.get(gate.area, "#555"),
+            area=area,
+            area_color=AREA_COLORS.get(area, AREA_COLORS.get(gate.area, "#555")),
             tipo=gate.tipo,
             pasado=pasado,
             bloqueado=bloqueado,
@@ -199,8 +215,8 @@ def puede_activar(of: OrdenFabricacion, db: Session) -> tuple[bool, List[str]]:
     Retorna (True, []) si todos los gates requeridos pasaron,
     o (False, [lista de gates pendientes]) si alguno falta.
     """
-    # Requerimientos de muestra no requieren gates documentales
-    if getattr(of, 'es_muestra', False):
+    # Muestras y OFs de prueba (modo corte) no requieren gates documentales
+    if getattr(of, 'es_muestra', False) or getattr(of, 'omitir_gates', False):
         return True, []
     gates = gates_para_activar(of, db)
     faltantes = [g.label for g in gates.values() if not g.pasado]

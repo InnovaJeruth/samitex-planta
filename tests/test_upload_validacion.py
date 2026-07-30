@@ -10,7 +10,32 @@ import pytest
 import pathlib
 
 # Importar las constantes del router directamente
-from app.routers.of import _EXTENSIONES_PERMITIDAS, _MAX_BYTES
+from app.routers.of import _EXTENSIONES_PERMITIDAS, _MAX_BYTES, _magic_ok
+
+
+class TestMagicBytes:
+    def test_pdf_valido(self):
+        assert _magic_ok(b"%PDF-1.7\n...", ".pdf") is True
+
+    def test_pdf_falso_rechazado(self):
+        assert _magic_ok(b"esto no es pdf", ".pdf") is False
+
+    def test_png_valido(self):
+        assert _magic_ok(b"\x89PNG\r\n\x1a\n....", ".png") is True
+
+    def test_jpg_valido(self):
+        assert _magic_ok(b"\xff\xd8\xff\xe0....", ".jpg") is True
+
+    def test_docx_xlsx_zip_valido(self):
+        assert _magic_ok(b"PK\x03\x04....", ".docx") is True
+        assert _magic_ok(b"PK\x03\x04....", ".xlsx") is True
+
+    def test_docx_falso_rechazado(self):
+        assert _magic_ok(b"no soy zip", ".docx") is False
+
+    def test_csv_txt_sin_firma(self):
+        assert _magic_ok(b"col1,col2\n1,2", ".csv") is True
+        assert _magic_ok(b"texto", ".txt") is True
 
 
 class TestExtensionesPermitidas:

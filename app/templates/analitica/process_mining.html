@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% block title %}Analítica de procesos — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .pm-wrap { max-width:1150px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .pm-cards { display:flex; gap:12px; flex-wrap:wrap; margin:14px 0; }
+  .pm-kpi { background:#0f1524; border:1px solid #1e2c48; border-radius:10px; padding:12px 16px; flex:1; min-width:150px; }
+  .pm-kpi .l { font-size:12px; color:#888; } .pm-kpi .v { font-size:24px; font-weight:700; color:#fff; }
+  .pm-card { background:#0f1524; border:1px solid #1e2c48; border-radius:10px; padding:14px 16px; margin-bottom:16px; }
+  .pm-card h2 { font-size:14px; color:#fff; margin:0 0 10px; }
+  table.pm { width:100%; border-collapse:collapse; font-size:13px; }
+  table.pm th { text-align:left; padding:6px 8px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #1e2c48; }
+  table.pm td { padding:6px 8px; border-bottom:1px solid #151f33; }
+  .in { background:#101728; border:1px solid #313f63; color:#eee; border-radius:6px; padding:6px 10px; }
+  .btn { font-size:13px; border:1px solid #164; background:#164; color:#fff; border-radius:6px; padding:6px 14px; cursor:pointer; }
+  .bad { color:#f0a060; font-weight:600; } .mermaid { background:#070a12; border-radius:8px; padding:10px; }
+  .simbox { border:1px solid #2a3557; border-radius:8px; padding:8px 12px; min-width:96px; text-align:center; transition:background-color .2s var(--ease-out), border-color .2s var(--ease-out), color .2s var(--ease-out), box-shadow .2s var(--ease-out); }
+  .st-gris { background:#101728; border-color:#2a3557; color:#888; }
+  .st-verde { background:#0f2a17; border-color:#1e7d34; color:#6fdf9a; }
+  .st-amarillo { background:#2d2400; border-color:#8a6d00; color:#e6c14a; }
+  .st-rojo { background:#2e0a0a; border-color:#7a1a1a; color:#f88; }
+  .st-activo { outline:2px solid #4a90d9; box-shadow:0 0 10px rgba(74,144,217,.5); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pm-wrap">
+  <h1 style="font-size:20px;color:#fff;margin:0">Analítica de procesos · ciclo de bulto</h1>
+  <div style="color:#999;font-size:13px;margin:4px 0 10px">
+    Flujo real, tiempos y cuellos derivados de los eventos del sistema (numeración → fusionado → calidad → liberado).
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+    <label style="font-size:12px;color:#999">OFs (vacío = todas para el análisis)</label>
+    <select id="f-ofs" class="in" multiple size="4" style="min-width:260px"></select>
+    <button class="btn" onclick="cargar()">Analizar</button>
+    <span id="msg" style="font-size:12px;color:#777"></span>
+  </div>
+
+  <div class="pm-cards" id="kpis"></div>
+
+  <div class="pm-card">
+    <h2>Simulación de la OF (replay acelerado de tiempos reales)</h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn" onclick="simular()">▶ Iniciar simulación</button>
+      <button class="btn" style="background:#2a3557;border-color:#3a4a6f" onclick="detenerSim()">■ Detener</button>
+      <label style="font-size:12px;color:#999">Velocidad</label>
+      <select id="sim-speed" class="in"><option value="1">×1</option><option value="2">×2</option><option value="4">×4</option></select>
+      <span style="font-size:11px;color:#777">Elige <b>1 OF</b> arriba · verde &lt;15m · amarillo 15–60m · rojo &gt;60m</span>
+    </div>
+    <div id="sim-reloj" style="font-size:13px;color:#bbb;margin-bottom:6px">Selecciona una OF y pulsa Iniciar.</div>
+    <div style="height:6px;background:#1a2338;border-radius:4px;overflow:hidden;margin-bottom:12px">
+      <div id="sim-prog" style="height:100%;width:0;background:#4a90d9;transition:width .08s"></div></div>
+    <div id="sim-steps" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
+  </div>
+
+  <div class="pm-card">
+    <h2>Ruta crítica de la OF (CPM · el camino que determina el fin)</h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn" onclick="rutaCritica()">Ver ruta crítica</button>
+      <span style="font-size:11px;color:#777">Elige <b>1 OF</b> arriba · resalta en rojo el tramo que más tiempo consume (cuello)</span>
+    </div>
+    <div id="cp-info" style="font-size:13px;color:#bbb;margin-bottom:8px"></div>
+    <div id="cp-steps" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"></div>
+  </div>
+
+  <div class="pm-card">
+    <h2>Animación de flujo · placas y paquetes en el tiempo (estilo Celonis)</h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn" onclick="animar()">▶ Reproducir</button>
+      <button class="btn" style="background:#2a3557;border-color:#3a4a6f" onclick="detenerAnim()">■ Detener</button>
+      <label style="font-size:12px;color:#999">Velocidad</label>
+      <select id="anim-speed" class="in">
+        <option value="0.25">×0.25 (lento)</option>
+        <option value="0.5">×0.5</option>
+        <option value="1" selected>×1</option>
+        <option value="2">×2</option>
+        <option value="4">×4</option>
+      </select>
+      <span id="anim-reloj" style="font-size:12px;color:#bbb"></span>
+      <span style="font-size:11px;color:#777">Usa las OFs seleccionadas arriba · cada punto = una placa/paquete · rojo = reproceso</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:11px;color:#999;white-space:nowrap">Línea de tiempo</span>
+      <input type="range" id="anim-scrub" min="0" max="1000" value="0" step="1"
+             oninput="scrub()" style="flex:1;min-width:200px">
+    </div>
+    <div style="overflow:auto;border:1px solid #1a2338;border-radius:8px;background:#070a12">
+      <svg id="anim-svg" width="100%" style="min-height:200px;display:block"></svg>
+    </div>
+  </div>
+
+  <div class="pm-card">
+    <h2>Mapa de proceso (flujo real)</h2>
+    <div class="mermaid" id="dfg">Cargando…</div>
+    <div style="font-size:11px;color:#777;margin-top:6px">Grosor/etiqueta de flecha = nº de veces · tiempo promedio en minutos.</div>
+  </div>
+
+  <div class="pm-card">
+    <h2>Cuellos de botella (dónde se pierde el tiempo)</h2>
+    <table class="pm"><thead><tr><th>De</th><th>A</th><th class="right">Casos</th><th class="right">Min. prom</th><th class="right">Min. máx</th></tr></thead>
+      <tbody id="cuellos"></tbody></table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad:false, theme:'dark' });
+  window.__mermaid = mermaid;
+</script>
+<script>
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+// Accesibilidad: si el usuario pide menos movimiento, las animaciones muestran el estado final sin recorrido.
+const _reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+async function loadOfs(){
+  try{
+    const ofs = await apiFetch('/analitica/api/ofs');
+    document.getElementById('f-ofs').innerHTML =
+      ofs.map(o=>`<option value="${o.id}">${esc(o.numero_of)} — ${esc(o.cliente||'')}</option>`).join('');
+  }catch(e){ /* si falla, queda vacío = todas */ }
+}
+function query(){
+  const ids = Array.from(document.getElementById('f-ofs').selectedOptions).map(o=>o.value);
+  return ids.length ? ('?of=' + ids.join(',')) : '';
+}
+
+// ── Simulación (replay acelerado de una OF) ──────────────────────────────
+let SIM_STOP = false;
+const _CLS = {verde:'st-verde', amarillo:'st-amarillo', rojo:'st-rojo', gris:'st-gris'};
+function fmtMin(m){ m = Math.round(m); return m >= 60 ? (Math.floor(m/60)+'h '+(m%60)+'m') : (m+'m'); }
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function detenerSim(){ SIM_STOP = true; }
+
+async function simular(){
+  const ids = Array.from(document.getElementById('f-ofs').selectedOptions).map(o=>o.value);
+  if(ids.length !== 1){ toast('Elige exactamente 1 OF para simular', 'error'); return; }
+  let data;
+  try{ data = await apiFetch('/analitica/api/simulacion/' + ids[0]); }
+  catch(e){ toast(e.message, 'error'); return; }
+  const fases = data.fases || [];
+  if(!fases.length){ toast('La OF no tiene fases con tiempos registrados', 'error'); return; }
+
+  const cont = document.getElementById('sim-steps');
+  cont.innerHTML = fases.map((f,i)=>{
+    const flecha = i < fases.length-1 ? '<span style="color:#555">→</span>' : '';
+    return `<div class="simbox st-gris" id="sb-${i}"><div style="font-weight:600">${esc(f.fase)}</div>
+      <div style="font-size:11px">${fmtMin(f.min)}</div></div>${flecha}`;
+  }).join('');
+
+  const total = data.total_min || 1;
+  const base = 25000 / (parseInt(document.getElementById('sim-speed').value) || 1); // ms toda la corrida
+  const reloj = document.getElementById('sim-reloj'), prog = document.getElementById('sim-prog');
+  SIM_STOP = false;
+  let acum = 0;
+
+  if(_reduce){   // sin movimiento: pinta el resultado final de una vez
+    fases.forEach((f,i)=>{ const box=document.getElementById('sb-'+i);
+      box.classList.remove('st-gris','st-activo'); box.classList.add(_CLS[f.color]||'st-gris'); });
+    prog.style.width = '100%';
+    reloj.textContent = `✔ Completado · lead time real total: ${fmtMin(data.lead_time_real_min || total)}`;
+    return;
+  }
+
+  for(let i=0; i<fases.length; i++){
+    if(SIM_STOP){ reloj.textContent = 'Simulación detenida.'; return; }
+    const f = fases[i], box = document.getElementById('sb-'+i);
+    box.classList.remove('st-gris'); box.classList.add('st-activo');
+    const dur = Math.max(300, base * (f.min/total));
+    const t0 = performance.now(), start = acum;
+    while(true){
+      if(SIM_STOP){ reloj.textContent = 'Simulación detenida.'; return; }
+      const frac = Math.min(1, (performance.now()-t0)/dur);
+      const shown = start + f.min*frac;
+      prog.style.width = (shown/total*100) + '%';
+      reloj.textContent = `Fase: ${f.fase} · ${fmtMin(f.min)} · tiempo real acumulado ${fmtMin(shown)}`;
+      if(frac >= 1) break;
+      await sleep(50);
+    }
+    acum += f.min;
+    box.classList.remove('st-activo'); box.classList.add(_CLS[f.color] || 'st-gris');
+  }
+  prog.style.width = '100%';
+  const real = data.lead_time_real_min || total;
+  reloj.textContent = `✔ Completado · lead time real total: ${fmtMin(real)}`;
+}
+
+// ── Ruta crítica (CPM sobre bultos en paralelo) ──────────────────────────────
+async function rutaCritica(){
+  const ids = Array.from(document.getElementById('f-ofs').selectedOptions).map(o=>o.value);
+  if(ids.length !== 1){ toast('Elige exactamente 1 OF para la ruta crítica', 'error'); return; }
+  let d;
+  try{ d = await apiFetch('/analitica/api/ruta-critica/' + ids[0]); }
+  catch(e){ toast(e.message, 'error'); return; }
+
+  const info = document.getElementById('cp-info'), cont = document.getElementById('cp-steps');
+  if(!d.bulto_critico){ info.textContent = 'La OF no tiene eventos para calcular la ruta crítica.'; cont.innerHTML = ''; return; }
+
+  info.innerHTML = `Bulto crítico <b>#${d.bulto_critico}</b> · ${d.n_bultos} bulto(s) en paralelo · `
+    + `lead time <b>${fmtMin(d.lead_time_min)}</b> · desfase entre el 1er y último bulto en terminar: ${fmtMin(d.dispersion_min)}`;
+
+  const dom = d.paso_dominante, acts = d.actividades || [], pasos = d.pasos || [];
+  let html = '';
+  acts.forEach((a, i) => {
+    html += `<div class="simbox st-gris" style="min-width:auto;padding:6px 10px">${esc(a)}</div>`;
+    if(i < acts.length - 1){
+      const p = pasos[i];
+      const isDom = dom && p.desde === dom.desde && p.hasta === dom.hasta && p.minutos === dom.minutos;
+      const col = isDom ? '#f88' : '#666';
+      html += `<span style="color:${col};font-size:11px;white-space:nowrap">→ ${fmtMin(p.minutos)}${isDom ? ' ⚠' : ''} →</span>`;
+    }
+  });
+  cont.innerHTML = html;
+}
+
+// ── Animación de flujo (estilo Celonis) ──────────────────────────────────────
+let ANIM_STOP = false, ANIM_RAF = null, ANIM = null, _animBuilding = false;
+const _NS = 'http://www.w3.org/2000/svg';
+const _NW = 132, _NH = 42;
+
+function detenerAnim(){ ANIM_STOP = true; if(ANIM_RAF) cancelAnimationFrame(ANIM_RAF); }
+function _colorTok(id){ return `hsl(${(id * 47) % 360},70%,60%)`; }
+function _relojAnim(iso, addSeg){
+  const d = new Date(iso); d.setSeconds(d.getSeconds() + addSeg);
+  return d.toLocaleString('es-PE', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+}
+
+// Posiciona TODOS los tokens en el instante realT (segundos desde el inicio)
+function _pintarEn(realT){
+  if(!ANIM) return;
+  const posOf = ANIM.posOf;
+  ANIM.circs.forEach(o => {
+    const ps = o.ps;
+    if(!ps.length || realT < ps[0].t){ o.c.setAttribute('opacity', '0'); return; }
+    let i = 0; while(i < ps.length - 1 && ps[i+1].t <= realT) i++;
+    const a = posOf[ps[i].activity];
+    if(i >= ps.length - 1){
+      if(a){ o.c.setAttribute('cx', a.cx + o.jx); o.c.setAttribute('cy', a.cy + o.jy); o.c.setAttribute('opacity', '.55'); }
+      return;
+    }
+    const b = posOf[ps[i+1].activity];
+    const seg = (ps[i+1].t - ps[i].t) || 1;
+    const f = Math.min(1, (realT - ps[i].t) / seg);
+    if(a && b){
+      o.c.setAttribute('cx', a.cx + (b.cx - a.cx) * f + o.jx);
+      o.c.setAttribute('cy', a.cy + (b.cy - a.cy) * f + o.jy);
+      o.c.setAttribute('opacity', '.9');
+    }
+  });
+  document.getElementById('anim-reloj').textContent =
+    `⏱ ${_relojAnim(ANIM.d.t0, realT)} · ${Math.round(realT / (ANIM.dur || 1) * 100)}%`;
+}
+
+// Descarga los datos y dibuja el grafo + tokens (una vez por selección)
+async function _construirAnim(){
+  const ids = Array.from(document.getElementById('f-ofs').selectedOptions).map(o=>o.value);
+  const q = ids.length ? ('?of=' + ids.join(',')) : '';
+  let d;
+  try{ d = await apiFetch('/analitica/api/animacion' + q); }
+  catch(e){ toast(e.message, 'error'); return false; }
+  if(!d.tokens || !d.tokens.length){ toast('No hay datos para animar en esa(s) OF', 'error'); return false; }
+
+  const svg = document.getElementById('anim-svg');
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${d.width} ${d.height}`);
+  svg.style.height = Math.min(d.height, 540) + 'px';
+
+  const posOf = {};
+  d.nodes.forEach(n => posOf[n.activity] = {cx: n.x + _NW/2, cy: n.y + _NH/2, x: n.x, y: n.y});
+
+  d.edges.forEach(e => {
+    const a = posOf[e.from], b = posOf[e.to]; if(!a || !b) return;
+    const p = document.createElementNS(_NS, 'path');
+    if(e.back){
+      const mx = (a.cx + b.cx)/2, my = Math.min(a.cy, b.cy) - 45;
+      p.setAttribute('d', `M ${a.cx} ${a.cy} Q ${mx} ${my} ${b.cx} ${b.cy}`);
+      p.setAttribute('stroke', '#8a2a2a');
+    } else {
+      p.setAttribute('d', `M ${a.cx} ${a.cy} L ${b.cx} ${b.cy}`);
+      p.setAttribute('stroke', '#2a3557');
+    }
+    p.setAttribute('fill', 'none');
+    p.setAttribute('stroke-width', Math.min(6, 1 + Math.log(e.veces + 1)));
+    svg.appendChild(p);
+  });
+
+  d.nodes.forEach(n => {
+    const r = document.createElementNS(_NS, 'rect');
+    r.setAttribute('x', n.x); r.setAttribute('y', n.y);
+    r.setAttribute('width', _NW); r.setAttribute('height', _NH);
+    r.setAttribute('rx', 8); r.setAttribute('fill', '#101728'); r.setAttribute('stroke', '#313f63');
+    svg.appendChild(r);
+    const t = document.createElementNS(_NS, 'text');
+    t.setAttribute('x', n.x + _NW/2); t.setAttribute('y', n.y + _NH/2 + 4);
+    t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', '#ddd'); t.setAttribute('font-size', '11');
+    t.textContent = n.activity.length > 19 ? n.activity.slice(0, 18) + '…' : n.activity;
+    svg.appendChild(t);
+  });
+
+  const circs = d.tokens.map(tk => {
+    const c = document.createElementNS(_NS, 'circle');
+    c.setAttribute('r', '5'); c.setAttribute('fill', _colorTok(tk.case_id)); c.setAttribute('opacity', '0');
+    svg.appendChild(c);
+    const jx = ((tk.case_id % 5) - 2) * 3, jy = ((Math.floor(tk.case_id / 5)) % 5 - 2) * 3;
+    return {c, ps: tk.pasos, jx, jy};
+  });
+
+  ANIM = {d, posOf, circs, dur: d.dur_seg || 1};
+  document.getElementById('anim-scrub').value = 0;
+  _pintarEn(0);
+  return true;
+}
+
+async function animar(){
+  detenerAnim();
+  if(!ANIM){ const ok = await _construirAnim(); if(!ok) return; }
+  const speed = parseFloat(document.getElementById('anim-speed').value) || 1;
+  const ANIM_MS = 20000 / speed;          // ~20 s a ×1; ×0.25 = 4x más lento, ×4 = más rápido
+  const dur = ANIM.dur, sc = document.getElementById('anim-scrub');
+  if(_reduce){   // sin movimiento: muestra el estado final sin recorrer los tokens
+    _pintarEn(dur); sc.value = 1000;
+    document.getElementById('anim-reloj').textContent = `✔ Fin · ${_relojAnim(ANIM.d.t1, 0)}`;
+    return;
+  }
+  ANIM_STOP = false;
+  const t0 = performance.now();
+  function frame(now){
+    if(ANIM_STOP) return;
+    const p = Math.min(1, (now - t0) / ANIM_MS);
+    _pintarEn(p * dur);
+    sc.value = Math.round(p * 1000);
+    if(p < 1){ ANIM_RAF = requestAnimationFrame(frame); }
+    else { document.getElementById('anim-reloj').textContent = `✔ Fin · ${_relojAnim(ANIM.d.t1, 0)}`; }
+  }
+  ANIM_RAF = requestAnimationFrame(frame);
+}
+
+// Barra de tiempo: detiene la reproducción y muestra el estado EXACTO en ese instante
+async function scrub(){
+  detenerAnim();
+  if(!ANIM){
+    if(_animBuilding) return;
+    _animBuilding = true;
+    const ok = await _construirAnim();
+    _animBuilding = false;
+    if(!ok) return;
+  }
+  const val = parseFloat(document.getElementById('anim-scrub').value) / 1000;
+  _pintarEn(val * ANIM.dur);
+}
+
+// Si cambia la selección de OFs, forzar reconstrucción en la próxima acción
+document.getElementById('f-ofs').addEventListener('change', () => { ANIM = null; });
+
+async function cargar(){
+  const q = query();
+  try{
+    const [kpis, dfg, tiempos] = await Promise.all([
+      apiFetch('/analitica/api/kpis'+q),
+      apiFetch('/analitica/api/dfg'+q),
+      apiFetch('/analitica/api/tiempos'+q),
+    ]);
+    pintarKpis(kpis);
+    await pintarDfg(dfg);
+    pintarCuellos(tiempos.cuellos||[]);
+    document.getElementById('msg').textContent = '';
+  }catch(e){ toast(e.message,'error'); }
+}
+
+function pintarKpis(k){
+  const top = k.top_cuello ? (k.top_cuello.transicion+' ('+k.top_cuello.min_prom+' min)') : '—';
+  document.getElementById('kpis').innerHTML = `
+    <div class="pm-kpi"><div class="l">Casos</div><div class="v">${k.casos}</div></div>
+    <div class="pm-kpi"><div class="l">Lead time medio</div><div class="v">${k.lead_time_min_prom} min</div></div>
+    <div class="pm-kpi"><div class="l">% Rework</div><div class="v">${k.pct_rework}%</div></div>
+    <div class="pm-kpi"><div class="l">Cuello principal</div><div class="v" style="font-size:14px">${esc(top)}</div></div>`;
+}
+
+function pintarCuellos(rows){
+  document.getElementById('cuellos').innerHTML = rows.map(r=>`<tr>
+    <td>${esc(r.from)}</td><td>${esc(r.to)}</td>
+    <td class="right">${r.casos}</td>
+    <td class="right ${r.min_prom>=30?'bad':''}">${r.min_prom}</td>
+    <td class="right">${r.min_max}</td></tr>`).join('') || '<tr><td colspan="5" style="color:#777">Sin datos.</td></tr>';
+}
+
+async function pintarDfg(d){
+  const box = document.getElementById('dfg');
+  if(!d.edges || !d.edges.length){ box.textContent = 'Sin datos para el rango.'; return; }
+  // map actividad → id seguro para Mermaid
+  const ids = {}; let i=0;
+  const idOf = a => { if(!(a in ids)) ids[a] = 'n'+(i++); return ids[a]; };
+  let def = 'graph LR\n';
+  (d.nodes||[]).forEach(n => { def += `  ${idOf(n.activity)}["${n.activity} (${n.freq})"]\n`; });
+  d.edges.forEach(e => { def += `  ${idOf(e.from)} -->|"${e.veces} · ${e.min_prom}m"| ${idOf(e.to)}\n`; });
+  try{
+    const { svg } = await window.__mermaid.render('dfgSvg', def);
+    box.innerHTML = svg;
+  }catch(err){
+    // Fallback: tabla de aristas si Mermaid no cargó
+    box.innerHTML = '<table class="pm"><thead><tr><th>De</th><th>A</th><th>Veces</th><th>Min prom</th></tr></thead><tbody>'
+      + d.edges.map(e=>`<tr><td>${esc(e.from)}</td><td>${esc(e.to)}</td><td>${e.veces}</td><td>${e.min_prom}</td></tr>`).join('')
+      + '</tbody></table>';
+  }
+}
+
+loadOfs().then(() => setTimeout(cargar, 400));   // carga OFs y da tiempo a Mermaid
+</script>
+{% endblock %}

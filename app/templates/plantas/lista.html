@@ -9,20 +9,20 @@
 .metric-ok    { background:#0a2e0a; color:#4caf7d; border:1px solid #1a5e1a; }
 .metric-warn  { background:#2e1e0a; color:#e6a817; border:1px solid #5e3e0a; }
 .metric-bad   { background:#2e0a0a; color:#e85656; border:1px solid #5e1a1a; }
-.metric-gray  { background:#1a1a1a; color:#888; border:1px solid #2a2a2a; }
-.plant-card { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:16px; margin-bottom:12px; }
+.metric-gray  { background:#131b2c; color:#888; border:1px solid #20304f; }
+.plant-card { background:#131b2c; border:1px solid #20304f; border-radius:8px; padding:16px; margin-bottom:12px; }
 .plant-card.inactiva { opacity:.5; }
 .plant-name { font-size:15px; font-weight:700; color:#fff; margin-bottom:4px; }
 .plant-meta { font-size:11px; color:#888; display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
 .plant-metrics { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
 .plant-actions { display:flex; gap:8px; }
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:200; display:flex; align-items:center; justify-content:center; }
-.modal-box { background:#1a1a1a; border:1px solid #3a3a3a; border-radius:10px; padding:24px; width:440px; max-width:95vw; }
+.modal-box { background:#131b2c; border:1px solid #313f63; border-radius:10px; padding:24px; width:440px; max-width:95vw; }
 .modal-title { font-size:16px; font-weight:700; color:#fff; margin-bottom:16px; }
 .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
 .form-group { margin-bottom:12px; }
 .form-group label { font-size:11px; color:#888; display:block; margin-bottom:4px; }
-.form-group input { width:100%; background:#0f0f0f; border:1px solid #3a3a3a; border-radius:6px; padding:8px; color:#e0e0e0; font-size:13px; box-sizing:border-box; }
+.form-group input { width:100%; background:#070910; border:1px solid #313f63; border-radius:6px; padding:8px; color:#e0e0e0; font-size:13px; box-sizing:border-box; }
 </style>
 {% endblock %}
 
@@ -49,7 +49,13 @@
             <div class="plant-meta">
                 <span>RUC: <strong>{{ p.planta.ruc }}</strong></span>
                 <span>Encargado: <strong>{{ p.planta.encargado }}</strong></span>
-                <span>{{ p.planta.direccion }}</span>
+                <span>{{ p.planta.direccion }}
+                    {% if p.planta.direccion %}
+                    <a href="https://www.google.com/maps/search/?api=1&query={{ p.planta.direccion|urlencode }}"
+                       target="_blank" rel="noopener" onclick="event.stopPropagation()"
+                       style="margin-left:6px;font-size:11px;color:#4a9fff;text-decoration:none;white-space:nowrap">📍 Cómo llegar</a>
+                    {% endif %}
+                </span>
             </div>
         </div>
         <div style="text-align:right;font-size:11px;color:#767676">
@@ -183,14 +189,15 @@ async function editarPlanta() {
 }
 
 async function desactivarPlanta(id) {
-    if (!confirm('¿Desactivar esta planta? No podrá asignarse a nuevas OFs.')) return;
-    const r = await fetch(`/plantas/api/${id}`, {
-        method: 'PATCH',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({activo: false}),
-    });
-    if (r.ok) location.reload();
-    else { const d = await r.json(); showToast(d.detail || 'Error'); }
+    showConfirm('¿Desactivar esta planta? No podrá asignarse a nuevas OFs.', async () => {
+        const r = await fetch(`/plantas/api/${id}`, {
+            method: 'PATCH',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({activo: false}),
+        });
+        if (r.ok) location.reload();
+        else { const d = await r.json(); showToast(d.detail || 'Error'); }
+    }, 'Desactivar', 'danger');
 }
 
 async function activarPlanta(id) {

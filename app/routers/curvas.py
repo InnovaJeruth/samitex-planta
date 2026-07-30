@@ -22,9 +22,9 @@ from app.services import storage
 
 router = APIRouter()
 
-ROLES_EDITOR    = {"ADMIN", "UDP", "GERENCIA", "GERENTE_PLANTA"}
-ROLES_LECTURA   = {"SUPERVISOR_CORTE", "PLANEADOR"}
-ROLES_ACCESO    = ROLES_EDITOR | ROLES_LECTURA
+from app.roles import (ROLES_EDITOR_CURVAS as ROLES_EDITOR,
+                       ROLES_LECTURA_CURVAS as ROLES_LECTURA,
+                       ROLES_ACCESO_CURVAS as ROLES_ACCESO)
 
 _EXTENSIONES_OK = {".pdf", ".xlsx", ".xls", ".docx", ".doc", ".png", ".jpg", ".jpeg"}
 
@@ -190,7 +190,7 @@ def api_crear_curva(
 
 
 @router.post("/api/curvas/{curva_id}/adjuntar")
-async def api_adjuntar_doc(
+def api_adjuntar_doc(   # sync → threadpool, no bloquea el loop
     curva_id: int,
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -207,7 +207,7 @@ async def api_adjuntar_doc(
     if ext not in _EXTENSIONES_OK:
         raise HTTPException(400, f"Extensión no permitida ({ext})")
 
-    contenido = await archivo.read()
+    contenido = archivo.file.read()
     if len(contenido) > 10 * 1024 * 1024:
         raise HTTPException(400, "Archivo supera 10 MB")
 
@@ -264,7 +264,7 @@ def api_vincular_ofs(
     if not body.of_ids:
         raise HTTPException(400, "Selecciona al menos una OF")
 
-    from app.services.of_service import actualizar_estado_docs
+    from app.services.of_service import actualizar_estado_docs, regenerar_fases_talla
     from app.models.of import OFTallaDistribucion
 
     ya_vinculados = {v.of_id for v in curva.vinculos}
@@ -339,6 +339,8 @@ def api_vincular_ofs(
 
         db.flush()
         actualizar_estado_docs(of, db)
+        # Regenerar F4–F7 por talla si la OF ya tiene piezas (curva vinculada después)
+        regenerar_fases_talla(of, db)
         enviadas.append(of.numero_of)
 
     db.commit()

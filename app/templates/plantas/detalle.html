@@ -7,11 +7,11 @@
 .det-title   { font-size:20px; font-weight:700; color:#fff; margin:0; }
 .det-sub     { font-size:12px; color:#888; margin-top:4px; }
 .info-grid   { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:20px; }
-.info-card   { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:14px; }
+.info-card   { background:#131b2c; border:1px solid #20304f; border-radius:8px; padding:14px; }
 .info-label  { font-size:10px; color:#666; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
 .info-value  { font-size:15px; font-weight:600; color:#e0e0e0; }
 .metric-row  { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
-.metric-box  { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:14px 18px; text-align:center; min-width:100px; }
+.metric-box  { background:#131b2c; border:1px solid #20304f; border-radius:8px; padding:14px 18px; text-align:center; min-width:100px; }
 .metric-num  { font-size:22px; font-weight:700; }
 .metric-lbl  { font-size:10px; color:#888; margin-top:2px; }
 .green  { color:#4caf7d; }
@@ -19,7 +19,7 @@
 .red    { color:#e85656; }
 .gray   { color:#666; }
 .section-title { font-size:13px; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:.5px; margin:20px 0 10px; }
-.of-row  { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:6px; padding:12px 14px; margin-bottom:8px;
+.of-row  { background:#131b2c; border:1px solid #20304f; border-radius:6px; padding:12px 14px; margin-bottom:8px;
            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
 .of-num  { font-size:13px; font-weight:700; color:#fff; }
 .of-meta { font-size:11px; color:#888; }
@@ -28,7 +28,7 @@
 .badge-enviada    { background:#2e1e0a; color:#e6a817; border:1px solid #5e3e0a; }
 .badge-recibida   { background:#0a2e0a; color:#4caf7d; border:1px solid #1a5e1a; }
 .badge-completada { background:#0a2e0a; color:#4caf7d; border:1px solid #1a5e1a; }
-.hist-row { font-size:11px; color:#888; padding:6px 0; border-bottom:1px solid #222; display:flex; gap:16px; flex-wrap:wrap; }
+.hist-row { font-size:11px; color:#888; padding:6px 0; border-bottom:1px solid #1a2338; display:flex; gap:16px; flex-wrap:wrap; }
 .hist-row:last-child { border-bottom:none; }
 </style>
 {% endblock %}
@@ -46,7 +46,7 @@
         {% if planta.activo %}
         <span class="badge" style="background:#0a2e0a;color:#4caf7d;border:1px solid #1a5e1a">Activa</span>
         {% else %}
-        <span class="badge" style="background:#2a2a2a;color:#767676;border:1px solid #333">Inactiva</span>
+        <span class="badge" style="background:#20304f;color:#767676;border:1px solid #2a3557">Inactiva</span>
         {% endif %}
         <a href="/plantas/" class="btn btn-secondary btn-sm">← Volver</a>
     </div>
@@ -61,6 +61,13 @@
     <div class="info-card">
         <div class="info-label">Dirección</div>
         <div class="info-value" style="font-size:13px">{{ planta.direccion or "—" }}</div>
+        {% if planta.direccion %}
+        <a href="https://www.google.com/maps/search/?api=1&query={{ planta.direccion|urlencode }}"
+           target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px;color:#4a9fff;text-decoration:none">
+           📍 Cómo llegar
+        </a>
+        {% endif %}
     </div>
     <div class="info-card">
         <div class="info-label">Registrada desde</div>
@@ -105,7 +112,7 @@
             <a href="/of/{{ of.id }}/detalle" style="color:#fff;text-decoration:none">{{ of.numero_of }}</a>
         </div>
         <div class="of-meta">
-            {{ of.cliente }} · {{ of.tipo_prenda.value }} · {{ of.total_juegos }} juegos
+            {{ of.cliente }} · {{ of.tipo_prenda.value if of.tipo_prenda.value is defined else of.tipo_prenda }} · {{ of.total_juegos }} prendas
             {% if of.fecha_envio %} · Enviada: {{ of.fecha_envio.strftime('%d/%m/%Y') }}{% endif %}
             {% if of.fecha_recepcion_est %} · Est.: {{ of.fecha_recepcion_est.strftime('%d/%m/%Y') }}{% endif %}
             {% if of.fecha_recepcion_real %} · Real: {{ of.fecha_recepcion_real.strftime('%d/%m/%Y') }}{% endif %}
@@ -133,7 +140,7 @@
 <!-- Historial cambios de fecha -->
 {% if historial %}
 <div class="section-title">Historial cambios de fecha estimada</div>
-<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:14px">
+<div style="background:#131b2c;border:1px solid #20304f;border-radius:8px;padding:14px">
 {% for h in historial %}
 <div class="hist-row">
     <span>{{ h.created_at.strftime('%d/%m/%Y %H:%M') if h.created_at else '—' }}</span>

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import case
+from sqlalchemy import case, or_
 from collections import defaultdict, Counter
 from datetime import date, timedelta, datetime as _dt
 import json
@@ -29,6 +29,8 @@ ESTADO_COLOR = {
     "EN_PROCESO": "#c87f0a", "COMPLETADA": "#1e7d34",
     "TERCERIZADA": "#7c3aed",
 }
+
+DASHBOARD_WINDOW_DIAS = 90   # OFs COMPLETADAS con más antigüedad no cargan en el tablero
 
 FASES_DASH = ["F1","F2","F3","F4","F8","F9","F5","F6","F7"]
 FASES_DASH_LBL = {"F1":"Tizado","F2":"Tendido","F3":"Corte","F4":"Numerado",
@@ -76,7 +78,11 @@ def dashboard(
     current_user: Usuario = Depends(get_current_user),
 ):
     hoy = date.today()
+    _cutoff = hoy - timedelta(days=DASHBOARD_WINDOW_DIAS)
 
+    # Ventana de datos (P2 rendimiento): todo el trabajo VIVO siempre;
+    # las COMPLETADAS solo si su APT es de los últimos DASHBOARD_WINDOW_DIAS días.
+    # Evita materializar años de OFs cerradas + sus piezas/fases en cada carga.
     ofs_all = (
         db.query(OrdenFabricacion)
         .options(
@@ -84,7 +90,13 @@ def dashboard(
             selectinload(OrdenFabricacion.recepciones_terc),
             selectinload(OrdenFabricacion.fase_tiempos),
         )
-        .filter(OrdenFabricacion.estado != EstadoOF.ANULADA)
+        .filter(
+            OrdenFabricacion.estado != EstadoOF.ANULADA,
+            or_(
+                OrdenFabricacion.estado != EstadoOF.COMPLETADA,      # vivo: siempre
+                OrdenFabricacion.fecha_apt >= _cutoff,               # completadas: recientes
+            ),
+        )
         .order_by(
             case((OrdenFabricacion.fecha_apt == None, 1), else_=0),
             OrdenFabricacion.fecha_apt.asc(),
@@ -306,9 +318,17 @@ def ofs_resumen(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    ofs = db.query(OrdenFabricacion).filter(
-        OrdenFabricacion.estado != EstadoOF.ANULADA
-    ).all()
+    # Solo OFs operativas (las que interesan para planificar) + tope de seguridad.
+    # Evita traer todo el histórico sin límite (P3 auditoría de rendimiento).
+    ofs = (
+        db.query(OrdenFabricacion)
+        .filter(OrdenFabricacion.estado.in_([
+            EstadoOF.BORRADOR, EstadoOF.ACTIVA, EstadoOF.EN_PROCESO,
+        ]))
+        .order_by(OrdenFabricacion.fecha_apt.asc())
+        .limit(500)
+        .all()
+    )
     return [
         {
             "id":                of.id,

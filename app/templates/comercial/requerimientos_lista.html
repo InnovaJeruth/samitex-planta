@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Requerimientos — Samitex{% endblock %}
+
+{% block extra_head %}
+<style>
+  .rq-wrap { max-width:1100px; margin:0 auto; padding:20px 16px; color:#ddd; }
+  .rq-top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  .rq-filters { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:14px 0; }
+  table.rq { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+  table.rq th { text-align:left; padding:8px 10px; color:#888; font-size:11px; text-transform:uppercase; border-bottom:1px solid #1e2c48; }
+  table.rq td { padding:8px 10px; border-bottom:1px solid #151f33; }
+  table.rq tr:hover td { background:#0f1626; }
+  .in { background:#101728; border:1px solid #313f63; color:#eee; border-radius:6px; padding:6px 10px; }
+  .btn { font-size:13px; border:1px solid #164; background:#164; color:#fff; border-radius:6px; padding:7px 15px; cursor:pointer; text-decoration:none; display:inline-block; }
+  .pill { font-size:11px; padding:2px 8px; border-radius:10px; border:1px solid #2a3557; }
+  .p-MUESTRA { color:#8fd3ff; border-color:#25506b; }
+  .p-PRODUCCION { color:#7fe0a0; border-color:#256b3f; }
+  .p-STOCK { color:#e6c14a; border-color:#6b5a25; }
+  .e-BORRADOR { color:#bbb; } .e-REGISTRADO { color:#7fe0a0; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rq-wrap">
+  <div class="rq-top">
+    <div>
+      <h1 style="font-size:20px;color:#fff;margin:0">Requerimientos comerciales</h1>
+      <div style="color:#999;font-size:13px;margin-top:3px">Muestra · Producción · Stock. Captura estructurada del requerimiento.</div>
+    </div>
+    {% if puede_editar %}<a class="btn" href="/requerimientos/nuevo">+ Nuevo requerimiento</a>{% endif %}
+  </div>
+
+  <div class="rq-filters">
+    <label style="font-size:12px;color:#999">Tipo</label>
+    <select id="f-tipo" class="in" onchange="cargar()">
+      <option value="">Todos</option><option>MUESTRA</option><option>PRODUCCION</option><option>STOCK</option>
+    </select>
+    <label style="font-size:12px;color:#999">Estado</label>
+    <select id="f-estado" class="in" onchange="cargar()">
+      <option value="">Todos</option><option>BORRADOR</option><option>REGISTRADO</option>
+    </select>
+  </div>
+
+  <table class="rq">
+    <thead><tr><th>N° Req.</th><th>Tipo</th><th>Cliente</th><th>Líneas</th><th>Total prendas</th><th>Estado</th><th></th></tr></thead>
+    <tbody id="tbody"><tr><td colspan="7" style="color:#777">Cargando…</td></tr></tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+async function cargar(){
+  const tipo = document.getElementById('f-tipo').value;
+  const estado = document.getElementById('f-estado').value;
+  const q = [];
+  if(tipo) q.push('tipo='+tipo);
+  if(estado) q.push('estado='+estado);
+  try{
+    const rows = await apiFetch('/requerimientos/api/lista' + (q.length?('?'+q.join('&')):''));
+    const tb = document.getElementById('tbody');
+    if(!rows.length){ tb.innerHTML = '<tr><td colspan="7" style="color:#777">Sin requerimientos.</td></tr>'; return; }
+    tb.innerHTML = rows.map(r=>`<tr>
+      <td><a href="/requerimientos/${r.id}" style="color:#8fd3ff;text-decoration:none">${esc(r.numero_req)}</a></td>
+      <td><span class="pill p-${esc(r.tipo)}">${esc(r.tipo)}</span></td>
+      <td>${esc(r.cliente)}</td>
+      <td>${r.lineas}</td>
+      <td>${r.total_general}</td>
+      <td class="e-${esc(r.estado)}">${esc(r.estado)}</td>
+      <td><a href="/requerimientos/${r.id}" style="color:#999;font-size:12px">Abrir →</a></td>
+    </tr>`).join('');
+  }catch(e){ toast(e.message,'error'); }
+}
+cargar();
+</script>
+{% endblock %}

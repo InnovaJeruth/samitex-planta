@@ -9,3 +9,4 @@ __pycache__/
 /static/uploads/docs_prenda/*
 !/static/uploads/**/.gitkeep
 *.db
+*.bak

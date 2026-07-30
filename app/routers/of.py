@@ -1,7 +1,10 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from sqlalchemy.orm import Session, selectinload
 from datetime import date, timedelta
+
+logger = logging.getLogger("of")
 
 
 def _safe_date(s: str) -> date:
@@ -23,7 +26,7 @@ from app.models.fase import OFFaseEstado, FaseCatalogo, OFFaseTiempos
 from app.models.planta import PlantaExterna, TercRecepcion, TercHistorialFecha, TercSubprocesoLog
 from app.core.auth import get_current_user
 from app.core.templates import templates
-from app.models.usuario import Usuario
+from app.models.usuario import Usuario, RolEnum
 from app.config import settings
 from app.services.gate_service import calcular_gates, puede_activar, gates_to_dict, puede_subir_gate, GATES, GATES_REQUERIDOS
 from app.services import of_service
@@ -49,9 +52,15 @@ def lista_ofs(
     q: str = "",
     estado: str = "",
     tipo_prenda: str = "",
+    prueba: str = "",
 ):
     page = max(1, page)
     query = db.query(OrdenFabricacion)
+    # Filtro OFs de prueba: "" = todas, "si" = solo prueba, "no" = excluir prueba
+    if prueba == "si":
+        query = query.filter(OrdenFabricacion.omitir_gates == True)
+    elif prueba == "no":
+        query = query.filter(OrdenFabricacion.omitir_gates == False)
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -86,13 +95,32 @@ def lista_ofs(
         "q": q,
         "estado": estado,
         "tipo_prenda": tipo_prenda,
+        "prueba": prueba,
         "estados_enum": [e.value for e in EstadoOF],
         "tipos_prenda_enum": [t.value for t in TipoPrendaEnum],
     })
 
 
 # ── Plan Corte (Gantt) ────────────────────────────────────────
-ROLES_PLAN_CORTE = {"ADMIN", "PLANEADOR", "GERENTE_PLANTA", "GERENCIA"}
+from app.roles import ROLES_PLAN_CORTE, ROLES_PRUEBA, ROLES_IMPORT_OF, ROLES_PLANEAMIENTO
+
+
+def _rol_str(usuario) -> str:
+    return usuario.rol.value if hasattr(usuario.rol, "value") else str(usuario.rol)
+
+
+def _require(usuario, roles: set, accion: str = "esta acción") -> None:
+    """Autorización a nivel de endpoint: 403 si el rol no está permitido."""
+    if _rol_str(usuario) not in roles:
+        raise HTTPException(403, f"Sin permiso para {accion}")
+
+
+def get_of_or_404(of_id: int, db: Session) -> OrdenFabricacion:
+    """Trae la OF por id o lanza 404. Centraliza el patrón repetido en el router."""
+    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
+    if not of:
+        raise HTTPException(404, "OF no encontrada")
+    return of
 
 
 @router.get("/plan-corte", response_class=HTMLResponse)
@@ -382,6 +410,8 @@ def crear_of_page(
     current_user: Usuario = Depends(get_current_user),
 ):
     usuarios = db.query(Usuario).filter(Usuario.activo == True).all()
+    # Responsable por defecto: el Planeador de Producción (si existe)
+    planeador = next((u for u in usuarios if _rol_str(u) == RolEnum.PLANEADOR.value), None)
     prendas  = (db.query(PrendaCatalogo)
                   .filter_by(activo=True)
                   .filter(PrendaCatalogo.tipo_cliente != "BASE")
@@ -393,6 +423,9 @@ def crear_of_page(
         "current_user": current_user,
         "prendas":      prendas,
         "tipos_base":   TIPOS_BASE_PRENDA,
+        "puede_prueba": _rol_str(current_user) in ROLES_PRUEBA,
+        "responsable_default_id": planeador.id if planeador else None,
+        "hoy": date.today().isoformat(),
     })
 
 
@@ -405,20 +438,27 @@ def crear_of(
     prenda_catalogo_id: int  = Form(None),
     total_juegos:       int  = Form(...),
     fecha_apt:          str  = Form(None),
+    fecha_sap:          str  = Form(None),
     responsable_id:     int  = Form(None),
     tipo_cliente:       str  = Form("INSTITUCION"),
     solped_prenda:      str  = Form(None),
     orden_compra:       str  = Form(None),
     solped_mp:          str  = Form(None),
     estampado_activo:   bool = Form(False),
+    omitir_gates:       bool = Form(False),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require(current_user, ROLES_PLANEAMIENTO, "crear OFs")
+    # Solo roles autorizados pueden crear OFs de prueba (sin gates)
+    if omitir_gates and _rol_str(current_user) not in ROLES_PRUEBA:
+        raise HTTPException(403, "No tienes permiso para crear OFs de prueba")
+
     existe = db.query(OrdenFabricacion).filter_by(numero_of=numero_of).first()
     if existe:
         raise HTTPException(400, f"Ya existe una OF con número {numero_of}")
     if total_juegos < 1:
-        raise HTTPException(400, "El total de juegos debe ser mayor a 0")
+        raise HTTPException(400, "El total de prendas debe ser mayor a 0")
 
     # Si se envía prenda_catalogo_id, resolver el tipo_prenda desde el catálogo
     if prenda_catalogo_id:
@@ -434,6 +474,7 @@ def crear_of(
         prenda_catalogo_id = prenda_catalogo_id,
         total_juegos       = total_juegos,
         fecha_creacion     = date.today(),
+        fecha_sap          = _safe_date(fecha_sap) if fecha_sap else date.today(),
         fecha_apt          = _safe_date(fecha_apt) if fecha_apt else None,
         responsable_id     = responsable_id,
         tipo_cliente       = tipo_cliente,
@@ -441,6 +482,7 @@ def crear_of(
         orden_compra       = orden_compra,
         solped_mp          = solped_mp,
         estampado_activo   = estampado_activo,
+        omitir_gates       = omitir_gates,
         estado             = EstadoOF.BORRADOR,
         estado_docs        = EstadoDocsEnum.PENDIENTE,
     )
@@ -448,6 +490,50 @@ def crear_of(
     db.commit()
     db.refresh(of)
     return {"id": of.id, "numero_of": of.numero_of, "estado": of.estado}
+
+
+# ── Importar OFs desde el Excel de SAP (COIS) ─────────────────
+
+
+@router.get("/import-sap", response_class=HTMLResponse)
+def import_sap_page(request: Request, current_user: Usuario = Depends(get_current_user)):
+    if _rol_str(current_user) not in ROLES_IMPORT_OF:
+        raise HTTPException(403, "Sin permiso para importar OFs")
+    return templates.TemplateResponse("of/import_sap.html", {
+        "request": request, "current_user": current_user,
+    })
+
+
+@router.post("/api/import-sap")
+def import_sap(   # sync → corre en el threadpool de FastAPI, no bloquea el event loop
+    archivo: UploadFile = File(...),
+    cliente: str = Form(None),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if _rol_str(current_user) not in ROLES_IMPORT_OF:
+        raise HTTPException(403, "Sin permiso para importar OFs")
+    nombre = (archivo.filename or "").lower()
+    if not nombre.endswith((".xlsx", ".xlsm")):
+        raise HTTPException(400, "El archivo debe ser .xlsx")
+    if not cliente or not cliente.strip():
+        raise HTTPException(400, "Ingresa el nombre del cliente antes de importar")
+    contenido = archivo.file.read()
+    from app.services import of_import_service
+    from app.core.concurrency import limite_pesado
+    try:
+        with limite_pesado("Importando el Excel de SAP"):
+            resumen = of_import_service.importar_excel_sap(
+                contenido, db, usuario_id=current_user.id, cliente=cliente.strip())
+    except HTTPException:
+        raise                      # 429 del limitador se propaga tal cual
+    except Exception as e:
+        # Traceback en el log del servidor para poder rastrear qué fila/columna
+        # del Excel reventó (el usuario solo recibe un mensaje corto).
+        logger.exception("Import SAP falló (usuario=%s, cliente=%r, archivo=%r)",
+                         current_user.id, cliente, archivo.filename)
+        raise HTTPException(400, f"No se pudo leer el Excel: {e}")
+    return resumen
 
 
 # ── API: buscar OFs por número (usado por modal paradas) ─────
@@ -475,9 +561,7 @@ def get_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     return {
         "id": of.id,
         "numero_of": of.numero_of,
@@ -514,9 +598,8 @@ def agregar_pieza(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    _require(current_user, ROLES_PLANEAMIENTO, "agregar piezas")
+    of = get_of_or_404(of_id, db)
 
     pieza = OFPieza(
         of_id=of_id, nombre=nombre, codigo_sap=codigo_sap,
@@ -536,9 +619,8 @@ def cargar_plantilla(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    _require(current_user, ROLES_PLANEAMIENTO, "cargar plantilla de piezas")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.ACTIVA:
         raise HTTPException(400, "Solo se pueden generar piezas cuando la OF está ACTIVA")
     if of.piezas:
@@ -583,9 +665,7 @@ def diagnostico_piezas(
     current_user: Usuario = Depends(get_current_user),
 ):
     """Devuelve estado de piezas y catálogo sin tocar of_fases_estado."""
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     n_piezas_of = db.query(OFPieza).filter_by(of_id=of_id).count()
 
@@ -638,16 +718,40 @@ _EXTENSIONES_PERMITIDAS = {
 }
 _MAX_BYTES = 20 * 1024 * 1024   # 20 MB (coincide con MAX_UPLOAD_MB en .env)
 
+# Firmas (magic bytes) por extensión, para validar que el contenido coincide.
+_MAGIC = {
+    ".pdf":  [b"%PDF"],
+    ".png":  [b"\x89PNG\r\n\x1a\n"],
+    ".jpg":  [b"\xff\xd8\xff"],
+    ".jpeg": [b"\xff\xd8\xff"],
+    ".xlsx": [b"PK\x03\x04"],
+    ".docx": [b"PK\x03\x04"],
+    ".xls":  [b"\xd0\xcf\x11\xe0"],
+    ".doc":  [b"\xd0\xcf\x11\xe0"],
+}
+
+
+def _magic_ok(contenido: bytes, ext: str) -> bool:
+    """True si los primeros bytes coinciden con la extensión. csv/txt/webp: sin firma estricta."""
+    if ext == ".webp":
+        return contenido[:4] == b"RIFF" and contenido[8:12] == b"WEBP"
+    firmas = _MAGIC.get(ext)
+    if not firmas:   # .csv, .txt → texto plano, sin verificación de firma
+        return True
+    head = contenido[:16]
+    return any(head.startswith(f) for f in firmas)
+
 
 # ── API: subir documento ──────────────────────────────────────
 @router.post("/api/{of_id}/documentos")
-async def subir_documento(
+def subir_documento(   # sync → threadpool, no bloquea el loop
     of_id: int,
     tipo: str = Form(...),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require(current_user, ROLES_PLANEAMIENTO, "subir documentos de la OF")
     # Validar extensión
     import pathlib
     ext = pathlib.Path(archivo.filename or "").suffix.lower()
@@ -659,18 +763,23 @@ async def subir_documento(
         )
 
     # Validar tamaño (leer todo en memoria para contar bytes)
-    contenido = await archivo.read()
+    contenido = archivo.file.read()
     if len(contenido) > _MAX_BYTES:
         raise HTTPException(
             400,
             f"El archivo supera el límite de {_MAX_BYTES // 1024 // 1024} MB "
             f"(tamaño recibido: {len(contenido) // 1024 // 1024} MB)"
         )
-    await archivo.seek(0)   # rebobinar para que shutil pueda leerlo
+    # Validar contenido: los magic bytes deben coincidir con la extensión
+    if not _magic_ok(contenido, ext):
+        raise HTTPException(
+            400,
+            f"El contenido del archivo no coincide con su extensión ({ext}). "
+            f"Sube un archivo válido."
+        )
+    archivo.file.seek(0)   # rebobinar (sync)
 
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
     tipo_cliente = of.tipo_cliente.value if of.tipo_cliente else "INSTITUCION"
@@ -717,6 +826,33 @@ async def subir_documento(
     return {"mensaje": "Documento subido", "archivo": archivo.filename}
 
 
+# ── API: auditoría de documentos (gates) ─────────────────────
+@router.get("/api/{of_id}/auditoria-docs")
+def auditoria_docs(
+    of_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Historial de acciones sobre documentos/gates de la OF (quién subió/reemplazó y cuándo)."""
+    rows = (
+        db.query(AuditoriaDocumentoOF)
+        .filter_by(of_id=of_id)
+        .order_by(AuditoriaDocumentoOF.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    return [
+        {
+            "tipo": r.tipo,
+            "accion": r.accion,
+            "nombre_archivo": r.nombre_archivo,
+            "usuario": r.usuario.nombre if r.usuario else None,
+            "fecha": r.created_at.strftime("%d/%m/%Y %H:%M") if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
 # ── API: descargar documento ──────────────────────────────────
 @router.get("/api/documentos/{doc_id}/descargar")
 def descargar_documento(
@@ -741,9 +877,7 @@ def ficha_disponible_catalogo(
 ):
     """Devuelve la ficha técnica del catálogo si la OF tiene prenda vinculada y está en BORRADOR."""
     from app.models.catalogo import PrendaDocumento
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.BORRADOR:
         return {"disponible": False, "motivo": "La OF no está en BORRADOR"}
     if not of.prenda_catalogo_id:
@@ -777,9 +911,8 @@ def usar_ficha_catalogo(
     import shutil as _shutil
     from app.models.catalogo import PrendaDocumento
 
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    _require(current_user, ROLES_PLANEAMIENTO, "usar la ficha del catálogo")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.BORRADOR:
         raise HTTPException(400, "Solo se puede usar esta opción en OFs en BORRADOR")
 
@@ -839,27 +972,43 @@ def actualizar_codigos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    _require(current_user, ROLES_PLANEAMIENTO, "actualizar códigos/gates de la OF")
+    of = get_of_or_404(of_id, db)
 
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
     tipo_cliente = of.tipo_cliente.value if of.tipo_cliente else "INSTITUCION"
 
+    cambios = []  # (gate_id, accion, valor) para auditoría
+
+    def _aplicar(gate_id, campo, valor):
+        actual = getattr(of, campo) or None
+        nuevo = (valor or None)
+        if nuevo == actual:
+            return
+        setattr(of, campo, nuevo)
+        accion = "REGISTRADO" if not actual else ("ELIMINADO" if not nuevo else "MODIFICADO")
+        cambios.append((gate_id, accion, nuevo))
+
     if body.solped_prenda is not None:
         if rol not in ("ADMIN", "PLANEADOR") and not puede_subir_gate(rol, "SOLPED_PRENDA", tipo_cliente):
             raise HTTPException(403, f"Tu rol ({rol}) no puede actualizar SOLPED Prenda")
-        of.solped_prenda = body.solped_prenda or None
+        _aplicar("SOLPED_PRENDA", "solped_prenda", body.solped_prenda)
 
     if body.solped_mp is not None:
         if rol not in ("ADMIN", "PLANEADOR") and not puede_subir_gate(rol, "SOLPED_MP", tipo_cliente):
             raise HTTPException(403, f"Tu rol ({rol}) no puede actualizar SOLPED MP")
-        of.solped_mp = body.solped_mp or None
+        _aplicar("SOLPED_MP", "solped_mp", body.solped_mp)
 
     if body.orden_compra is not None:
         if rol not in ("ADMIN", "PLANEADOR") and not puede_subir_gate(rol, "ORDEN_COMPRA", tipo_cliente):
             raise HTTPException(403, f"Tu rol ({rol}) no puede actualizar Orden de Compra")
-        of.orden_compra = body.orden_compra or None
+        _aplicar("ORDEN_COMPRA", "orden_compra", body.orden_compra)
+
+    for gate_id, accion, valor in cambios:
+        db.add(AuditoriaDocumentoOF(
+            of_id=of_id, tipo=gate_id, accion=accion,
+            nombre_archivo=valor, usuario_id=current_user.id,
+        ))
 
     db.commit()
     _actualizar_estado_docs(of, db)
@@ -879,9 +1028,7 @@ def get_gates(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     gates = calcular_gates(of, db)
     ok, faltantes = puede_activar(of, db)
     return {
@@ -898,9 +1045,8 @@ def activar_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    _require(current_user, ROLES_PLANEAMIENTO, "activar OFs")
+    of = get_of_or_404(of_id, db)
 
     if len(of.piezas) == 0:
         raise HTTPException(400, "La OF no tiene piezas definidas")
@@ -932,9 +1078,8 @@ def planificar_of(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    _require(current_user, ROLES_PLANEAMIENTO, "planificar OFs")
+    of = get_of_or_404(of_id, db)
 
     # Guardrail fecha pasada
     if body.fecha_inicio_plan and body.fecha_inicio_plan != "":
@@ -1024,9 +1169,7 @@ def editar_piezas_page(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.BORRADOR:
         raise HTTPException(400, "Solo se pueden editar piezas de OFs en BORRADOR")
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
@@ -1058,9 +1201,7 @@ def guardar_edicion_piezas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     if of.estado != EstadoOF.BORRADOR:
         raise HTTPException(400, "Solo se pueden editar piezas de OFs en BORRADOR")
     rol = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
@@ -1097,9 +1238,7 @@ def api_get_tallas_dist(
     current_user: Usuario = Depends(get_current_user),
 ):
     """Retorna distribucion actual de tallas para la OF y los SKUs disponibles."""
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     # SKUs disponibles de la variante vinculada
     skus_disponibles = []
@@ -1135,9 +1274,7 @@ def api_guardar_tallas_dist(
     current_user: Usuario = Depends(get_current_user),
 ):
     """Guarda la distribución de tallas para la OF (reemplaza la anterior)."""
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     # Validar SKUs si la OF tiene prenda asociada
     if of.prenda_catalogo_id:
@@ -1202,9 +1339,7 @@ def api_marcar_enviada(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     return of_service.marcar_enviada(of, current_user, db)
 
 
@@ -1280,7 +1415,7 @@ def api_registrar_recepcion(
         # of.fase_tercerizada no existe en el modelo; fase queda en TercSubprocesoLog
 
     db.commit()
-    return {"ok": True, "msg": f"Recepción registrada: {body.juegos_recibidos} juegos", "completa": recepcion_completa}
+    return {"ok": True, "msg": f"Recepción registrada: {body.juegos_recibidos} prendas", "completa": recepcion_completa}
 
 
 @router.patch("/api/{of_id}/tercerizar/fecha")
@@ -1290,9 +1425,7 @@ def api_actualizar_fecha(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
     return of_service.actualizar_fecha_recepcion(
         of, body.fecha_recepcion_est, body.motivo, current_user, db
     )
@@ -1306,9 +1439,7 @@ def api_fases_pendientes(
 ):
     """Fases con al menos una pieza sin completar en esta OF."""
     from app.constants import ORDEN_FASES, NOMBRES_FASE
-    of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
-    if not of:
-        raise HTTPException(404, "OF no encontrada")
+    of = get_of_or_404(of_id, db)
 
     estados = db.query(OFFaseEstado).filter_by(of_id=of_id).all()
 

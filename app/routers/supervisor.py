@@ -4,7 +4,7 @@ Permite al supervisor programar tiempos por fase para cada OF.
 Acceso: SUPERVISOR_CORTE, GERENTE_PLANTA, PLANEADOR, GERENCIA, ADMIN.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel as PydanticBase
 from datetime import date, datetime
@@ -22,7 +22,8 @@ from app.constants import NOMBRES_FASE
 
 router = APIRouter()
 
-ROLES_SUPERVISOR = {"ADMIN", "SUPERVISOR_CORTE", "GERENTE_PLANTA", "PLANEADOR", "GERENCIA"}
+from app.roles import ROLES_SUPERVISOR, ROLES_PROGRAMAR
+# Quién puede PROGRAMAR tiempos de máquina (UDP solo ve/edita Curvas de tallas)
 
 
 def _check_acceso(user: Usuario):
@@ -63,6 +64,9 @@ def programacion(
     current_user: Usuario = Depends(get_current_user),
 ):
     _check_acceso(current_user)
+    # UDP solo trabaja Curvas de tallas: lo llevamos directo a su pestaña.
+    if get_rol(current_user) not in ROLES_PROGRAMAR:
+        return RedirectResponse(url="/curvas/", status_code=302)
     hoy = date.today()
 
     ofs = db.query(OrdenFabricacion).filter(
@@ -112,6 +116,7 @@ def programacion(
         "current_user": current_user,
         "ofs_data": ofs_data,
         "hoy": hoy,
+        "puede_programar": get_rol(current_user) in ROLES_PROGRAMAR,
     })
 
 
@@ -130,7 +135,8 @@ def programar_fase(
     current_user: Usuario = Depends(get_current_user),
 ):
     """Guarda inicio_programado y fin_programado para una OF × fase."""
-    _check_acceso(current_user)
+    if get_rol(current_user) not in ROLES_PROGRAMAR:
+        raise HTTPException(403, "Tu rol puede ver Programación pero no programar tiempos de máquina")
     of = db.query(OrdenFabricacion).filter_by(id=of_id).first()
     if not of:
         raise HTTPException(404, "OF no encontrada")
