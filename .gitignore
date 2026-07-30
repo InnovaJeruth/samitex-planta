@@ -10,3 +10,4 @@ __pycache__/
 !/static/uploads/**/.gitkeep
 *.db
 *.bak
+migrate_to_supabase.py

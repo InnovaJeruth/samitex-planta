@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     # Evita que varias a la vez saturen el proceso por el GIL de Python.
     HEAVY_MAX_CONCURRENCIA: int = 2
 
+    # WebSocket (mantenido por compatibilidad con .env existentes)
+    WS_HEARTBEAT_SECONDS: int = 30
+
     # Bot Telegram + Gemini
     TELEGRAM_TOKEN: str = ""
     GEMINI_API_KEY: str = ""
